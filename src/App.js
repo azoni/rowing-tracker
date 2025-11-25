@@ -204,6 +204,11 @@ function App() {
     }
   };
 
+  // Calculate total meters
+  const getTotalMeters = useCallback(() => {
+    return Object.values(users).reduce((sum, user) => sum + (user.totalMeters || 0), 0);
+  }, [users]);
+
   // Add a new entry
   const addEntry = useCallback((userId, meters, signature = null) => {
     const prevTotal = getTotalMeters();
@@ -300,11 +305,6 @@ function App() {
     setManualMeters('');
     setSelectedUser('');
   };
-
-  // Calculate total meters
-  const getTotalMeters = useCallback(() => {
-    return Object.values(users).reduce((sum, user) => sum + (user.totalMeters || 0), 0);
-  }, [users]);
 
   // Calculate streak for a user
   const calculateStreak = (userId) => {

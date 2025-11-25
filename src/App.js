@@ -248,7 +248,7 @@ function App() {
     
     setProcessingStatus('');
     setActiveTab('leaderboard');
-  }, []);
+  }, [getTotalMeters]);
 
   // Handle new user registration
   const handleNewUser = () => {

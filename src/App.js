@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
+import { db } from './firebase';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  onSnapshot, 
+  query, 
+  orderBy,
+  serverTimestamp
+} from 'firebase/firestore';
 import './App.css';
 
 // World circumference in meters
@@ -37,31 +47,96 @@ function App() {
   const [activeTab, setActiveTab] = useState('upload');
   const [manualMeters, setManualMeters] = useState('');
   const [selectedUser, setSelectedUser] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(null);
   const fileInputRef = useRef(null);
+  const previousTotalRef = useRef(0);
 
-  // Load data from localStorage
+  // Subscribe to real-time updates from Firebase
   useEffect(() => {
-    const savedUsers = localStorage.getItem('rowingUsers');
-    const savedEntries = localStorage.getItem('rowingEntries');
-    const savedSignatures = localStorage.getItem('machineSignatures');
-    
-    if (savedUsers) setUsers(JSON.parse(savedUsers));
-    if (savedEntries) setEntries(JSON.parse(savedEntries));
-    if (savedSignatures) setMachineSignatures(JSON.parse(savedSignatures));
+    setIsLoading(true);
+    setConnectionError(null);
+
+    // Subscribe to users collection
+    const unsubUsers = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        const usersData = {};
+        snapshot.forEach((docSnap) => {
+          usersData[docSnap.id] = docSnap.data();
+        });
+        setUsers(usersData);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching users:', error);
+        setConnectionError('Failed to connect to database. Check your Firebase config.');
+        setIsLoading(false);
+      }
+    );
+
+    // Subscribe to entries collection
+    const entriesQuery = query(collection(db, 'entries'), orderBy('date', 'desc'));
+    const unsubEntries = onSnapshot(
+      entriesQuery,
+      (snapshot) => {
+        const entriesData = [];
+        snapshot.forEach((docSnap) => {
+          entriesData.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        setEntries(entriesData);
+      },
+      (error) => {
+        console.error('Error fetching entries:', error);
+      }
+    );
+
+    // Subscribe to machine signatures
+    const unsubSignatures = onSnapshot(
+      collection(db, 'machineSignatures'),
+      (snapshot) => {
+        const signaturesData = {};
+        snapshot.forEach((docSnap) => {
+          signaturesData[docSnap.id] = docSnap.data().signature;
+        });
+        setMachineSignatures(signaturesData);
+      },
+      (error) => {
+        console.error('Error fetching signatures:', error);
+      }
+    );
+
+    // Cleanup subscriptions
+    return () => {
+      unsubUsers();
+      unsubEntries();
+      unsubSignatures();
+    };
   }, []);
 
-  // Save data to localStorage
-  useEffect(() => {
-    localStorage.setItem('rowingUsers', JSON.stringify(users));
+  // Calculate total meters
+  const getTotalMeters = useCallback(() => {
+    return Object.values(users).reduce((sum, user) => sum + (user.totalMeters || 0), 0);
   }, [users]);
 
+  // Check for milestones when total changes
   useEffect(() => {
-    localStorage.setItem('rowingEntries', JSON.stringify(entries));
-  }, [entries]);
+    const currentTotal = getTotalMeters();
+    const prevTotal = previousTotalRef.current;
 
-  useEffect(() => {
-    localStorage.setItem('machineSignatures', JSON.stringify(machineSignatures));
-  }, [machineSignatures]);
+    if (prevTotal > 0 && currentTotal > prevTotal) {
+      const newMilestone = MILESTONES.find(
+        (m) => prevTotal < m.meters && currentTotal >= m.meters
+      );
+
+      if (newMilestone) {
+        setRecentMilestone(newMilestone);
+        setTimeout(() => setRecentMilestone(null), 5000);
+      }
+    }
+
+    previousTotalRef.current = currentTotal;
+  }, [getTotalMeters]);
 
   // Generate a simple image signature for machine recognition
   const generateImageSignature = async (imageData) => {
@@ -70,12 +145,10 @@ function App() {
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        // Sample a small grid for signature
         canvas.width = 8;
         canvas.height = 8;
         ctx.drawImage(img, 0, 0, 8, 8);
         const data = ctx.getImageData(0, 0, 8, 8).data;
-        // Create simple hash from pixel data
         let signature = '';
         for (let i = 0; i < data.length; i += 16) {
           signature += Math.floor(data[i] / 32).toString();
@@ -90,8 +163,8 @@ function App() {
   const findMatchingUser = (signature) => {
     let bestMatch = null;
     let bestScore = 0;
-    
-    Object.entries(machineSignatures).forEach(([userId, userSignature]) => {
+
+    Object.entries(machineSignatures).forEach(([oderId, userSignature]) => {
       let matches = 0;
       for (let i = 0; i < Math.min(signature.length, userSignature.length); i++) {
         if (signature[i] === userSignature[i]) matches++;
@@ -99,17 +172,17 @@ function App() {
       const score = matches / Math.max(signature.length, userSignature.length);
       if (score > bestScore && score > 0.6) {
         bestScore = score;
-        bestMatch = userId;
+        bestMatch = oderId;
       }
     });
-    
+
     return bestMatch;
   };
 
   // Extract meters from image using OCR
   const extractMetersFromImage = async (imageData) => {
     setProcessingStatus('Analyzing image...');
-    
+
     try {
       const result = await Tesseract.recognize(imageData, 'eng', {
         logger: (m) => {
@@ -122,13 +195,12 @@ function App() {
       const text = result.data.text;
       console.log('OCR Result:', text);
 
-      // Look for meter patterns - rowing machines typically show large numbers
       const patterns = [
-        /(\d{1,2}[,.]?\d{3,4})\s*m/i,  // Matches "1,234m" or "12345 m"
-        /meters?\s*[:\s]*(\d{1,2}[,.]?\d{3,4})/i,  // "meters: 1234"
-        /distance\s*[:\s]*(\d{1,2}[,.]?\d{3,4})/i,  // "distance: 1234"
-        /(\d{4,6})(?:\s|$)/,  // Just a 4-6 digit number
-        /(\d{1,3}[,]\d{3})/,  // Comma separated thousands
+        /(\d{1,2}[,.]?\d{3,4})\s*m/i,
+        /meters?\s*[:\s]*(\d{1,2}[,.]?\d{3,4})/i,
+        /distance\s*[:\s]*(\d{1,2}[,.]?\d{3,4})/i,
+        /(\d{4,6})(?:\s|$)/,
+        /(\d{1,3}[,]\d{3})/,
       ];
 
       for (const pattern of patterns) {
@@ -141,7 +213,6 @@ function App() {
         }
       }
 
-      // If no clear pattern, look for any reasonable number
       const numbers = text.match(/\d+/g);
       if (numbers) {
         for (const num of numbers) {
@@ -170,20 +241,16 @@ function App() {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const imageData = e.target.result;
-      
-      // Generate signature and find user
+
       const signature = await generateImageSignature(imageData);
       const matchedUser = findMatchingUser(signature);
-      
-      // Extract meters
+
       const meters = await extractMetersFromImage(imageData);
-      
+
       if (meters) {
         if (matchedUser) {
-          // Known user - add entry directly
           addEntry(matchedUser, meters, signature);
         } else {
-          // Unknown machine - ask for user name
           setPendingImage(signature);
           setPendingMeters(meters);
           setShowNewUserModal(true);
@@ -193,131 +260,118 @@ function App() {
         setPendingImage(signature);
         setShowNewUserModal(true);
       }
-      
+
       setIsProcessing(false);
     };
     reader.readAsDataURL(file);
-    
-    // Reset file input
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  // Calculate total meters
-  const getTotalMeters = useCallback(() => {
-    return Object.values(users).reduce((sum, user) => sum + (user.totalMeters || 0), 0);
+  // Add a new entry to Firebase
+  const addEntry = useCallback(async (userId, meters, signature = null) => {
+    try {
+      const entryId = `${Date.now()}_${userId}`;
+      const entryRef = doc(db, 'entries', entryId);
+
+      // Add the entry
+      await setDoc(entryRef, {
+        userId,
+        meters,
+        date: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+      });
+
+      // Update user stats
+      const userRef = doc(db, 'users', userId);
+      const currentUser = users[userId] || { name: userId, totalMeters: 0, uploadCount: 0 };
+      await setDoc(userRef, {
+        ...currentUser,
+        totalMeters: (currentUser.totalMeters || 0) + meters,
+        uploadCount: (currentUser.uploadCount || 0) + 1,
+        lastRowDate: new Date().toISOString(),
+      }, { merge: true });
+
+      // Update signature if provided
+      if (signature) {
+        const sigRef = doc(db, 'machineSignatures', userId);
+        await setDoc(sigRef, { signature, oderId: userId });
+      }
+
+      setProcessingStatus('');
+      setActiveTab('leaderboard');
+    } catch (error) {
+      console.error('Error adding entry:', error);
+      setProcessingStatus('Error saving entry. Please try again.');
+    }
   }, [users]);
 
-  // Add a new entry
-  const addEntry = useCallback((userId, meters, signature = null) => {
-    const prevTotal = getTotalMeters();
-    
-    const entry = {
-      id: Date.now(),
-      userId,
-      meters,
-      date: new Date().toISOString(),
-    };
-    
-    setEntries((prev) => [...prev, entry]);
-    
-    // Update user stats
-    setUsers((prev) => ({
-      ...prev,
-      [userId]: {
-        ...prev[userId],
-        totalMeters: (prev[userId]?.totalMeters || 0) + meters,
-        uploadCount: (prev[userId]?.uploadCount || 0) + 1,
-      },
-    }));
-    
-    // Update signature if provided
-    if (signature) {
-      setMachineSignatures((prev) => ({
-        ...prev,
-        [userId]: signature,
-      }));
-    }
-    
-    // Check for new milestones
-    const newTotal = prevTotal + meters;
-    const newMilestone = MILESTONES.find(
-      (m) => prevTotal < m.meters && newTotal >= m.meters
-    );
-    
-    if (newMilestone) {
-      setRecentMilestone(newMilestone);
-      setTimeout(() => setRecentMilestone(null), 5000);
-    }
-    
-    setProcessingStatus('');
-    setActiveTab('leaderboard');
-  }, [getTotalMeters]);
-
   // Handle new user registration
-  const handleNewUser = () => {
+  const handleNewUser = async () => {
     if (!newUserName.trim()) return;
-    
-    const userId = newUserName.toLowerCase().replace(/\s+/g, '_');
+
+    const oderId = newUserName.toLowerCase().replace(/\s+/g, '_');
     const metersToAdd = pendingMeters || parseInt(manualMeters, 10) || 0;
-    
+
     if (metersToAdd <= 0) {
       alert('Please enter valid meters');
       return;
     }
-    
-    // Create new user
-    setUsers((prev) => ({
-      ...prev,
-      [userId]: {
+
+    try {
+      // Create new user in Firebase
+      const userRef = doc(db, 'users', oderId);
+      await setDoc(userRef, {
         name: newUserName.trim(),
         totalMeters: 0,
         uploadCount: 0,
         createdAt: new Date().toISOString(),
-      },
-    }));
-    
-    // Add entry and signature
-    setTimeout(() => {
-      addEntry(userId, metersToAdd, pendingImage);
-    }, 100);
-    
-    // Reset modal state
-    setShowNewUserModal(false);
-    setPendingImage(null);
-    setPendingMeters(null);
-    setNewUserName('');
-    setManualMeters('');
+      });
+
+      // Add entry and signature
+      await addEntry(oderId, metersToAdd, pendingImage);
+
+      // Reset modal state
+      setShowNewUserModal(false);
+      setPendingImage(null);
+      setPendingMeters(null);
+      setNewUserName('');
+      setManualMeters('');
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Error creating user. Please try again.');
+    }
   };
 
   // Handle manual entry for existing user
-  const handleManualEntry = () => {
+  const handleManualEntry = async () => {
     if (!selectedUser || !manualMeters) return;
-    
+
     const meters = parseInt(manualMeters, 10);
     if (meters <= 0 || meters > 100000) {
       alert('Please enter valid meters (1-100,000)');
       return;
     }
-    
-    addEntry(selectedUser, meters);
+
+    await addEntry(selectedUser, meters);
     setManualMeters('');
     setSelectedUser('');
   };
 
   // Calculate streak for a user
-  const calculateStreak = (userId) => {
+  const calculateStreak = (oderId) => {
     const userEntries = entries
-      .filter((e) => e.userId === userId)
+      .filter((e) => e.userId === oderId)
       .sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
     if (userEntries.length === 0) return 0;
-    
+
     let streak = 0;
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
-    
+
     const entryDates = new Set(
       userEntries.map((e) => {
         const d = new Date(e.date);
@@ -325,40 +379,38 @@ function App() {
         return d.getTime();
       })
     );
-    
-    // Check if there's an entry today or yesterday to start the streak
+
     const today = currentDate.getTime();
     const yesterday = today - 86400000;
-    
+
     if (!entryDates.has(today) && !entryDates.has(yesterday)) {
       return 0;
     }
-    
+
     let checkDate = entryDates.has(today) ? today : yesterday;
-    
+
     while (entryDates.has(checkDate)) {
       streak++;
       checkDate -= 86400000;
     }
-    
+
     return streak;
   };
 
   // Calculate average sessions per week
-  const calculateWeeklyAverage = (userId) => {
-    const userEntries = entries.filter((e) => e.userId === userId);
+  const calculateWeeklyAverage = (oderId) => {
+    const userEntries = entries.filter((e) => e.userId === oderId);
     if (userEntries.length === 0) return 0;
-    
+
     const dates = userEntries.map((e) => new Date(e.date));
     const firstDate = new Date(Math.min(...dates));
     const now = new Date();
     const weeks = Math.max(1, (now - firstDate) / (7 * 24 * 60 * 60 * 1000));
-    
-    // Count unique days
+
     const uniqueDays = new Set(
       userEntries.map((e) => new Date(e.date).toDateString())
     ).size;
-    
+
     return (uniqueDays / weeks).toFixed(1);
   };
 
@@ -367,7 +419,7 @@ function App() {
     const total = getTotalMeters();
     const nextMilestone = MILESTONES.find((m) => m.meters > total);
     const prevMilestone = MILESTONES.slice().reverse().find((m) => m.meters <= total);
-    
+
     return { current: prevMilestone, next: nextMilestone, total };
   };
 
@@ -390,8 +442,8 @@ function App() {
         ...user,
         streak: calculateStreak(id),
         weeklyAvg: calculateWeeklyAverage(id),
-        avgPerUpload: user.uploadCount > 0 
-          ? Math.round(user.totalMeters / user.uploadCount) 
+        avgPerUpload: user.uploadCount > 0
+          ? Math.round(user.totalMeters / user.uploadCount)
           : 0,
       }))
       .sort((a, b) => b.totalMeters - a.totalMeters);
@@ -400,6 +452,31 @@ function App() {
   const milestoneProgress = getCurrentMilestone();
   const totalMeters = getTotalMeters();
   const worldProgress = (totalMeters / WORLD_CIRCUMFERENCE) * 100;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="app">
+        <div className="loading-screen">
+          <div className="spinner" />
+          <p>Loading Row Crew...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Connection error state
+  if (connectionError) {
+    return (
+      <div className="app">
+        <div className="error-screen">
+          <h2>⚠️ Connection Error</h2>
+          <p>{connectionError}</p>
+          <p className="error-hint">Make sure you've set up Firebase correctly in src/firebase.js</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -434,13 +511,13 @@ function App() {
           </div>
         </div>
         <div className="progress-bar-container">
-          <div 
-            className="progress-bar" 
+          <div
+            className="progress-bar"
             style={{ width: `${Math.min(worldProgress, 100)}%` }}
           />
           <div className="progress-markers">
             {MILESTONES.filter(m => m.meters <= WORLD_CIRCUMFERENCE / 4).slice(0, 5).map((m, i) => (
-              <div 
+              <div
                 key={i}
                 className={`marker ${totalMeters >= m.meters ? 'achieved' : ''}`}
                 style={{ left: `${(m.meters / WORLD_CIRCUMFERENCE) * 100}%` }}
@@ -461,19 +538,19 @@ function App() {
 
       {/* Navigation Tabs */}
       <nav className="tabs">
-        <button 
+        <button
           className={`tab ${activeTab === 'upload' ? 'active' : ''}`}
           onClick={() => setActiveTab('upload')}
         >
           📸 Log Row
         </button>
-        <button 
+        <button
           className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`}
           onClick={() => setActiveTab('leaderboard')}
         >
           🏆 Board
         </button>
-        <button 
+        <button
           className={`tab ${activeTab === 'stats' ? 'active' : ''}`}
           onClick={() => setActiveTab('stats')}
         >
@@ -489,7 +566,7 @@ function App() {
             <div className="upload-card">
               <h2>Log Your Row</h2>
               <p>Take a photo of your rowing machine display</p>
-              
+
               <label className="upload-button">
                 <input
                   ref={fileInputRef}
@@ -502,7 +579,7 @@ function App() {
                 <span className="upload-icon">📷</span>
                 <span>{isProcessing ? processingStatus : 'Take Photo'}</span>
               </label>
-              
+
               {isProcessing && (
                 <div className="processing-indicator">
                   <div className="spinner" />
@@ -515,8 +592,8 @@ function App() {
               <div className="manual-entry-card">
                 <h3>Manual Entry</h3>
                 <p>Or enter meters manually</p>
-                <select 
-                  value={selectedUser} 
+                <select
+                  value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
                   className="user-select"
                 >
@@ -532,7 +609,7 @@ function App() {
                   onChange={(e) => setManualMeters(e.target.value)}
                   className="meters-input"
                 />
-                <button 
+                <button
                   onClick={handleManualEntry}
                   disabled={!selectedUser || !manualMeters}
                   className="submit-button"
@@ -625,14 +702,14 @@ function App() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>New Rower Detected!</h2>
             <p>We don't recognize this machine. Enter your name to register it.</p>
-            
+
             {pendingMeters && (
               <div className="detected-meters">
                 <span className="detected-label">Detected:</span>
                 <span className="detected-value">{pendingMeters.toLocaleString()} meters</span>
               </div>
             )}
-            
+
             <input
               type="text"
               placeholder="Your name"
@@ -641,7 +718,7 @@ function App() {
               className="name-input"
               autoFocus
             />
-            
+
             {!pendingMeters && (
               <input
                 type="number"
@@ -651,9 +728,9 @@ function App() {
                 className="meters-input"
               />
             )}
-            
+
             <div className="modal-actions">
-              <button 
+              <button
                 className="cancel-button"
                 onClick={() => {
                   setShowNewUserModal(false);
@@ -665,7 +742,7 @@ function App() {
               >
                 Cancel
               </button>
-              <button 
+              <button
                 className="confirm-button"
                 onClick={handleNewUser}
                 disabled={!newUserName.trim() || (!pendingMeters && !manualMeters)}

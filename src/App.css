@@ -511,9 +511,7 @@ body {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.35rem;
   letter-spacing: 0.03em;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
+  margin: 0;
 }
 
 .stat-row {
@@ -950,6 +948,84 @@ input[type="number"] {
 .stats-card.is-you {
   border-color: var(--accent-primary);
   box-shadow: 0 0 20px rgba(0, 212, 170, 0.2);
+}
+
+/* Leaderboard Avatars */
+.user-avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.leaderboard-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border-color);
+}
+
+.leaderboard-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--bg-dark);
+}
+
+.rank-1 .leaderboard-avatar {
+  border-color: #ffd700;
+}
+
+.rank-2 .leaderboard-avatar {
+  border-color: #c0c0c0;
+}
+
+.rank-3 .leaderboard-avatar {
+  border-color: #cd7f32;
+}
+
+/* Stats Card Header with Avatar */
+.stats-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.stats-card-header h3 {
+  margin: 0;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.03em;
+}
+
+.stats-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.stats-avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--bg-dark);
+  flex-shrink: 0;
 }
 
 /* Current User Card */

@@ -172,7 +172,37 @@ function App() {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error('Sign in error:', error);
-      alert('Failed to sign in. Please try again.');
+      
+      // Provide specific error messages
+      let errorMessage = 'Failed to sign in. Please try again.';
+      
+      switch (error.code) {
+        case 'auth/popup-closed-by-user':
+          errorMessage = 'Sign-in was cancelled. Please try again.';
+          break;
+        case 'auth/popup-blocked':
+          errorMessage = 'Pop-up was blocked. Please allow pop-ups for this site.';
+          break;
+        case 'auth/unauthorized-domain':
+          errorMessage = 'This domain is not authorized. Please contact the app admin to add this domain in Firebase Console.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your internet connection.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many attempts. Please wait a moment and try again.';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'This account has been disabled.';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Google sign-in is not enabled. Please contact the app admin.';
+          break;
+        default:
+          errorMessage = `Sign-in failed: ${error.message || error.code || 'Unknown error'}`;
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -712,6 +742,15 @@ function App() {
                     <div className="rank">
                       {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                     </div>
+                    <div className="user-avatar-wrapper">
+                      {user.photoURL ? (
+                        <img src={user.photoURL} alt="" className="leaderboard-avatar" />
+                      ) : (
+                        <div className="leaderboard-avatar-placeholder">
+                          {user.name?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                    </div>
                     <div className="user-info">
                       <span className="user-name">
                         {user.name}
@@ -741,7 +780,16 @@ function App() {
               <div className="stats-grid">
                 {getLeaderboard().map((user) => (
                   <div key={user.id} className={`stats-card ${user.id === currentUser?.uid ? 'is-you' : ''}`}>
-                    <h3>{user.name} {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</h3>
+                    <div className="stats-card-header">
+                      {user.photoURL ? (
+                        <img src={user.photoURL} alt="" className="stats-avatar" />
+                      ) : (
+                        <div className="stats-avatar-placeholder">
+                          {user.name?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                      <h3>{user.name} {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</h3>
+                    </div>
                     <div className="stat-row">
                       <span className="stat-label">Total Distance</span>
                       <span className="stat-value">{formatMeters(user.totalMeters)}m</span>

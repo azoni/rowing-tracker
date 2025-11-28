@@ -1258,6 +1258,283 @@ input[type="number"] {
   color: var(--text-primary);
 }
 
+/* Share Modal */
+.share-modal {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 1.5rem;
+  max-width: 360px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  border: 1px solid var(--border-color);
+  animation: modalSlideUp 0.3s ease;
+}
+
+.share-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.share-close-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+/* Share Card */
+.share-card {
+  background: linear-gradient(145deg, #1a2035 0%, #0d1220 100%);
+  border-radius: 16px;
+  padding: 1.25rem;
+  border: 1px solid rgba(0, 212, 170, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.share-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.share-card-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.share-brand-icon {
+  font-size: 1.25rem;
+}
+
+.share-brand-text {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  background: linear-gradient(135deg, var(--accent-primary), #00ffcc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.share-card-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.share-card-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.share-user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-primary);
+}
+
+.share-user-avatar-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--bg-dark);
+}
+
+.share-user-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.share-card-image {
+  width: 100%;
+  height: 140px;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  background: var(--bg-dark);
+}
+
+.share-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.share-card-session {
+  text-align: center;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(0, 212, 170, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 212, 170, 0.2);
+}
+
+.share-session-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
+.share-session-meters {
+  display: block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.75rem;
+  color: var(--accent-primary);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(0, 212, 170, 0.5);
+}
+
+.share-card-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.share-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.share-stat-icon {
+  font-size: 1.25rem;
+}
+
+.share-stat-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.share-stat-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.share-stat-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--border-color);
+}
+
+.share-card-footer {
+  text-align: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.share-card-footer span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.share-card-url {
+  margin-top: 0.25rem;
+  color: var(--accent-primary) !important;
+  font-weight: 600;
+}
+
+/* Share Actions */
+.share-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.share-copy-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  border: none;
+  border-radius: 12px;
+  color: var(--bg-dark);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.share-copy-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(0, 212, 170, 0.4);
+}
+
+.share-copy-btn.copied {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.share-done-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.share-done-btn:hover {
+  background: var(--bg-dark);
+  color: var(--text-primary);
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Error Screen */
 .error-screen {
   display: flex;

@@ -44,8 +44,18 @@ const MILESTONES = [
 // Changelog entries
 const CHANGELOG = [
   {
+    version: '1.7.0',
+    date: '2025-01-28',
+    changes: [
+      'Added shareable card after logging a row',
+      'Share your session with friends via copy-paste',
+      'Share card shows session meters, streak, total, profile pic, and row photo',
+      'Changelog dates now display in PST timezone',
+    ]
+  },
+  {
     version: '1.6.0',
-    date: '2025-11-28',
+    date: '2025-01-28',
     changes: [
       'Added changelog/updates tab',
       'Added profile pictures to leaderboard and stats',
@@ -54,7 +64,7 @@ const CHANGELOG = [
   },
   {
     version: '1.5.0',
-    date: '2025-11-28',
+    date: '2025-01-28',
     changes: [
       'Added Google Sign-In authentication',
       'Users can only log rows for their own account',
@@ -65,7 +75,7 @@ const CHANGELOG = [
   },
   {
     version: '1.4.0',
-    date: '2025-11-27',
+    date: '2025-01-27',
     changes: [
       'Improved OCR with image preprocessing',
       'Added confirmation modal before submitting',
@@ -76,7 +86,7 @@ const CHANGELOG = [
   },
   {
     version: '1.3.0',
-    date: '2025-11-27',
+    date: '2025-01-27',
     changes: [
       'Added PWA support - install as app on your phone',
       'Works offline (view-only when disconnected)',
@@ -85,7 +95,7 @@ const CHANGELOG = [
   },
   {
     version: '1.2.0',
-    date: '2025-11-27',
+    date: '2025-01-27',
     changes: [
       'Migrated to Firebase Firestore backend',
       'Real-time sync across all devices',
@@ -95,7 +105,7 @@ const CHANGELOG = [
   },
   {
     version: '1.1.0',
-    date: '2025-11-26',
+    date: '2025-01-26',
     changes: [
       'Deployed to Netlify',
       'Added mobile-responsive design',
@@ -104,7 +114,7 @@ const CHANGELOG = [
   },
   {
     version: '1.0.0',
-    date: '2025-11-26',
+    date: '2025-01-26',
     changes: [
       '🎉 Initial release!',
       'Photo upload with OCR to read rowing machine display',
@@ -138,10 +148,15 @@ function App() {
   const [capturedImage, setCapturedImage] = useState(null);
   const [validationError, setValidationError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [lastSessionMeters, setLastSessionMeters] = useState(0);
+  const [shareImageUrl, setShareImageUrl] = useState(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
   const canvasRef = useRef(null);
+  const shareCardRef = useRef(null);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -513,14 +528,17 @@ function App() {
       });
 
       const userRef = doc(db, 'users', currentUser.uid);
+      const newTotalMeters = (userProfile.totalMeters || 0) + meters;
       await setDoc(userRef, {
         ...userProfile,
-        totalMeters: (userProfile.totalMeters || 0) + meters,
+        totalMeters: newTotalMeters,
         uploadCount: (userProfile.uploadCount || 0) + 1,
         lastRowDate: new Date().toISOString(),
       }, { merge: true });
 
-      setActiveTab('leaderboard');
+      // Store for share card
+      setLastSessionMeters(meters);
+      
       return true;
     } catch (error) {
       console.error('Error adding entry:', error);
@@ -542,11 +560,48 @@ function App() {
     
     if (success) {
       setShowConfirmModal(false);
-      setCapturedImage(null);
       setDetectedMeters('');
       setEditableMeters('');
       setValidationError('');
+      // Show share modal (keep capturedImage for share card)
+      setShareImageUrl(capturedImage);
+      setShowShareModal(true);
+      setLinkCopied(false);
     }
+  };
+
+  // Close share modal
+  const handleCloseShare = () => {
+    setShowShareModal(false);
+    setShareImageUrl(null);
+    setCapturedImage(null);
+    setLastSessionMeters(0);
+    setActiveTab('leaderboard');
+  };
+
+  // Copy share link
+  const handleCopyLink = () => {
+    const shareText = `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m on Row Crew!\n\n` +
+      `🔥 Streak: ${calculateStreak(currentUser?.uid)} days\n` +
+      `📊 Total: ${formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)}m\n\n` +
+      `Join us rowing around the world! 🌍\n` +
+      `${window.location.origin}`;
+    
+    navigator.clipboard.writeText(shareText).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = shareText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
   };
 
   // Calculate streak
@@ -904,7 +959,7 @@ function App() {
                 <div key={release.version} className={`changelog-entry ${index === 0 ? 'latest' : ''}`}>
                   <div className="changelog-header">
                     <span className="changelog-version">v{release.version}</span>
-                    <span className="changelog-date">{new Date(release.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span className="changelog-date">{new Date(release.date + 'T12:00:00-08:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' })}</span>
                     {index === 0 && <span className="latest-badge">LATEST</span>}
                   </div>
                   <ul className="changelog-changes">
@@ -999,6 +1054,86 @@ function App() {
                 disabled={!displayName.trim()}
               >
                 Join Crew
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Card Modal */}
+      {showShareModal && (
+        <div className="modal-overlay" onClick={handleCloseShare}>
+          <div className="share-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="share-close-btn" onClick={handleCloseShare}>✕</button>
+            
+            <div className="share-card" ref={shareCardRef}>
+              <div className="share-card-header">
+                <div className="share-card-brand">
+                  <span className="share-brand-icon">🚣</span>
+                  <span className="share-brand-text">ROW CREW</span>
+                </div>
+                <div className="share-card-date">
+                  {new Date().toLocaleDateString('en-US', { 
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric',
+                    timeZone: 'America/Los_Angeles'
+                  })}
+                </div>
+              </div>
+
+              <div className="share-card-user">
+                {userProfile?.photoURL ? (
+                  <img src={userProfile.photoURL} alt="" className="share-user-avatar" />
+                ) : (
+                  <div className="share-user-avatar-placeholder">
+                    {userProfile?.name?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
+                )}
+                <span className="share-user-name">{userProfile?.name}</span>
+              </div>
+
+              {shareImageUrl && (
+                <div className="share-card-image">
+                  <img src={shareImageUrl} alt="Rowing session" />
+                </div>
+              )}
+
+              <div className="share-card-session">
+                <span className="share-session-label">Just rowed</span>
+                <span className="share-session-meters">{lastSessionMeters.toLocaleString()}m</span>
+              </div>
+
+              <div className="share-card-stats">
+                <div className="share-stat">
+                  <span className="share-stat-icon">🔥</span>
+                  <span className="share-stat-value">{calculateStreak(currentUser?.uid)}</span>
+                  <span className="share-stat-label">day streak</span>
+                </div>
+                <div className="share-stat-divider"></div>
+                <div className="share-stat">
+                  <span className="share-stat-icon">📊</span>
+                  <span className="share-stat-value">{formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)}</span>
+                  <span className="share-stat-label">total meters</span>
+                </div>
+              </div>
+
+              <div className="share-card-footer">
+                <span>Join us rowing around the world! 🌍</span>
+                <span className="share-card-url">rowcrew.netlify.app</span>
+              </div>
+            </div>
+
+            <div className="share-actions">
+              <button 
+                className={`share-copy-btn ${linkCopied ? 'copied' : ''}`} 
+                onClick={handleCopyLink}
+              >
+                {linkCopied ? '✓ Copied!' : '📋 Copy to Share'}
+              </button>
+              <button className="share-done-btn" onClick={handleCloseShare}>
+                Done
               </button>
             </div>
           </div>

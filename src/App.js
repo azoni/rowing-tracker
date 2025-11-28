@@ -45,7 +45,7 @@ const MILESTONES = [
 const CHANGELOG = [
   {
     version: '1.7.0',
-    date: '2025-01-28',
+    date: '2025-11-28',
     changes: [
       'Added shareable card after logging a row',
       'Share your session with friends via copy-paste',
@@ -55,7 +55,7 @@ const CHANGELOG = [
   },
   {
     version: '1.6.0',
-    date: '2025-01-28',
+    date: '2025-11-28',
     changes: [
       'Added changelog/updates tab',
       'Added profile pictures to leaderboard and stats',
@@ -64,7 +64,7 @@ const CHANGELOG = [
   },
   {
     version: '1.5.0',
-    date: '2025-01-28',
+    date: '2025-11-28',
     changes: [
       'Added Google Sign-In authentication',
       'Users can only log rows for their own account',
@@ -75,7 +75,7 @@ const CHANGELOG = [
   },
   {
     version: '1.4.0',
-    date: '2025-01-27',
+    date: '2025-11-27',
     changes: [
       'Improved OCR with image preprocessing',
       'Added confirmation modal before submitting',
@@ -86,7 +86,7 @@ const CHANGELOG = [
   },
   {
     version: '1.3.0',
-    date: '2025-01-27',
+    date: '2025-11-27',
     changes: [
       'Added PWA support - install as app on your phone',
       'Works offline (view-only when disconnected)',
@@ -95,7 +95,7 @@ const CHANGELOG = [
   },
   {
     version: '1.2.0',
-    date: '2025-01-27',
+    date: '2025-11-27',
     changes: [
       'Migrated to Firebase Firestore backend',
       'Real-time sync across all devices',
@@ -105,7 +105,7 @@ const CHANGELOG = [
   },
   {
     version: '1.1.0',
-    date: '2025-01-26',
+    date: '2025-11-26',
     changes: [
       'Deployed to Netlify',
       'Added mobile-responsive design',
@@ -114,7 +114,7 @@ const CHANGELOG = [
   },
   {
     version: '1.0.0',
-    date: '2025-01-26',
+    date: '2025-11-26',
     changes: [
       '🎉 Initial release!',
       'Photo upload with OCR to read rowing machine display',

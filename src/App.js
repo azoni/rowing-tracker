@@ -41,6 +41,82 @@ const MILESTONES = [
   { meters: 40075000, label: '40,075 km', comparison: '🌍 YOU ROWED AROUND THE WORLD! 🌍' },
 ];
 
+// Changelog entries
+const CHANGELOG = [
+  {
+    version: '1.6.0',
+    date: '2025-01-28',
+    changes: [
+      'Added changelog/updates tab',
+      'Added profile pictures to leaderboard and stats',
+      'Improved error messages with specific reasons for sign-in failures',
+    ]
+  },
+  {
+    version: '1.5.0',
+    date: '2025-01-28',
+    changes: [
+      'Added Google Sign-In authentication',
+      'Users can only log rows for their own account',
+      'Added entry validation (100-30,000m per session)',
+      'Added 15-minute cooldown between entries',
+      'Added Firestore security rules',
+    ]
+  },
+  {
+    version: '1.4.0',
+    date: '2025-01-27',
+    changes: [
+      'Improved OCR with image preprocessing',
+      'Added confirmation modal before submitting',
+      'Device now remembers your user selection',
+      'Added image preview when logging rows',
+      'Editable meters field for corrections',
+    ]
+  },
+  {
+    version: '1.3.0',
+    date: '2025-01-27',
+    changes: [
+      'Added PWA support - install as app on your phone',
+      'Works offline (view-only when disconnected)',
+      'Added app icons and splash screen',
+    ]
+  },
+  {
+    version: '1.2.0',
+    date: '2025-01-27',
+    changes: [
+      'Migrated to Firebase Firestore backend',
+      'Real-time sync across all devices',
+      'Data now persists in the cloud',
+      'Admin can edit data via Firebase Console',
+    ]
+  },
+  {
+    version: '1.1.0',
+    date: '2025-01-26',
+    changes: [
+      'Deployed to Netlify',
+      'Added mobile-responsive design',
+      'Fixed ESLint build errors',
+    ]
+  },
+  {
+    version: '1.0.0',
+    date: '2025-01-26',
+    changes: [
+      '🎉 Initial release!',
+      'Photo upload with OCR to read rowing machine display',
+      'Leaderboard with rankings',
+      'Streak tracking for consecutive days',
+      'Detailed stats per user (avg meters, sessions/week)',
+      'World progress - row 40,075km around the world together',
+      'Milestone celebrations with fun distance comparisons',
+    ]
+  },
+];
+
 function App() {
   // Auth state
   const [currentUser, setCurrentUser] = useState(null);
@@ -674,13 +750,16 @@ function App() {
       {/* Tabs */}
       <nav className="tabs">
         <button className={`tab ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>
-          📸 Log Row
+          📸 Log
         </button>
         <button className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
           🏆 Board
         </button>
         <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
           📊 Stats
+        </button>
+        <button className={`tab ${activeTab === 'updates' ? 'active' : ''}`} onClick={() => setActiveTab('updates')}>
+          🆕 Updates
         </button>
       </nav>
 
@@ -814,6 +893,28 @@ function App() {
                 ))}
               </div>
             )}
+          </section>
+        )}
+
+        {activeTab === 'updates' && (
+          <section className="updates-section">
+            <h2>Updates & Changelog</h2>
+            <div className="changelog">
+              {CHANGELOG.map((release, index) => (
+                <div key={release.version} className={`changelog-entry ${index === 0 ? 'latest' : ''}`}>
+                  <div className="changelog-header">
+                    <span className="changelog-version">v{release.version}</span>
+                    <span className="changelog-date">{new Date(release.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    {index === 0 && <span className="latest-badge">LATEST</span>}
+                  </div>
+                  <ul className="changelog-changes">
+                    {release.changes.map((change, i) => (
+                      <li key={i}>{change}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </section>
         )}
       </main>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
+import html2canvas from 'html2canvas';
 import { db, auth, googleProvider } from './firebase';
 import { 
   collection, 
@@ -43,6 +44,15 @@ const MILESTONES = [
 
 // Changelog entries
 const CHANGELOG = [
+  {
+    version: '1.7.1',
+    date: '2025-11-28',
+    changes: [
+      'Share button now copies the share card as an image',
+      'Clickable link to Row Crew in share card footer',
+      'Falls back to downloading image if clipboard not supported',
+    ]
+  },
   {
     version: '1.7.0',
     date: '2025-11-28',
@@ -152,6 +162,7 @@ function App() {
   const [lastSessionMeters, setLastSessionMeters] = useState(0);
   const [shareImageUrl, setShareImageUrl] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
@@ -579,29 +590,68 @@ function App() {
     setActiveTab('leaderboard');
   };
 
-  // Copy share link
-  const handleCopyLink = () => {
-    const shareText = `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m on Row Crew!\n\n` +
-      `🔥 Streak: ${calculateStreak(currentUser?.uid)} days\n` +
-      `📊 Total: ${formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)}m\n\n` +
-      `Join us rowing around the world! 🌍\n` +
-      `${window.location.origin}`;
+  // Copy share card as image
+  const handleCopyLink = async () => {
+    if (!shareCardRef.current || isCopying) return;
     
-    navigator.clipboard.writeText(shareText).then(() => {
+    setIsCopying(true);
+    
+    try {
+      // Capture the share card as canvas
+      const canvas = await html2canvas(shareCardRef.current, {
+        backgroundColor: '#0d1220',
+        scale: 2, // Higher quality
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+      });
+      
+      // Convert to blob
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/png', 1.0);
+      });
+      
+      // Try to copy image to clipboard
+      if (navigator.clipboard && navigator.clipboard.write) {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          setLinkCopied(true);
+          setTimeout(() => setLinkCopied(false), 2000);
+        } catch (clipboardError) {
+          console.log('Clipboard API failed, downloading instead:', clipboardError);
+          downloadImage(canvas);
+        }
+      } else {
+        // Fallback: download the image
+        downloadImage(canvas);
+      }
+    } catch (error) {
+      console.error('Failed to capture image:', error);
+      // Fallback to text copy
+      const shareText = `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m on Row Crew!\n\n` +
+        `🔥 Streak: ${calculateStreak(currentUser?.uid)} days\n` +
+        `📊 Total: ${formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)}m\n\n` +
+        `Join us rowing around the world! 🌍\n` +
+        `https://rowcrew.netlify.app`;
+      
+      await navigator.clipboard.writeText(shareText);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = shareText;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    });
+    }
+    
+    setIsCopying(false);
+  };
+
+  // Download image as fallback
+  const downloadImage = (canvas) => {
+    const link = document.createElement('a');
+    link.download = `row-crew-${new Date().toISOString().split('T')[0]}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   };
 
   // Calculate streak
@@ -1121,16 +1171,24 @@ function App() {
 
               <div className="share-card-footer">
                 <span>Join us rowing around the world! 🌍</span>
-                <span className="share-card-url">rowcrew.netlify.app</span>
+                <a 
+                  href="https://rowcrew.netlify.app" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="share-card-url"
+                >
+                  rowcrew.netlify.app
+                </a>
               </div>
             </div>
 
             <div className="share-actions">
               <button 
-                className={`share-copy-btn ${linkCopied ? 'copied' : ''}`} 
+                className={`share-copy-btn ${linkCopied ? 'copied' : ''} ${isCopying ? 'copying' : ''}`} 
                 onClick={handleCopyLink}
+                disabled={isCopying}
               >
-                {linkCopied ? '✓ Copied!' : '📋 Copy to Share'}
+                {isCopying ? '⏳ Copying...' : linkCopied ? '✓ Copied!' : '📋 Copy Image'}
               </button>
               <button className="share-done-btn" onClick={handleCloseShare}>
                 Done

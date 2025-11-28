@@ -2,6 +2,7 @@
 // Firebase configuration - Replace with your own config from Firebase Console
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 // TODO: Replace this config with your own from Firebase Console
 // Go to: console.firebase.google.com -> Your Project -> Project Settings -> Your Apps -> Web App
@@ -20,3 +21,7 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore
 export const db = getFirestore(app);
+
+// Initialize Auth
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();

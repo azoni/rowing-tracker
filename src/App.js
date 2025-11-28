@@ -1,21 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
-import { db } from './firebase';
+import { db, auth, googleProvider } from './firebase';
 import { 
   collection, 
   doc, 
   setDoc, 
+  getDoc,
   onSnapshot, 
   query, 
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  where,
+  getDocs,
+  limit
 } from 'firebase/firestore';
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import './App.css';
 
-// World circumference in meters
+// Constants
 const WORLD_CIRCUMFERENCE = 40075000;
+const MIN_METERS = 100;
+const MAX_METERS = 30000;
+const COOLDOWN_MINUTES = 15;
 
-// Milestone definitions with fun comparisons
+// Milestone definitions
 const MILESTONES = [
   { meters: 1000, label: '1 km', comparison: 'Length of 10 football fields!' },
   { meters: 5000, label: '5 km', comparison: 'Across Central Park!' },
@@ -34,48 +42,78 @@ const MILESTONES = [
 ];
 
 function App() {
+  // Auth state
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // App state
   const [users, setUsers] = useState({});
   const [entries, setEntries] = useState([]);
-  const [machineSignatures, setMachineSignatures] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
-  const [showNewUserModal, setShowNewUserModal] = useState(false);
-  const [pendingImage, setPendingImage] = useState(null);
-  const [pendingMeters, setPendingMeters] = useState(null);
-  const [newUserName, setNewUserName] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [detectedMeters, setDetectedMeters] = useState('');
+  const [editableMeters, setEditableMeters] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [recentMilestone, setRecentMilestone] = useState(null);
   const [activeTab, setActiveTab] = useState('upload');
-  const [manualMeters, setManualMeters] = useState('');
-  const [selectedUser, setSelectedUser] = useState('');
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [validationError, setValidationError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [connectionError, setConnectionError] = useState(null);
+  
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
+  const canvasRef = useRef(null);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      
+      if (user) {
+        // Check if user has a profile
+        const profileRef = doc(db, 'users', user.uid);
+        const profileSnap = await getDoc(profileRef);
+        
+        if (profileSnap.exists()) {
+          setUserProfile({ id: user.uid, ...profileSnap.data() });
+        } else {
+          // New user - show setup modal
+          setDisplayName(user.displayName || '');
+          setShowSetupModal(true);
+        }
+      } else {
+        setUserProfile(null);
+      }
+      
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Subscribe to real-time updates from Firebase
   useEffect(() => {
     setIsLoading(true);
-    setConnectionError(null);
 
-    // Subscribe to users collection
     const unsubUsers = onSnapshot(
       collection(db, 'users'),
       (snapshot) => {
         const usersData = {};
         snapshot.forEach((docSnap) => {
-          usersData[docSnap.id] = docSnap.data();
+          usersData[docSnap.id] = { id: docSnap.id, ...docSnap.data() };
         });
         setUsers(usersData);
         setIsLoading(false);
       },
       (error) => {
         console.error('Error fetching users:', error);
-        setConnectionError('Failed to connect to database. Check your Firebase config.');
         setIsLoading(false);
       }
     );
 
-    // Subscribe to entries collection
     const entriesQuery = query(collection(db, 'entries'), orderBy('date', 'desc'));
     const unsubEntries = onSnapshot(
       entriesQuery,
@@ -91,35 +129,25 @@ function App() {
       }
     );
 
-    // Subscribe to machine signatures
-    const unsubSignatures = onSnapshot(
-      collection(db, 'machineSignatures'),
-      (snapshot) => {
-        const signaturesData = {};
-        snapshot.forEach((docSnap) => {
-          signaturesData[docSnap.id] = docSnap.data().signature;
-        });
-        setMachineSignatures(signaturesData);
-      },
-      (error) => {
-        console.error('Error fetching signatures:', error);
-      }
-    );
-
-    // Cleanup subscriptions
     return () => {
       unsubUsers();
       unsubEntries();
-      unsubSignatures();
     };
   }, []);
+
+  // Update user profile when it changes in Firebase
+  useEffect(() => {
+    if (currentUser && users[currentUser.uid]) {
+      setUserProfile(users[currentUser.uid]);
+    }
+  }, [currentUser, users]);
 
   // Calculate total meters
   const getTotalMeters = useCallback(() => {
     return Object.values(users).reduce((sum, user) => sum + (user.totalMeters || 0), 0);
   }, [users]);
 
-  // Check for milestones when total changes
+  // Check for milestones
   useEffect(() => {
     const currentTotal = getTotalMeters();
     const prevTotal = previousTotalRef.current;
@@ -138,89 +166,180 @@ function App() {
     previousTotalRef.current = currentTotal;
   }, [getTotalMeters]);
 
-  // Generate a simple image signature for machine recognition
-  const generateImageSignature = async (imageData) => {
+  // Sign in with Google
+  const handleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error('Sign in error:', error);
+      alert('Failed to sign in. Please try again.');
+    }
+  };
+
+  // Sign out
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      setUserProfile(null);
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
+  // Create user profile
+  const handleCreateProfile = async () => {
+    if (!displayName.trim() || !currentUser) return;
+
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userRef, {
+        name: displayName.trim(),
+        email: currentUser.email,
+        photoURL: currentUser.photoURL,
+        totalMeters: 0,
+        uploadCount: 0,
+        createdAt: new Date().toISOString(),
+      });
+
+      setUserProfile({
+        id: currentUser.uid,
+        name: displayName.trim(),
+        totalMeters: 0,
+        uploadCount: 0,
+      });
+
+      setShowSetupModal(false);
+    } catch (error) {
+      console.error('Error creating profile:', error);
+      alert('Failed to create profile. Please try again.');
+    }
+  };
+
+  // Validate entry
+  const validateEntry = async (meters) => {
+    // Check meter range
+    if (meters < MIN_METERS) {
+      return `Minimum entry is ${MIN_METERS} meters`;
+    }
+    if (meters > MAX_METERS) {
+      return `Maximum entry is ${MAX_METERS.toLocaleString()} meters per session. That's a lot of rowing!`;
+    }
+
+    // Check cooldown
+    if (currentUser) {
+      const recentQuery = query(
+        collection(db, 'entries'),
+        where('userId', '==', currentUser.uid),
+        orderBy('date', 'desc'),
+        limit(1)
+      );
+      
+      const recentSnap = await getDocs(recentQuery);
+      
+      if (!recentSnap.empty) {
+        const lastEntry = recentSnap.docs[0].data();
+        const lastDate = new Date(lastEntry.date);
+        const now = new Date();
+        const diffMinutes = (now - lastDate) / (1000 * 60);
+        
+        if (diffMinutes < COOLDOWN_MINUTES) {
+          const remaining = Math.ceil(COOLDOWN_MINUTES - diffMinutes);
+          return `Please wait ${remaining} minute${remaining > 1 ? 's' : ''} between entries`;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  // Preprocess image for OCR
+  const preprocessImage = (imageSrc) => {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement('canvas');
+        const canvas = canvasRef.current || document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 8;
-        canvas.height = 8;
-        ctx.drawImage(img, 0, 0, 8, 8);
-        const data = ctx.getImageData(0, 0, 8, 8).data;
-        let signature = '';
-        for (let i = 0; i < data.length; i += 16) {
-          signature += Math.floor(data[i] / 32).toString();
+        
+        const scale = Math.max(1, 1000 / Math.max(img.width, img.height));
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          const contrast = 1.5;
+          const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
+          const newGray = Math.min(255, Math.max(0, factor * (gray - 128) + 128));
+          const threshold = newGray > 127 ? 255 : 0;
+          
+          data[i] = threshold;
+          data[i + 1] = threshold;
+          data[i + 2] = threshold;
         }
-        resolve(signature);
+        
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
       };
-      img.src = imageData;
+      img.src = imageSrc;
     });
   };
 
-  // Find matching user based on image signature
-  const findMatchingUser = (signature) => {
-    let bestMatch = null;
-    let bestScore = 0;
-
-    Object.entries(machineSignatures).forEach(([oderId, userSignature]) => {
-      let matches = 0;
-      for (let i = 0; i < Math.min(signature.length, userSignature.length); i++) {
-        if (signature[i] === userSignature[i]) matches++;
-      }
-      const score = matches / Math.max(signature.length, userSignature.length);
-      if (score > bestScore && score > 0.6) {
-        bestScore = score;
-        bestMatch = oderId;
-      }
-    });
-
-    return bestMatch;
-  };
-
-  // Extract meters from image using OCR
+  // Extract meters from image
   const extractMetersFromImage = async (imageData) => {
-    setProcessingStatus('Analyzing image...');
-
+    setProcessingStatus('Preprocessing image...');
+    
     try {
-      const result = await Tesseract.recognize(imageData, 'eng', {
+      const processedImage = await preprocessImage(imageData);
+      
+      setProcessingStatus('Reading display...');
+      
+      const result = await Tesseract.recognize(processedImage, 'eng', {
         logger: (m) => {
           if (m.status === 'recognizing text') {
-            setProcessingStatus(`Processing: ${Math.round(m.progress * 100)}%`);
+            setProcessingStatus(`Analyzing: ${Math.round(m.progress * 100)}%`);
           }
         },
       });
 
       const text = result.data.text;
       console.log('OCR Result:', text);
+      
+      const resultOriginal = await Tesseract.recognize(imageData, 'eng');
+      const combinedText = text + ' ' + resultOriginal.data.text;
 
       const patterns = [
-        /(\d{1,2}[,.]?\d{3,4})\s*m/i,
-        /meters?\s*[:\s]*(\d{1,2}[,.]?\d{3,4})/i,
-        /distance\s*[:\s]*(\d{1,2}[,.]?\d{3,4})/i,
-        /(\d{4,6})(?:\s|$)/,
-        /(\d{1,3}[,]\d{3})/,
+        /(\d{1,2}[,.]?\d{3})\s*m(?:eters?)?/i,
+        /meters?\s*[:\s]*(\d{1,2}[,.]?\d{3})/i,
+        /distance\s*[:\s]*(\d{1,2}[,.]?\d{3})/i,
+        /total\s*[:\s]*(\d{1,2}[,.]?\d{3})/i,
+        /(\d{1,2}[,]\d{3})/,
+        /(\d{4,5})(?:\s*m|\s|$)/,
+        /(\d{4,5})/,
       ];
 
+      const foundNumbers = [];
+      
       for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match) {
+        const matches = combinedText.matchAll(new RegExp(pattern, 'gi'));
+        for (const match of matches) {
           const meters = parseInt(match[1].replace(/[,.\s]/g, ''), 10);
-          if (meters >= 100 && meters <= 100000) {
-            return meters;
+          if (meters >= MIN_METERS && meters <= MAX_METERS) {
+            foundNumbers.push(meters);
           }
         }
       }
 
-      const numbers = text.match(/\d+/g);
-      if (numbers) {
-        for (const num of numbers) {
-          const meters = parseInt(num, 10);
-          if (meters >= 500 && meters <= 50000) {
-            return meters;
-          }
-        }
+      if (foundNumbers.length > 0) {
+        foundNumbers.sort((a, b) => {
+          const aScore = (a >= 1000 && a <= 15000) ? 0 : 1;
+          const bScore = (b >= 1000 && b <= 15000) ? 0 : 1;
+          return aScore - bScore;
+        });
+        return foundNumbers[0];
       }
 
       return null;
@@ -237,31 +356,26 @@ function App() {
 
     setIsProcessing(true);
     setProcessingStatus('Reading image...');
+    setValidationError('');
 
     const reader = new FileReader();
     reader.onload = async (e) => {
       const imageData = e.target.result;
-
-      const signature = await generateImageSignature(imageData);
-      const matchedUser = findMatchingUser(signature);
+      setCapturedImage(imageData);
 
       const meters = await extractMetersFromImage(imageData);
 
-      if (meters) {
-        if (matchedUser) {
-          addEntry(matchedUser, meters, signature);
-        } else {
-          setPendingImage(signature);
-          setPendingMeters(meters);
-          setShowNewUserModal(true);
-        }
-      } else {
-        setProcessingStatus('Could not read meters. Please enter manually.');
-        setPendingImage(signature);
-        setShowNewUserModal(true);
-      }
-
       setIsProcessing(false);
+      
+      if (meters) {
+        setDetectedMeters(meters.toString());
+        setEditableMeters(meters.toString());
+      } else {
+        setDetectedMeters('');
+        setEditableMeters('');
+      }
+      
+      setShowConfirmModal(true);
     };
     reader.readAsDataURL(file);
 
@@ -270,100 +384,70 @@ function App() {
     }
   };
 
-  // Add a new entry to Firebase
-  const addEntry = useCallback(async (userId, meters, signature = null) => {
+  // Add entry to Firebase
+  const addEntry = async (meters) => {
+    if (!currentUser || !userProfile) return false;
+
     try {
-      const entryId = `${Date.now()}_${userId}`;
+      // Validate
+      const error = await validateEntry(meters);
+      if (error) {
+        setValidationError(error);
+        return false;
+      }
+
+      const entryId = `${Date.now()}_${currentUser.uid}`;
       const entryRef = doc(db, 'entries', entryId);
 
-      // Add the entry
       await setDoc(entryRef, {
-        userId,
+        userId: currentUser.uid,
+        userId: currentUser.uid,
         meters,
         date: new Date().toISOString(),
         createdAt: serverTimestamp(),
       });
 
-      // Update user stats
-      const userRef = doc(db, 'users', userId);
-      const currentUser = users[userId] || { name: userId, totalMeters: 0, uploadCount: 0 };
+      const userRef = doc(db, 'users', currentUser.uid);
       await setDoc(userRef, {
-        ...currentUser,
-        totalMeters: (currentUser.totalMeters || 0) + meters,
-        uploadCount: (currentUser.uploadCount || 0) + 1,
+        ...userProfile,
+        totalMeters: (userProfile.totalMeters || 0) + meters,
+        uploadCount: (userProfile.uploadCount || 0) + 1,
         lastRowDate: new Date().toISOString(),
       }, { merge: true });
 
-      // Update signature if provided
-      if (signature) {
-        const sigRef = doc(db, 'machineSignatures', userId);
-        await setDoc(sigRef, { signature, oderId: userId });
-      }
-
-      setProcessingStatus('');
       setActiveTab('leaderboard');
+      return true;
     } catch (error) {
       console.error('Error adding entry:', error);
-      setProcessingStatus('Error saving entry. Please try again.');
-    }
-  }, [users]);
-
-  // Handle new user registration
-  const handleNewUser = async () => {
-    if (!newUserName.trim()) return;
-
-    const oderId = newUserName.toLowerCase().replace(/\s+/g, '_');
-    const metersToAdd = pendingMeters || parseInt(manualMeters, 10) || 0;
-
-    if (metersToAdd <= 0) {
-      alert('Please enter valid meters');
-      return;
-    }
-
-    try {
-      // Create new user in Firebase
-      const userRef = doc(db, 'users', oderId);
-      await setDoc(userRef, {
-        name: newUserName.trim(),
-        totalMeters: 0,
-        uploadCount: 0,
-        createdAt: new Date().toISOString(),
-      });
-
-      // Add entry and signature
-      await addEntry(oderId, metersToAdd, pendingImage);
-
-      // Reset modal state
-      setShowNewUserModal(false);
-      setPendingImage(null);
-      setPendingMeters(null);
-      setNewUserName('');
-      setManualMeters('');
-    } catch (error) {
-      console.error('Error creating user:', error);
-      alert('Error creating user. Please try again.');
+      setValidationError('Failed to save entry. Please try again.');
+      return false;
     }
   };
 
-  // Handle manual entry for existing user
-  const handleManualEntry = async () => {
-    if (!selectedUser || !manualMeters) return;
-
-    const meters = parseInt(manualMeters, 10);
-    if (meters <= 0 || meters > 100000) {
-      alert('Please enter valid meters (1-100,000)');
+  // Confirm entry
+  const handleConfirmEntry = async () => {
+    const meters = parseInt(editableMeters, 10);
+    
+    if (!meters || isNaN(meters)) {
+      setValidationError('Please enter a valid number');
       return;
     }
 
-    await addEntry(selectedUser, meters);
-    setManualMeters('');
-    setSelectedUser('');
+    const success = await addEntry(meters);
+    
+    if (success) {
+      setShowConfirmModal(false);
+      setCapturedImage(null);
+      setDetectedMeters('');
+      setEditableMeters('');
+      setValidationError('');
+    }
   };
 
-  // Calculate streak for a user
-  const calculateStreak = (oderId) => {
+  // Calculate streak
+  const calculateStreak = (userId) => {
     const userEntries = entries
-      .filter((e) => e.userId === oderId)
+      .filter((e) => e.userId === userId)
       .sort((a, b) => new Date(b.date) - new Date(a.date));
 
     if (userEntries.length === 0) return 0;
@@ -397,9 +481,9 @@ function App() {
     return streak;
   };
 
-  // Calculate average sessions per week
-  const calculateWeeklyAverage = (oderId) => {
-    const userEntries = entries.filter((e) => e.userId === oderId);
+  // Calculate weekly average
+  const calculateWeeklyAverage = (userId) => {
+    const userEntries = entries.filter((e) => e.userId === userId);
     if (userEntries.length === 0) return 0;
 
     const dates = userEntries.map((e) => new Date(e.date));
@@ -414,37 +498,29 @@ function App() {
     return (uniqueDays / weeks).toFixed(1);
   };
 
-  // Get current milestone progress
+  // Get milestone progress
   const getCurrentMilestone = () => {
     const total = getTotalMeters();
     const nextMilestone = MILESTONES.find((m) => m.meters > total);
     const prevMilestone = MILESTONES.slice().reverse().find((m) => m.meters <= total);
-
     return { current: prevMilestone, next: nextMilestone, total };
   };
 
-  // Format meters for display
+  // Format meters
   const formatMeters = (meters) => {
-    if (meters >= 1000000) {
-      return `${(meters / 1000000).toFixed(1)}M`;
-    }
-    if (meters >= 1000) {
-      return `${(meters / 1000).toFixed(1)}k`;
-    }
+    if (meters >= 1000000) return `${(meters / 1000000).toFixed(1)}M`;
+    if (meters >= 1000) return `${(meters / 1000).toFixed(1)}k`;
     return meters.toString();
   };
 
-  // Get sorted leaderboard
+  // Get leaderboard
   const getLeaderboard = () => {
-    return Object.entries(users)
-      .map(([id, user]) => ({
-        id,
+    return Object.values(users)
+      .map((user) => ({
         ...user,
-        streak: calculateStreak(id),
-        weeklyAvg: calculateWeeklyAverage(id),
-        avgPerUpload: user.uploadCount > 0
-          ? Math.round(user.totalMeters / user.uploadCount)
-          : 0,
+        streak: calculateStreak(user.id),
+        weeklyAvg: calculateWeeklyAverage(user.id),
+        avgPerUpload: user.uploadCount > 0 ? Math.round(user.totalMeters / user.uploadCount) : 0,
       }))
       .sort((a, b) => b.totalMeters - a.totalMeters);
   };
@@ -453,7 +529,51 @@ function App() {
   const totalMeters = getTotalMeters();
   const worldProgress = (totalMeters / WORLD_CIRCUMFERENCE) * 100;
 
-  // Loading state
+  // Auth loading state
+  if (authLoading) {
+    return (
+      <div className="app">
+        <div className="loading-screen">
+          <div className="spinner" />
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not signed in
+  if (!currentUser) {
+    return (
+      <div className="app">
+        <div className="auth-screen">
+          <div className="auth-content">
+            <h1 className="auth-title">ROW CREW</h1>
+            <p className="auth-subtitle">Row Around The World Together</p>
+            
+            <div className="auth-features">
+              <div className="auth-feature">🏆 Compete with friends</div>
+              <div className="auth-feature">🔥 Track your streaks</div>
+              <div className="auth-feature">🌍 Row around the world</div>
+            </div>
+
+            <button className="google-signin-btn" onClick={handleSignIn}>
+              <svg viewBox="0 0 24 24" width="24" height="24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Sign in with Google
+            </button>
+
+            <p className="auth-note">Only crew members can log rows</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading data
   if (isLoading) {
     return (
       <div className="app">
@@ -465,24 +585,13 @@ function App() {
     );
   }
 
-  // Connection error state
-  if (connectionError) {
-    return (
-      <div className="app">
-        <div className="error-screen">
-          <h2>⚠️ Connection Error</h2>
-          <p>{connectionError}</p>
-          <p className="error-hint">Make sure you've set up Firebase correctly in src/firebase.js</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="app">
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
       {/* Milestone Celebration */}
       {recentMilestone && (
-        <div className="milestone-celebration">
+        <div className="milestone-celebration" onClick={() => setRecentMilestone(null)}>
           <div className="milestone-content">
             <span className="milestone-icon">🏆</span>
             <h2>MILESTONE ACHIEVED!</h2>
@@ -494,7 +603,17 @@ function App() {
 
       {/* Header */}
       <header className="header">
-        <h1>ROW CREW</h1>
+        <div className="header-top">
+          <h1>ROW CREW</h1>
+          {userProfile && (
+            <div className="user-menu">
+              {userProfile.photoURL && (
+                <img src={userProfile.photoURL} alt="" className="user-avatar" />
+              )}
+              <button className="signout-btn" onClick={handleSignOut}>Sign Out</button>
+            </div>
+          )}
+        </div>
         <p className="subtitle">Row Around The World Together</p>
       </header>
 
@@ -511,20 +630,7 @@ function App() {
           </div>
         </div>
         <div className="progress-bar-container">
-          <div
-            className="progress-bar"
-            style={{ width: `${Math.min(worldProgress, 100)}%` }}
-          />
-          <div className="progress-markers">
-            {MILESTONES.filter(m => m.meters <= WORLD_CIRCUMFERENCE / 4).slice(0, 5).map((m, i) => (
-              <div
-                key={i}
-                className={`marker ${totalMeters >= m.meters ? 'achieved' : ''}`}
-                style={{ left: `${(m.meters / WORLD_CIRCUMFERENCE) * 100}%` }}
-                title={m.label}
-              />
-            ))}
-          </div>
+          <div className="progress-bar" style={{ width: `${Math.min(worldProgress, 100)}%` }} />
         </div>
         {milestoneProgress.next && (
           <p className="next-milestone">
@@ -536,33 +642,30 @@ function App() {
         )}
       </section>
 
-      {/* Navigation Tabs */}
+      {/* Tabs */}
       <nav className="tabs">
-        <button
-          className={`tab ${activeTab === 'upload' ? 'active' : ''}`}
-          onClick={() => setActiveTab('upload')}
-        >
+        <button className={`tab ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>
           📸 Log Row
         </button>
-        <button
-          className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('leaderboard')}
-        >
+        <button className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
           🏆 Board
         </button>
-        <button
-          className={`tab ${activeTab === 'stats' ? 'active' : ''}`}
-          onClick={() => setActiveTab('stats')}
-        >
+        <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
           📊 Stats
         </button>
       </nav>
 
       {/* Main Content */}
       <main className="main-content">
-        {/* Upload Tab */}
         {activeTab === 'upload' && (
           <section className="upload-section">
+            {userProfile && (
+              <div className="current-user-card">
+                <span className="current-user-label">Logging as:</span>
+                <span className="current-user-name">{userProfile.name}</span>
+              </div>
+            )}
+
             <div className="upload-card">
               <h2>Log Your Row</h2>
               <p>Take a photo of your rowing machine display</p>
@@ -574,7 +677,7 @@ function App() {
                   accept="image/*"
                   capture="environment"
                   onChange={handleImageUpload}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !userProfile}
                 />
                 <span className="upload-icon">📷</span>
                 <span>{isProcessing ? processingStatus : 'Take Photo'}</span>
@@ -586,62 +689,36 @@ function App() {
                   <p>{processingStatus}</p>
                 </div>
               )}
-            </div>
 
-            {Object.keys(users).length > 0 && (
-              <div className="manual-entry-card">
-                <h3>Manual Entry</h3>
-                <p>Or enter meters manually</p>
-                <select
-                  value={selectedUser}
-                  onChange={(e) => setSelectedUser(e.target.value)}
-                  className="user-select"
-                >
-                  <option value="">Select Rower</option>
-                  {Object.entries(users).map(([id, user]) => (
-                    <option key={id} value={id}>{user.name}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  placeholder="Meters rowed"
-                  value={manualMeters}
-                  onChange={(e) => setManualMeters(e.target.value)}
-                  className="meters-input"
-                />
-                <button
-                  onClick={handleManualEntry}
-                  disabled={!selectedUser || !manualMeters}
-                  className="submit-button"
-                >
-                  Add Entry
-                </button>
+              <div className="entry-limits">
+                <p>📏 {MIN_METERS.toLocaleString()} - {MAX_METERS.toLocaleString()} meters per entry</p>
+                <p>⏱️ {COOLDOWN_MINUTES} minute cooldown between entries</p>
               </div>
-            )}
+            </div>
           </section>
         )}
 
-        {/* Leaderboard Tab */}
         {activeTab === 'leaderboard' && (
           <section className="leaderboard-section">
             <h2>Leaderboard</h2>
             {getLeaderboard().length === 0 ? (
               <div className="empty-state">
                 <p>No rowers yet!</p>
-                <p>Upload your first row to get started.</p>
+                <p>Be the first to log a row.</p>
               </div>
             ) : (
               <div className="leaderboard">
                 {getLeaderboard().map((user, index) => (
-                  <div key={user.id} className={`leaderboard-item rank-${index + 1}`}>
+                  <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}>
                     <div className="rank">
                       {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                     </div>
                     <div className="user-info">
-                      <span className="user-name">{user.name}</span>
-                      <span className="user-streak">
-                        {user.streak > 0 && `🔥 ${user.streak} day streak`}
+                      <span className="user-name">
+                        {user.name}
+                        {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
                       </span>
+                      <span className="user-streak">{user.streak > 0 && `🔥 ${user.streak} day streak`}</span>
                     </div>
                     <div className="user-meters">
                       <span className="meters-value">{formatMeters(user.totalMeters)}</span>
@@ -654,20 +731,18 @@ function App() {
           </section>
         )}
 
-        {/* Stats Tab */}
         {activeTab === 'stats' && (
           <section className="stats-section">
             <h2>Detailed Stats</h2>
             {getLeaderboard().length === 0 ? (
               <div className="empty-state">
                 <p>No stats yet!</p>
-                <p>Start rowing to see your progress.</p>
               </div>
             ) : (
               <div className="stats-grid">
                 {getLeaderboard().map((user) => (
-                  <div key={user.id} className="stats-card">
-                    <h3>{user.name}</h3>
+                  <div key={user.id} className={`stats-card ${user.id === currentUser?.uid ? 'is-you' : ''}`}>
+                    <h3>{user.name} {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</h3>
                     <div className="stat-row">
                       <span className="stat-label">Total Distance</span>
                       <span className="stat-value">{formatMeters(user.totalMeters)}m</span>
@@ -696,56 +771,84 @@ function App() {
         )}
       </main>
 
-      {/* New User Modal */}
-      {showNewUserModal && (
-        <div className="modal-overlay" onClick={() => setShowNewUserModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>New Rower Detected!</h2>
-            <p>We don't recognize this machine. Enter your name to register it.</p>
-
-            {pendingMeters && (
-              <div className="detected-meters">
-                <span className="detected-label">Detected:</span>
-                <span className="detected-value">{pendingMeters.toLocaleString()} meters</span>
+      {/* Confirm Modal */}
+      {showConfirmModal && (
+        <div className="modal-overlay" onClick={() => { setShowConfirmModal(false); setValidationError(''); }}>
+          <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Confirm Your Row</h2>
+            
+            {capturedImage && (
+              <div className="captured-image-preview">
+                <img src={capturedImage} alt="Captured rowing screen" />
               </div>
             )}
 
-            <input
-              type="text"
-              placeholder="Your name"
-              value={newUserName}
-              onChange={(e) => setNewUserName(e.target.value)}
-              className="name-input"
-              autoFocus
-            />
-
-            {!pendingMeters && (
+            <div className="detected-meters-display">
+              <span className="detected-label">{detectedMeters ? 'Detected meters:' : 'Enter meters:'}</span>
               <input
                 type="number"
-                placeholder="Meters rowed"
-                value={manualMeters}
-                onChange={(e) => setManualMeters(e.target.value)}
-                className="meters-input"
+                value={editableMeters}
+                onChange={(e) => { setEditableMeters(e.target.value); setValidationError(''); }}
+                className="meters-input-large"
+                placeholder="0"
+                autoFocus
+                min={MIN_METERS}
+                max={MAX_METERS}
               />
+            </div>
+
+            {validationError && (
+              <div className="validation-error">
+                ⚠️ {validationError}
+              </div>
             )}
 
+            <p className="confirm-user">Logging as <strong>{userProfile?.name}</strong></p>
+
             <div className="modal-actions">
-              <button
-                className="cancel-button"
-                onClick={() => {
-                  setShowNewUserModal(false);
-                  setPendingImage(null);
-                  setPendingMeters(null);
-                  setNewUserName('');
-                  setManualMeters('');
-                }}
-              >
+              <button className="cancel-button" onClick={() => { setShowConfirmModal(false); setCapturedImage(null); setValidationError(''); }}>
                 Cancel
               </button>
               <button
                 className="confirm-button"
-                onClick={handleNewUser}
-                disabled={!newUserName.trim() || (!pendingMeters && !manualMeters)}
+                onClick={handleConfirmEntry}
+                disabled={!editableMeters || parseInt(editableMeters, 10) <= 0}
+              >
+                Log {editableMeters ? `${parseInt(editableMeters, 10).toLocaleString()}m` : 'Row'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Setup Profile Modal */}
+      {showSetupModal && (
+        <div className="modal-overlay">
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Welcome to Row Crew!</h2>
+            <p>Set up your profile to start tracking</p>
+
+            {currentUser?.photoURL && (
+              <img src={currentUser.photoURL} alt="" className="setup-avatar" />
+            )}
+
+            <input
+              type="text"
+              placeholder="Your display name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="name-input"
+              autoFocus
+            />
+
+            <div className="modal-actions">
+              <button className="cancel-button" onClick={handleSignOut}>
+                Cancel
+              </button>
+              <button
+                className="confirm-button"
+                onClick={handleCreateProfile}
+                disabled={!displayName.trim()}
               >
                 Join Crew
               </button>
@@ -754,7 +857,6 @@ function App() {
         </div>
       )}
 
-      {/* Footer */}
       <footer className="footer">
         <p>🌍 Goal: Row {formatMeters(WORLD_CIRCUMFERENCE)}m around the world!</p>
       </footer>

@@ -401,7 +401,6 @@ function App() {
 
       await setDoc(entryRef, {
         userId: currentUser.uid,
-        userId: currentUser.uid,
         meters,
         date: new Date().toISOString(),
         createdAt: serverTimestamp(),

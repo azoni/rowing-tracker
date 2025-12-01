@@ -260,8 +260,7 @@ function App() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const [showBustedModal, setShowBustedModal] = useState(false);
-  const [testTapCount, setTestTapCount] = useState(0);
-  const [showAchievementUnlock, setShowAchievementUnlock] = useState(null);
+  const [, setTestTapCount] = useState(0);
   const [showPRModal, setShowPRModal] = useState(null);
   const [dailyQuote, setDailyQuote] = useState(null);
   

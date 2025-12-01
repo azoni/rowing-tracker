@@ -2276,6 +2276,424 @@ input[type="number"] {
   font-weight: 700;
 }
 
+/* Guest Prompt */
+.guest-prompt {
+  background: linear-gradient(135deg, rgba(0, 212, 170, 0.1) 0%, rgba(0, 180, 148, 0.05) 100%);
+  border: 1px solid rgba(0, 212, 170, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.guest-prompt p {
+  color: var(--text-secondary);
+  margin: 0 0 0.75rem 0;
+}
+
+.signin-prompt-btn {
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  border: none;
+  border-radius: 8px;
+  color: var(--bg-dark);
+  padding: 0.75rem 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.signin-prompt-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 212, 170, 0.3);
+}
+
+/* Header Sign In Button */
+.signin-header-btn {
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  border: none;
+  border-radius: 8px;
+  color: var(--bg-dark);
+  padding: 0.5rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.signin-header-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Settings Button */
+.settings-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.settings-btn:hover {
+  background: var(--bg-card-hover);
+}
+
+.user-avatar {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.user-avatar:hover {
+  opacity: 0.8;
+}
+
+/* More Tab Section */
+.more-section h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.75rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.5rem;
+}
+
+.more-section h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: 0.05em;
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+}
+
+/* Achievements Full Section */
+.achievements-full-section {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color);
+  margin-bottom: 1.5rem;
+}
+
+.achievements-grid-full {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.achievement-card {
+  background: var(--bg-dark);
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.achievement-card:hover {
+  transform: translateY(-2px);
+}
+
+.achievement-card.unlocked {
+  border-color: rgba(0, 212, 170, 0.3);
+  background: rgba(0, 212, 170, 0.05);
+}
+
+.achievement-card.locked {
+  opacity: 0.5;
+}
+
+.achievement-card-emoji {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.achievement-card-name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.achievement-card-desc {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.achievement-card-check {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* Ranks Section */
+.ranks-section {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color);
+  margin-bottom: 1.5rem;
+}
+
+.ranks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-dark);
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.rank-item.current {
+  border-color: var(--accent-primary);
+  background: rgba(0, 212, 170, 0.1);
+}
+
+.rank-item.locked {
+  opacity: 0.4;
+}
+
+.rank-item-emoji {
+  font-size: 1.5rem;
+}
+
+.rank-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.rank-item-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rank-item-meters {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.rank-current-badge {
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.rank-unlocked-check {
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+/* Changelog Section in More tab */
+.changelog-section {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color);
+}
+
+/* Settings Modal */
+.settings-modal {
+  max-width: 400px;
+}
+
+.settings-modal h2 {
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+}
+
+.settings-section {
+  margin-bottom: 1.5rem;
+}
+
+.settings-section h3 {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.75rem 0;
+}
+
+.settings-photo-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.settings-photo-preview img,
+.settings-photo-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.settings-photo-placeholder {
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--bg-dark);
+}
+
+.settings-photo-upload {
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.settings-photo-upload:hover {
+  background: var(--bg-card-hover);
+}
+
+.settings-photo-upload input {
+  display: none;
+}
+
+.settings-info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-info-row:last-child {
+  border-bottom: none;
+}
+
+.settings-info-row span:first-child {
+  color: var(--text-secondary);
+}
+
+.settings-info-row span:last-child {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.settings-signout-btn {
+  width: 100%;
+  padding: 1rem;
+  background: transparent;
+  border: 1px solid #ef4444;
+  border-radius: 10px;
+  color: #ef4444;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.settings-signout-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Achievement Modal */
+.achievement-modal {
+  max-width: 320px;
+  text-align: center;
+}
+
+.achievement-modal-content {
+  padding: 1rem 0;
+}
+
+.achievement-modal-emoji {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.achievement-modal h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+}
+
+.achievement-modal-desc {
+  color: var(--text-secondary);
+  margin: 0 0 1rem 0;
+}
+
+.achievement-modal-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.achievement-modal-status.unlocked {
+  background: rgba(0, 212, 170, 0.1);
+  color: var(--accent-primary);
+}
+
+.achievement-modal-status.locked {
+  background: var(--bg-dark);
+  color: var(--text-muted);
+}
+
+.achievement-modal-close-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  border: none;
+  border-radius: 10px;
+  color: var(--bg-dark);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 1rem;
+  font-family: inherit;
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
 /* Error Screen */
 .error-screen {
   display: flex;

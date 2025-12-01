@@ -107,6 +107,19 @@ const MILESTONES = [
 // Changelog entries
 const CHANGELOG = [
   {
+    version: '2.2.0',
+    date: '2025-11-28',
+    changes: [
+      '👀 Guest viewing - see everything without signing in',
+      '🔍 Search bar in Activity Feed',
+      '🏅 New "More" tab with achievements & rank progression',
+      '📱 Click achievements to see details on mobile',
+      '⚙️ Settings page with profile picture upload',
+      '🖼️ Upload custom profile pictures',
+      '🔧 Database consistency improvements',
+    ]
+  },
+  {
     version: '2.1.0',
     date: '2025-11-28',
     changes: [
@@ -263,7 +276,7 @@ function App() {
   const [editableMeters, setEditableMeters] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [recentMilestone, setRecentMilestone] = useState(null);
-  const [activeTab, setActiveTab] = useState('upload');
+  const [activeTab, setActiveTab] = useState('feed');
   const [capturedImage, setCapturedImage] = useState(null);
   const [validationError, setValidationError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -277,11 +290,16 @@ function App() {
   const [showPRModal, setShowPRModal] = useState(null);
   const [dailyQuote, setDailyQuote] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [feedSearchQuery, setFeedSearchQuery] = useState('');
+  const [showAchievementModal, setShowAchievementModal] = useState(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
   const canvasRef = useRef(null);
   const shareCardRef = useRef(null);
+  const profilePicInputRef = useRef(null);
 
   // Secret test mode: Press "chinh" to trigger busted modal
   useEffect(() => {
@@ -497,6 +515,103 @@ function App() {
       }
       
       alert('Failed to create profile. Please try again.');
+    }
+  };
+
+  // Upload profile picture
+  const handleProfilePicUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !currentUser || !userProfile) return;
+
+    setIsUploadingPhoto(true);
+
+    try {
+      // Convert to base64 data URL (simple solution without Firebase Storage)
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        // Resize image to reduce storage size
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          const maxSize = 150;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > maxSize) {
+              height *= maxSize / width;
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width *= maxSize / height;
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          
+          // Update user profile in Firestore
+          const userRef = doc(db, 'users', currentUser.uid);
+          await setDoc(userRef, {
+            ...userProfile,
+            photoURL: resizedDataUrl,
+          }, { merge: true });
+          
+          setUserProfile(prev => ({ ...prev, photoURL: resizedDataUrl }));
+          setIsUploadingPhoto(false);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      setIsUploadingPhoto(false);
+      alert('Failed to upload photo. Please try again.');
+    }
+    
+    if (profilePicInputRef.current) {
+      profilePicInputRef.current.value = '';
+    }
+  };
+
+  // Recalculate user totals from entries (for data consistency)
+  const recalculateUserTotals = async (userId) => {
+    if (!userId) return;
+    
+    const userEntries = entries.filter(e => e.userId === userId);
+    const totalMeters = userEntries.reduce((sum, e) => sum + (e.meters || 0), 0);
+    const uploadCount = userEntries.length;
+    
+    const user = users[userId];
+    if (!user) return;
+    
+    // Only update if different
+    if (user.totalMeters !== totalMeters || user.uploadCount !== uploadCount) {
+      try {
+        const userRef = doc(db, 'users', userId);
+        await setDoc(userRef, {
+          ...user,
+          totalMeters,
+          uploadCount,
+        }, { merge: true });
+        console.log(`Recalculated totals for ${user.name}: ${totalMeters}m, ${uploadCount} sessions`);
+      } catch (error) {
+        console.error('Error recalculating totals:', error);
+      }
+    }
+  };
+
+  // Recalculate all users on entries change (admin function - access via console)
+  // eslint-disable-next-line no-unused-vars
+  const recalculateAllUsers = async () => {
+    for (const userId of Object.keys(users)) {
+      await recalculateUserTotals(userId);
     }
   };
 
@@ -1043,9 +1158,9 @@ function App() {
     const leaderboard = getLeaderboard();
     if (!searchQuery.trim()) return leaderboard;
     
-    const query = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
     return leaderboard.filter(user => 
-      user.name?.toLowerCase().includes(query)
+      user.name?.toLowerCase().includes(q)
     );
   };
 
@@ -1055,15 +1170,24 @@ function App() {
     return newMeters > currentPR && currentPR > 0;
   };
 
-  // Get activity feed (last 10 entries across all users)
-  const getActivityFeed = () => {
-    return entries
-      .slice(0, 10)
+  // Get activity feed (last 20 entries across all users, with optional filter)
+  const getActivityFeed = (filterQuery = '') => {
+    let feed = entries
+      .slice(0, 20)
       .map(entry => ({
         ...entry,
         user: users[entry.userId],
       }))
       .filter(entry => entry.user);
+    
+    if (filterQuery.trim()) {
+      const q = filterQuery.toLowerCase();
+      feed = feed.filter(entry => 
+        entry.user?.name?.toLowerCase().includes(q)
+      );
+    }
+    
+    return feed;
   };
 
   // Get weekly stats for current user
@@ -1162,38 +1286,6 @@ function App() {
     );
   }
 
-  // Not signed in
-  if (!currentUser) {
-    return (
-      <div className="app">
-        <div className="auth-screen">
-          <div className="auth-content">
-            <h1 className="auth-title">ROW CREW</h1>
-            <p className="auth-subtitle">Row Around The World Together</p>
-            
-            <div className="auth-features">
-              <div className="auth-feature">🏆 Compete with friends</div>
-              <div className="auth-feature">🔥 Track your streaks</div>
-              <div className="auth-feature">🌍 Row around the world</div>
-            </div>
-
-            <button className="google-signin-btn" onClick={handleSignIn}>
-              <svg viewBox="0 0 24 24" width="24" height="24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Sign in with Google
-            </button>
-
-            <p className="auth-note">Only crew members can log rows</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Loading data
   if (isLoading) {
     return (
@@ -1226,14 +1318,18 @@ function App() {
       <header className="header">
         <div className="header-top">
           <h1>ROW CREW</h1>
-          {userProfile && (
-            <div className="user-menu">
-              {userProfile.photoURL && (
-                <img src={userProfile.photoURL} alt="" className="user-avatar" />
-              )}
-              <button className="signout-btn" onClick={handleSignOut}>Sign Out</button>
-            </div>
-          )}
+          <div className="user-menu">
+            {currentUser && userProfile ? (
+              <>
+                {userProfile.photoURL && (
+                  <img src={userProfile.photoURL} alt="" className="user-avatar" onClick={() => setShowSettingsModal(true)} />
+                )}
+                <button className="settings-btn" onClick={() => setShowSettingsModal(true)}>⚙️</button>
+              </>
+            ) : (
+              <button className="signin-header-btn" onClick={handleSignIn}>Sign In</button>
+            )}
+          </div>
         </div>
         <p className="subtitle">Row Around The World Together</p>
       </header>
@@ -1265,9 +1361,11 @@ function App() {
 
       {/* Tabs */}
       <nav className="tabs">
-        <button className={`tab ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>
-          📸 Log
-        </button>
+        {currentUser && userProfile && (
+          <button className={`tab ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>
+            📸 Log
+          </button>
+        )}
         <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
           📣 Feed
         </button>
@@ -1276,6 +1374,9 @@ function App() {
         </button>
         <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
           📊 Stats
+        </button>
+        <button className={`tab ${activeTab === 'more' ? 'active' : ''}`} onClick={() => setActiveTab('more')}>
+          🏅 More
         </button>
       </nav>
 
@@ -1364,14 +1465,46 @@ function App() {
         {activeTab === 'feed' && (
           <section className="feed-section">
             <h2>Activity Feed</h2>
-            {getActivityFeed().length === 0 ? (
+            
+            {/* Search Bar */}
+            <div className="search-bar">
+              <span className="search-icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Search rowers..."
+                value={feedSearchQuery}
+                onChange={(e) => setFeedSearchQuery(e.target.value)}
+                className="search-input"
+              />
+              {feedSearchQuery && (
+                <button className="search-clear" onClick={() => setFeedSearchQuery('')}>✕</button>
+              )}
+            </div>
+
+            {/* Guest Sign In Prompt */}
+            {!currentUser && (
+              <div className="guest-prompt">
+                <p>👋 Sign in to log your rows and compete!</p>
+                <button className="signin-prompt-btn" onClick={handleSignIn}>
+                  Sign in with Google
+                </button>
+              </div>
+            )}
+
+            {getActivityFeed(feedSearchQuery).length === 0 ? (
               <div className="empty-state">
-                <p>No activity yet!</p>
-                <p>Be the first to log a row.</p>
+                {feedSearchQuery ? (
+                  <p>No activity found for "{feedSearchQuery}"</p>
+                ) : (
+                  <>
+                    <p>No activity yet!</p>
+                    <p>Be the first to log a row.</p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="activity-feed">
-                {getActivityFeed().map((entry) => (
+                {getActivityFeed(feedSearchQuery).map((entry) => (
                   <div key={entry.id} className={`feed-item ${entry.userId === currentUser?.uid ? 'is-you' : ''}`}>
                     <div className="feed-avatar">
                       {entry.user?.photoURL ? (
@@ -1397,37 +1530,6 @@ function App() {
                 ))}
               </div>
             )}
-            
-            {/* Achievements Section */}
-            {userProfile && (
-              <div className="achievements-section">
-                <h3>🏅 Your Achievements</h3>
-                <div className="achievements-grid">
-                  {ACHIEVEMENTS.map((achievement) => {
-                    const unlocked = getUserAchievements(currentUser?.uid).some(a => a.id === achievement.id);
-                    return (
-                      <div 
-                        key={achievement.id} 
-                        className={`achievement-badge ${unlocked ? 'unlocked' : 'locked'}`}
-                        title={achievement.desc}
-                      >
-                        <span className="achievement-emoji">{achievement.emoji}</span>
-                        <span className="achievement-name">{achievement.name}</span>
-                        {unlocked && <span className="achievement-check">✓</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="achievements-count">
-                  {getUserAchievements(currentUser?.uid).length} / {ACHIEVEMENTS.length} unlocked
-                </p>
-              </div>
-            )}
-
-            {/* Link to Updates */}
-            <button className="updates-link-btn" onClick={() => setActiveTab('updates')}>
-              🆕 View App Updates
-            </button>
           </section>
         )}
 
@@ -1609,24 +1711,79 @@ function App() {
           </section>
         )}
 
-        {activeTab === 'updates' && (
-          <section className="updates-section">
-            <h2>Updates & Changelog</h2>
-            <div className="changelog">
-              {CHANGELOG.map((release, index) => (
-                <div key={release.version} className={`changelog-entry ${index === 0 ? 'latest' : ''}`}>
-                  <div className="changelog-header">
-                    <span className="changelog-version">v{release.version}</span>
-                    <span className="changelog-date">{new Date(release.date + 'T12:00:00-08:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' })}</span>
-                    {index === 0 && <span className="latest-badge">LATEST</span>}
+        {activeTab === 'more' && (
+          <section className="more-section">
+            <h2>Achievements & More</h2>
+            
+            {/* Achievements Section */}
+            <div className="achievements-full-section">
+              <h3>🏅 {currentUser ? 'Your Achievements' : 'Achievements'}</h3>
+              <div className="achievements-grid-full">
+                {ACHIEVEMENTS.map((achievement) => {
+                  const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
+                  return (
+                    <div 
+                      key={achievement.id} 
+                      className={`achievement-card ${unlocked ? 'unlocked' : 'locked'}`}
+                      onClick={() => setShowAchievementModal(achievement)}
+                    >
+                      <span className="achievement-card-emoji">{achievement.emoji}</span>
+                      <span className="achievement-card-name">{achievement.name}</span>
+                      <span className="achievement-card-desc">{achievement.desc}</span>
+                      {unlocked && <span className="achievement-card-check">✓ Unlocked</span>}
+                    </div>
+                  );
+                })}
+              </div>
+              {currentUser && (
+                <p className="achievements-count">
+                  {getUserAchievements(currentUser.uid).length} / {ACHIEVEMENTS.length} unlocked
+                </p>
+              )}
+            </div>
+
+            {/* Rank Progression */}
+            <div className="ranks-section">
+              <h3>🎖️ Rank Progression</h3>
+              <div className="ranks-list">
+                {RANKS.map((rank, index) => {
+                  const userMeters = userProfile?.totalMeters || 0;
+                  const isCurrentRank = getUserRank(userMeters).title === rank.title;
+                  const isUnlocked = userMeters >= rank.minMeters;
+                  return (
+                    <div key={rank.title} className={`rank-item ${isCurrentRank ? 'current' : ''} ${isUnlocked ? 'unlocked' : 'locked'}`}>
+                      <span className="rank-item-emoji">{rank.emoji}</span>
+                      <div className="rank-item-info">
+                        <span className="rank-item-title">{rank.title}</span>
+                        <span className="rank-item-meters">{formatMeters(rank.minMeters)}m</span>
+                      </div>
+                      {isCurrentRank && <span className="rank-current-badge">YOU</span>}
+                      {isUnlocked && !isCurrentRank && <span className="rank-unlocked-check">✓</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Changelog */}
+            <div className="changelog-section">
+              <h3>📝 App Updates</h3>
+              <div className="changelog">
+                {CHANGELOG.map((release, index) => (
+                  <div key={release.version} className={`changelog-entry ${index === 0 ? 'latest' : ''}`}>
+                    <div className="changelog-header">
+                      <span className="changelog-version">v{release.version}</span>
+                      <span className="changelog-date">{new Date(release.date + 'T12:00:00-08:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' })}</span>
+                      {index === 0 && <span className="latest-badge">LATEST</span>}
+                    </div>
+                    <ul className="changelog-changes">
+                      {release.changes.map((change, i) => (
+                        <li key={i}>{change}</li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="changelog-changes">
-                    {release.changes.map((change, i) => (
-                      <li key={i}>{change}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -1841,6 +1998,107 @@ function App() {
             </div>
             <button className="busted-btn" onClick={() => setShowBustedModal(false)}>
               I'll behave now 😇
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
+          <div className="modal settings-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowSettingsModal(false)}>✕</button>
+            <h2>Settings</h2>
+            
+            {userProfile && (
+              <>
+                {/* Profile Picture */}
+                <div className="settings-section">
+                  <h3>Profile Picture</h3>
+                  <div className="settings-photo-section">
+                    <div className="settings-photo-preview">
+                      {userProfile.photoURL ? (
+                        <img src={userProfile.photoURL} alt="" />
+                      ) : (
+                        <div className="settings-photo-placeholder">
+                          {userProfile.name?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                    </div>
+                    <label className="settings-photo-upload">
+                      <input
+                        ref={profilePicInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePicUpload}
+                        disabled={isUploadingPhoto}
+                      />
+                      {isUploadingPhoto ? 'Uploading...' : 'Change Photo'}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Account Info */}
+                <div className="settings-section">
+                  <h3>Account</h3>
+                  <div className="settings-info-row">
+                    <span>Name</span>
+                    <span>{userProfile.name}</span>
+                  </div>
+                  <div className="settings-info-row">
+                    <span>Email</span>
+                    <span>{currentUser?.email}</span>
+                  </div>
+                  <div className="settings-info-row">
+                    <span>Total Meters</span>
+                    <span>{userProfile.totalMeters?.toLocaleString() || 0}m</span>
+                  </div>
+                  <div className="settings-info-row">
+                    <span>Sessions</span>
+                    <span>{userProfile.uploadCount || 0}</span>
+                  </div>
+                </div>
+
+                {/* Sign Out */}
+                <button className="settings-signout-btn" onClick={() => { handleSignOut(); setShowSettingsModal(false); }}>
+                  Sign Out
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Achievement Detail Modal */}
+      {showAchievementModal && (
+        <div className="modal-overlay" onClick={() => setShowAchievementModal(null)}>
+          <div className="modal achievement-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowAchievementModal(null)}>✕</button>
+            
+            <div className="achievement-modal-content">
+              <span className="achievement-modal-emoji">{showAchievementModal.emoji}</span>
+              <h2>{showAchievementModal.name}</h2>
+              <p className="achievement-modal-desc">{showAchievementModal.desc}</p>
+              
+              {currentUser && (
+                <div className={`achievement-modal-status ${getUserAchievements(currentUser.uid).some(a => a.id === showAchievementModal.id) ? 'unlocked' : 'locked'}`}>
+                  {getUserAchievements(currentUser.uid).some(a => a.id === showAchievementModal.id) ? (
+                    <>
+                      <span className="status-icon">✓</span>
+                      <span>Unlocked!</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="status-icon">🔒</span>
+                      <span>Keep rowing to unlock!</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <button className="achievement-modal-close-btn" onClick={() => setShowAchievementModal(null)}>
+              Got it!
             </button>
           </div>
         </div>

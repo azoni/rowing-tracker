@@ -1261,9 +1261,9 @@ input[type="number"] {
 /* Share Modal */
 .share-modal {
   background: var(--bg-card);
-  border-radius: 20px;
-  padding: 1.5rem;
-  max-width: 360px;
+  border-radius: 16px;
+  padding: 1rem;
+  max-width: 320px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
@@ -1274,16 +1274,16 @@ input[type="number"] {
 
 .share-close-btn {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 0.75rem;
+  right: 0.75rem;
   background: var(--bg-dark);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1296,11 +1296,11 @@ input[type="number"] {
   color: var(--text-primary);
 }
 
-/* Share Card */
+/* Share Card - Compact */
 .share-card {
   background: linear-gradient(145deg, #1a2035 0%, #0d1220 100%);
-  border-radius: 16px;
-  padding: 1.25rem;
+  border-radius: 12px;
+  padding: 1rem;
   border: 1px solid rgba(0, 212, 170, 0.3);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4),
               inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -1310,22 +1310,22 @@ input[type="number"] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .share-card-brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .share-brand-icon {
-  font-size: 1.25rem;
+  font-size: 1rem;
 }
 
 .share-brand-text {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   letter-spacing: 0.1em;
   background: linear-gradient(135deg, var(--accent-primary), #00ffcc);
   -webkit-background-clip: text;
@@ -1334,7 +1334,7 @@ input[type="number"] {
 }
 
 .share-card-date {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1343,43 +1343,43 @@ input[type="number"] {
 .share-card-user {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .share-user-avatar {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--accent-primary);
 }
 
 .share-user-avatar-placeholder {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-primary), #00b894);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1rem;
   color: var(--bg-dark);
 }
 
 .share-user-name {
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--text-primary);
 }
 
 .share-card-image {
   width: 100%;
-  height: 140px;
-  border-radius: 10px;
+  height: 100px;
+  border-radius: 8px;
   overflow: hidden;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   background: var(--bg-dark);
 }
 
@@ -1391,26 +1391,26 @@ input[type="number"] {
 
 .share-card-session {
   text-align: center;
-  margin-bottom: 1rem;
-  padding: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem;
   background: rgba(0, 212, 170, 0.1);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid rgba(0, 212, 170, 0.2);
 }
 
 .share-session-label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.1rem;
 }
 
 .share-session-meters {
   display: block;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.75rem;
+  font-size: 2.25rem;
   color: var(--accent-primary);
   letter-spacing: 0.02em;
   line-height: 1;
@@ -1421,30 +1421,30 @@ input[type="number"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 1.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .share-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.1rem;
 }
 
 .share-stat-icon {
-  font-size: 1.25rem;
+  font-size: 1rem;
 }
 
 .share-stat-value {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   color: var(--text-primary);
   letter-spacing: 0.02em;
 }
 
 .share-stat-label {
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1452,28 +1452,29 @@ input[type="number"] {
 
 .share-stat-divider {
   width: 1px;
-  height: 40px;
+  height: 32px;
   background: var(--border-color);
 }
 
 .share-card-footer {
   text-align: center;
-  padding-top: 0.75rem;
+  padding-top: 0.6rem;
   border-top: 1px solid var(--border-color);
 }
 
 .share-card-footer span {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: var(--text-secondary);
 }
 
 .share-card-url {
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
   color: var(--accent-primary) !important;
   font-weight: 600;
   text-decoration: none;
   transition: opacity 0.2s ease;
+  font-size: 0.7rem !important;
 }
 
 .share-card-url:hover {
@@ -1484,19 +1485,18 @@ input[type="number"] {
 /* Share Actions */
 .share-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .share-copy-btn {
-  width: 100%;
-  padding: 1rem;
+  flex: 1;
+  padding: 0.875rem;
   background: linear-gradient(135deg, var(--accent-primary), #00b894);
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--bg-dark);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1504,7 +1504,7 @@ input[type="number"] {
 }
 
 .share-copy-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 5px 20px rgba(0, 212, 170, 0.4);
 }
 
@@ -1522,11 +1522,10 @@ input[type="number"] {
 }
 
 .share-done-btn {
-  width: 100%;
-  padding: 0.875rem;
+  padding: 0.875rem 1.25rem;
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--text-secondary);
   font-size: 0.9rem;
   font-weight: 600;
@@ -1549,6 +1548,97 @@ input[type="number"] {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Busted Modal */
+.busted-overlay {
+  background: rgba(255, 0, 0, 0.15) !important;
+}
+
+.busted-modal {
+  background: linear-gradient(145deg, #1a0a0a 0%, #2d0a0a 100%);
+  border: 2px solid #ff4444;
+  border-radius: 20px;
+  padding: 2rem 1.5rem;
+  max-width: 320px;
+  width: 90%;
+  text-align: center;
+  animation: bustedShake 0.5s ease, modalSlideUp 0.3s ease;
+  box-shadow: 0 0 60px rgba(255, 0, 0, 0.4),
+              0 0 100px rgba(255, 0, 0, 0.2);
+}
+
+@keyframes bustedShake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.busted-emoji {
+  font-size: 4rem;
+  margin-bottom: 0.5rem;
+  animation: bustedPulse 0.5s ease infinite alternate;
+}
+
+@keyframes bustedPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.1); }
+}
+
+.busted-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3rem;
+  color: #ff4444;
+  letter-spacing: 0.15em;
+  margin: 0 0 0.25rem 0;
+  text-shadow: 0 0 20px rgba(255, 68, 68, 0.8);
+}
+
+.busted-subtitle {
+  font-size: 1.5rem;
+  color: #fff;
+  margin: 0 0 1rem 0;
+}
+
+.busted-message {
+  background: rgba(255, 68, 68, 0.1);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.busted-message p {
+  color: #ffaaaa;
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.busted-gif {
+  font-size: 1.25rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  color: #ff8888;
+}
+
+.busted-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #ff4444, #cc0000);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.busted-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(255, 68, 68, 0.5);
 }
 
 /* Error Screen */

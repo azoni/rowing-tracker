@@ -45,6 +45,25 @@ const MILESTONES = [
 // Changelog entries
 const CHANGELOG = [
   {
+    version: '1.8.0',
+    date: '2025-11-28',
+    changes: [
+      'Added Firestore security rules to prevent tampering',
+      'Users can only add entries for themselves',
+      'Entries are now immutable (no edits/deletes)',
+      'Added special surprise for anyone trying to cheat 😏',
+    ]
+  },
+  {
+    version: '1.7.2',
+    date: '2025-11-28',
+    changes: [
+      'Native share on mobile - share directly to iMessage, WhatsApp, etc.',
+      'More compact share card design',
+      'Horizontal share/done buttons',
+    ]
+  },
+  {
     version: '1.7.1',
     date: '2025-11-28',
     changes: [
@@ -163,6 +182,7 @@ function App() {
   const [shareImageUrl, setShareImageUrl] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
+  const [showBustedModal, setShowBustedModal] = useState(false);
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
@@ -343,6 +363,14 @@ function App() {
       setShowSetupModal(false);
     } catch (error) {
       console.error('Error creating profile:', error);
+      
+      if (error.code === 'permission-denied' || 
+          error.message?.includes('permission') ||
+          error.message?.includes('PERMISSION_DENIED')) {
+        setShowBustedModal(true);
+        return;
+      }
+      
       alert('Failed to create profile. Please try again.');
     }
   };
@@ -553,6 +581,15 @@ function App() {
       return true;
     } catch (error) {
       console.error('Error adding entry:', error);
+      
+      // Check if it's a permission error (someone being sneaky)
+      if (error.code === 'permission-denied' || 
+          error.message?.includes('permission') ||
+          error.message?.includes('PERMISSION_DENIED')) {
+        setShowBustedModal(true);
+        return false;
+      }
+      
       setValidationError('Failed to save entry. Please try again.');
       return false;
     }
@@ -600,7 +637,7 @@ function App() {
       // Capture the share card as canvas
       const canvas = await html2canvas(shareCardRef.current, {
         backgroundColor: '#0d1220',
-        scale: 2, // Higher quality
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         logging: false,
@@ -610,38 +647,67 @@ function App() {
       const blob = await new Promise((resolve) => {
         canvas.toBlob(resolve, 'image/png', 1.0);
       });
+
+      const file = new File([blob], 'row-crew-session.png', { type: 'image/png' });
       
-      // Try to copy image to clipboard
-      if (navigator.clipboard && navigator.clipboard.write) {
+      // Check if native share is available (mobile)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.clipboard.write([
-            new ClipboardItem({ 'image/png': blob })
-          ]);
+          await navigator.share({
+            files: [file],
+            title: 'Row Crew Session',
+            text: `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m! Join us at rowcrew.netlify.app`,
+          });
           setLinkCopied(true);
           setTimeout(() => setLinkCopied(false), 2000);
-        } catch (clipboardError) {
-          console.log('Clipboard API failed, downloading instead:', clipboardError);
-          downloadImage(canvas);
+        } catch (shareError) {
+          if (shareError.name !== 'AbortError') {
+            console.log('Share failed, trying clipboard:', shareError);
+            await copyToClipboard(blob, canvas);
+          }
         }
       } else {
-        // Fallback: download the image
-        downloadImage(canvas);
+        // Desktop: copy to clipboard
+        await copyToClipboard(blob, canvas);
       }
     } catch (error) {
       console.error('Failed to capture image:', error);
-      // Fallback to text copy
-      const shareText = `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m on Row Crew!\n\n` +
-        `🔥 Streak: ${calculateStreak(currentUser?.uid)} days\n` +
-        `📊 Total: ${formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)}m\n\n` +
-        `Join us rowing around the world! 🌍\n` +
-        `https://rowcrew.netlify.app`;
-      
-      await navigator.clipboard.writeText(shareText);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
+      // Fallback to text
+      fallbackTextShare();
     }
     
     setIsCopying(false);
+  };
+
+  // Copy image to clipboard (desktop)
+  const copyToClipboard = async (blob, canvas) => {
+    if (navigator.clipboard && navigator.clipboard.write) {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2000);
+      } catch (clipboardError) {
+        console.log('Clipboard failed, downloading:', clipboardError);
+        downloadImage(canvas);
+      }
+    } else {
+      downloadImage(canvas);
+    }
+  };
+
+  // Fallback text share
+  const fallbackTextShare = async () => {
+    const shareText = `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m on Row Crew!\n🔥 ${calculateStreak(currentUser?.uid)} day streak\n📊 ${formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)} total\n\nJoin us! rowcrew.netlify.app`;
+    
+    if (navigator.share) {
+      await navigator.share({ text: shareText });
+    } else {
+      await navigator.clipboard.writeText(shareText);
+    }
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   };
 
   // Download image as fallback
@@ -1188,12 +1254,33 @@ function App() {
                 onClick={handleCopyLink}
                 disabled={isCopying}
               >
-                {isCopying ? '⏳ Copying...' : linkCopied ? '✓ Copied!' : '📋 Copy Image'}
+                {isCopying ? '⏳ Working...' : linkCopied ? '✓ Done!' : '📤 Share'}
               </button>
               <button className="share-done-btn" onClick={handleCloseShare}>
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Busted Modal - Nice try Chinh! */}
+      {showBustedModal && (
+        <div className="modal-overlay busted-overlay" onClick={() => setShowBustedModal(false)}>
+          <div className="busted-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="busted-emoji">🚨</div>
+            <h2 className="busted-title">BUSTED!</h2>
+            <p className="busted-subtitle">Nice try, Chinh 😏</p>
+            <div className="busted-message">
+              <p>We see you trying to mess with the database...</p>
+              <p>Your sneaky activities have been logged 📝</p>
+            </div>
+            <div className="busted-gif">
+              🕵️ Database Integrity Police 🚔
+            </div>
+            <button className="busted-btn" onClick={() => setShowBustedModal(false)}>
+              I'll behave now 😇
+            </button>
           </div>
         </div>
       )}

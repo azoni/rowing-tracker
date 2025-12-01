@@ -107,6 +107,19 @@ const MILESTONES = [
 // Changelog entries
 const CHANGELOG = [
   {
+    version: '2.1.0',
+    date: '2025-11-28',
+    changes: [
+      '🔍 Search bar to find rowers quickly',
+      '📊 Enhanced Stats tab with new metrics',
+      '🏆 Best single row (Personal Record) displayed',
+      '🔥 Longest streak ever achieved shown',
+      '📅 Days rowed & member since date',
+      '🏅 Achievement badges preview on each card',
+      '🎨 Redesigned stats layout with highlight boxes',
+    ]
+  },
+  {
     version: '2.0.0',
     date: '2025-11-28',
     changes: [
@@ -263,6 +276,7 @@ function App() {
   const [, setTestTapCount] = useState(0);
   const [showPRModal, setShowPRModal] = useState(null);
   const [dailyQuote, setDailyQuote] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
@@ -976,6 +990,65 @@ function App() {
     return Math.max(...userEntries.map(e => e.meters));
   };
 
+  // Get longest streak ever achieved
+  const getLongestStreak = (userId) => {
+    const userEntries = entries
+      .filter((e) => e.userId === userId)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (userEntries.length === 0) return 0;
+
+    let longestStreak = 1;
+    let currentStreak = 1;
+    
+    const entryDates = [...new Set(userEntries.map(e => 
+      new Date(e.date).toDateString()
+    ))].sort((a, b) => new Date(a) - new Date(b));
+
+    for (let i = 1; i < entryDates.length; i++) {
+      const prevDate = new Date(entryDates[i - 1]);
+      const currDate = new Date(entryDates[i]);
+      const diffDays = Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        currentStreak++;
+        longestStreak = Math.max(longestStreak, currentStreak);
+      } else {
+        currentStreak = 1;
+      }
+    }
+    
+    return longestStreak;
+  };
+
+  // Get total unique days rowed
+  const getTotalDaysRowed = (userId) => {
+    const userEntries = entries.filter(e => e.userId === userId);
+    const uniqueDays = new Set(userEntries.map(e => new Date(e.date).toDateString()));
+    return uniqueDays.size;
+  };
+
+  // Get first row date
+  const getFirstRowDate = (userId) => {
+    const userEntries = entries
+      .filter(e => e.userId === userId)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    if (userEntries.length === 0) return null;
+    return new Date(userEntries[0].date);
+  };
+
+  // Filter users by search query
+  const getFilteredLeaderboard = () => {
+    const leaderboard = getLeaderboard();
+    if (!searchQuery.trim()) return leaderboard;
+    
+    const query = searchQuery.toLowerCase();
+    return leaderboard.filter(user => 
+      user.name?.toLowerCase().includes(query)
+    );
+  };
+
   // Check if this session is a PR
   const checkForPR = (userId, newMeters) => {
     const currentPR = getPersonalRecord(userId);
@@ -1406,46 +1479,131 @@ function App() {
         {activeTab === 'stats' && (
           <section className="stats-section">
             <h2>Detailed Stats</h2>
-            {getLeaderboard().length === 0 ? (
+            
+            {/* Search Bar */}
+            <div className="search-bar">
+              <span className="search-icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Search rowers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+              {searchQuery && (
+                <button className="search-clear" onClick={() => setSearchQuery('')}>✕</button>
+              )}
+            </div>
+
+            {getFilteredLeaderboard().length === 0 ? (
               <div className="empty-state">
-                <p>No stats yet!</p>
+                {searchQuery ? (
+                  <p>No rowers found matching "{searchQuery}"</p>
+                ) : (
+                  <p>No stats yet!</p>
+                )}
               </div>
             ) : (
               <div className="stats-grid">
-                {getLeaderboard().map((user) => (
-                  <div key={user.id} className={`stats-card ${user.id === currentUser?.uid ? 'is-you' : ''}`}>
-                    <div className="stats-card-header">
-                      {user.photoURL ? (
-                        <img src={user.photoURL} alt="" className="stats-avatar" />
-                      ) : (
-                        <div className="stats-avatar-placeholder">
-                          {user.name?.charAt(0)?.toUpperCase() || '?'}
+                {getFilteredLeaderboard().map((user) => {
+                  const userAchievements = getUserAchievements(user.id);
+                  const longestStreak = getLongestStreak(user.id);
+                  const personalRecord = getPersonalRecord(user.id);
+                  const totalDays = getTotalDaysRowed(user.id);
+                  const firstRow = getFirstRowDate(user.id);
+                  
+                  return (
+                    <div key={user.id} className={`stats-card ${user.id === currentUser?.uid ? 'is-you' : ''}`}>
+                      {/* Header with avatar, name, rank */}
+                      <div className="stats-card-header">
+                        <div className="stats-header-left">
+                          {user.photoURL ? (
+                            <img src={user.photoURL} alt="" className="stats-avatar" />
+                          ) : (
+                            <div className="stats-avatar-placeholder">
+                              {user.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                          )}
+                          <div className="stats-header-info">
+                            <h3>{user.name} {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</h3>
+                            <span className="stats-rank">{user.rank?.emoji} {user.rank?.title}</span>
+                          </div>
                         </div>
-                      )}
-                      <h3>{user.name} {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</h3>
+                      </div>
+
+                      {/* Main Stats Grid */}
+                      <div className="stats-main-grid">
+                        <div className="stat-box">
+                          <span className="stat-box-value">{formatMeters(user.totalMeters)}</span>
+                          <span className="stat-box-label">Total Meters</span>
+                        </div>
+                        <div className="stat-box">
+                          <span className="stat-box-value">{user.uploadCount}</span>
+                          <span className="stat-box-label">Sessions</span>
+                        </div>
+                        <div className="stat-box highlight-gold">
+                          <span className="stat-box-value">{formatMeters(personalRecord)}</span>
+                          <span className="stat-box-label">🏆 Best Row</span>
+                        </div>
+                        <div className="stat-box highlight-fire">
+                          <span className="stat-box-value">{longestStreak}</span>
+                          <span className="stat-box-label">🔥 Best Streak</span>
+                        </div>
+                      </div>
+
+                      {/* Secondary Stats */}
+                      <div className="stats-secondary">
+                        <div className="stat-row-mini">
+                          <span>Avg/Session</span>
+                          <span>{formatMeters(user.avgPerUpload)}m</span>
+                        </div>
+                        <div className="stat-row-mini">
+                          <span>Sessions/Week</span>
+                          <span>{user.weeklyAvg}x</span>
+                        </div>
+                        <div className="stat-row-mini">
+                          <span>Days Rowed</span>
+                          <span>{totalDays}</span>
+                        </div>
+                        <div className="stat-row-mini">
+                          <span>Current Streak</span>
+                          <span>{user.streak} days</span>
+                        </div>
+                        {firstRow && (
+                          <div className="stat-row-mini">
+                            <span>Member Since</span>
+                            <span>{firstRow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Achievements */}
+                      <div className="stats-achievements">
+                        <div className="stats-achievements-header">
+                          <span>Achievements</span>
+                          <span className="achievements-fraction">{userAchievements.length}/{ACHIEVEMENTS.length}</span>
+                        </div>
+                        <div className="stats-badges">
+                          {ACHIEVEMENTS.slice(0, 8).map((achievement) => {
+                            const unlocked = userAchievements.some(a => a.id === achievement.id);
+                            return (
+                              <div 
+                                key={achievement.id} 
+                                className={`stats-badge ${unlocked ? 'unlocked' : 'locked'}`}
+                                title={`${achievement.name}: ${achievement.desc}`}
+                              >
+                                {achievement.emoji}
+                              </div>
+                            );
+                          })}
+                          {userAchievements.length > 8 && (
+                            <div className="stats-badge more">+{userAchievements.length - 8}</div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="stat-row">
-                      <span className="stat-label">Total Distance</span>
-                      <span className="stat-value">{formatMeters(user.totalMeters)}m</span>
-                    </div>
-                    <div className="stat-row">
-                      <span className="stat-label">Sessions</span>
-                      <span className="stat-value">{user.uploadCount}</span>
-                    </div>
-                    <div className="stat-row">
-                      <span className="stat-label">Avg per Session</span>
-                      <span className="stat-value">{formatMeters(user.avgPerUpload)}m</span>
-                    </div>
-                    <div className="stat-row">
-                      <span className="stat-label">Sessions/Week</span>
-                      <span className="stat-value">{user.weeklyAvg}x</span>
-                    </div>
-                    <div className="stat-row highlight">
-                      <span className="stat-label">🔥 Streak</span>
-                      <span className="stat-value">{user.streak} days</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>

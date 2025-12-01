@@ -41,35 +41,113 @@ const RANKS = [
 // Achievement definitions
 const ACHIEVEMENTS = [
   // Session count achievements
-  { id: 'first_row', name: 'First Strokes', desc: 'Log your first row', emoji: '🎉', check: (u, e) => e.length >= 1 },
-  { id: 'ten_sessions', name: 'Getting Serious', desc: 'Complete 10 sessions', emoji: '💪', check: (u, e) => e.length >= 10 },
-  { id: 'fifty_sessions', name: 'Dedicated Rower', desc: 'Complete 50 sessions', emoji: '🏅', check: (u, e) => e.length >= 50 },
-  { id: 'hundred_sessions', name: 'Centurion', desc: 'Complete 100 sessions', emoji: '💯', check: (u, e) => e.length >= 100 },
+  { 
+    id: 'first_row', name: 'First Strokes', desc: 'Log your first row', emoji: '🎉', 
+    check: (u, e) => e.length >= 1,
+    getProgress: (u, e) => ({ current: Math.min(e.length, 1), target: 1 })
+  },
+  { 
+    id: 'ten_sessions', name: 'Getting Serious', desc: 'Complete 10 sessions', emoji: '💪', 
+    check: (u, e) => e.length >= 10,
+    getProgress: (u, e) => ({ current: Math.min(e.length, 10), target: 10 })
+  },
+  { 
+    id: 'fifty_sessions', name: 'Dedicated Rower', desc: 'Complete 50 sessions', emoji: '🏅', 
+    check: (u, e) => e.length >= 50,
+    getProgress: (u, e) => ({ current: Math.min(e.length, 50), target: 50 })
+  },
+  { 
+    id: 'hundred_sessions', name: 'Centurion', desc: 'Complete 100 sessions', emoji: '💯', 
+    check: (u, e) => e.length >= 100,
+    getProgress: (u, e) => ({ current: Math.min(e.length, 100), target: 100 })
+  },
   
   // Distance achievements
-  { id: 'first_5k', name: '5K Club', desc: 'Row 5,000 meters total', emoji: '🎯', check: (u) => u.totalMeters >= 5000 },
-  { id: 'first_10k', name: '10K Crusher', desc: 'Row 10,000 meters total', emoji: '🔥', check: (u) => u.totalMeters >= 10000 },
-  { id: 'marathon', name: 'Marathon Rower', desc: 'Row a marathon (42,195m)', emoji: '🏃', check: (u) => u.totalMeters >= 42195 },
-  { id: 'hundred_k', name: '100K Legend', desc: 'Row 100,000 meters total', emoji: '⭐', check: (u) => u.totalMeters >= 100000 },
+  { 
+    id: 'first_5k', name: '5K Club', desc: 'Row 5,000 meters total', emoji: '🎯', 
+    check: (u) => u.totalMeters >= 5000,
+    getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 5000), target: 5000 })
+  },
+  { 
+    id: 'first_10k', name: '10K Crusher', desc: 'Row 10,000 meters total', emoji: '🔥', 
+    check: (u) => u.totalMeters >= 10000,
+    getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 10000), target: 10000 })
+  },
+  { 
+    id: 'marathon', name: 'Marathon Rower', desc: 'Row a marathon (42,195m)', emoji: '🏃', 
+    check: (u) => u.totalMeters >= 42195,
+    getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 42195), target: 42195 })
+  },
+  { 
+    id: 'hundred_k', name: '100K Legend', desc: 'Row 100,000 meters total', emoji: '⭐', 
+    check: (u) => u.totalMeters >= 100000,
+    getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 100000), target: 100000 })
+  },
   
   // Single session achievements
-  { id: 'big_session', name: 'Power Hour', desc: 'Row 5,000m in one session', emoji: '⚡', check: (u, e) => e.some(x => x.meters >= 5000) },
-  { id: 'huge_session', name: 'Beast Mode', desc: 'Row 10,000m in one session', emoji: '🦁', check: (u, e) => e.some(x => x.meters >= 10000) },
+  { 
+    id: 'big_session', name: 'Power Hour', desc: 'Row 5,000m in one session', emoji: '⚡', 
+    check: (u, e) => e.some(x => x.meters >= 5000),
+    getProgress: (u, e) => {
+      const best = e.length > 0 ? Math.max(...e.map(x => x.meters)) : 0;
+      return { current: Math.min(best, 5000), target: 5000 };
+    }
+  },
+  { 
+    id: 'huge_session', name: 'Beast Mode', desc: 'Row 10,000m in one session', emoji: '🦁', 
+    check: (u, e) => e.some(x => x.meters >= 10000),
+    getProgress: (u, e) => {
+      const best = e.length > 0 ? Math.max(...e.map(x => x.meters)) : 0;
+      return { current: Math.min(best, 10000), target: 10000 };
+    }
+  },
   
   // Streak achievements
-  { id: 'streak_3', name: 'Hat Trick', desc: 'Maintain a 3-day streak', emoji: '🎩', check: (u, e, s) => s >= 3 },
-  { id: 'streak_7', name: 'Week Warrior', desc: 'Maintain a 7-day streak', emoji: '📅', check: (u, e, s) => s >= 7 },
-  { id: 'streak_14', name: 'Fortnight Force', desc: 'Maintain a 14-day streak', emoji: '🔥', check: (u, e, s) => s >= 14 },
-  { id: 'streak_30', name: 'Monthly Master', desc: 'Maintain a 30-day streak', emoji: '🌟', check: (u, e, s) => s >= 30 },
+  { 
+    id: 'streak_3', name: 'Hat Trick', desc: 'Maintain a 3-day streak', emoji: '🎩', 
+    check: (u, e, s) => s >= 3,
+    getProgress: (u, e, s) => ({ current: Math.min(s, 3), target: 3 })
+  },
+  { 
+    id: 'streak_7', name: 'Week Warrior', desc: 'Maintain a 7-day streak', emoji: '📅', 
+    check: (u, e, s) => s >= 7,
+    getProgress: (u, e, s) => ({ current: Math.min(s, 7), target: 7 })
+  },
+  { 
+    id: 'streak_14', name: 'Fortnight Force', desc: 'Maintain a 14-day streak', emoji: '🔥', 
+    check: (u, e, s) => s >= 14,
+    getProgress: (u, e, s) => ({ current: Math.min(s, 14), target: 14 })
+  },
+  { 
+    id: 'streak_30', name: 'Monthly Master', desc: 'Maintain a 30-day streak', emoji: '🌟', 
+    check: (u, e, s) => s >= 30,
+    getProgress: (u, e, s) => ({ current: Math.min(s, 30), target: 30 })
+  },
   
   // Fun achievements
-  { id: 'early_bird', name: 'Early Bird', desc: 'Log a row before 7am', emoji: '🌅', check: (u, e) => e.some(x => new Date(x.date).getHours() < 7) },
-  { id: 'night_owl', name: 'Night Owl', desc: 'Log a row after 10pm', emoji: '🦉', check: (u, e) => e.some(x => new Date(x.date).getHours() >= 22) },
-  { id: 'consistent', name: 'Consistency King', desc: 'Row 4+ days in a week', emoji: '👑', check: (u, e) => {
-    const lastWeek = e.filter(x => Date.now() - new Date(x.date).getTime() < 7 * 24 * 60 * 60 * 1000);
-    const uniqueDays = new Set(lastWeek.map(x => new Date(x.date).toDateString()));
-    return uniqueDays.size >= 4;
-  }},
+  { 
+    id: 'early_bird', name: 'Early Bird', desc: 'Log a row before 7am', emoji: '🌅', 
+    check: (u, e) => e.some(x => new Date(x.date).getHours() < 7),
+    getProgress: (u, e) => ({ current: e.some(x => new Date(x.date).getHours() < 7) ? 1 : 0, target: 1 })
+  },
+  { 
+    id: 'night_owl', name: 'Night Owl', desc: 'Log a row after 10pm', emoji: '🦉', 
+    check: (u, e) => e.some(x => new Date(x.date).getHours() >= 22),
+    getProgress: (u, e) => ({ current: e.some(x => new Date(x.date).getHours() >= 22) ? 1 : 0, target: 1 })
+  },
+  { 
+    id: 'consistent', name: 'Consistency King', desc: 'Row 4+ days in a week', emoji: '👑', 
+    check: (u, e) => {
+      const lastWeek = e.filter(x => Date.now() - new Date(x.date).getTime() < 7 * 24 * 60 * 60 * 1000);
+      const uniqueDays = new Set(lastWeek.map(x => new Date(x.date).toDateString()));
+      return uniqueDays.size >= 4;
+    },
+    getProgress: (u, e) => {
+      const lastWeek = e.filter(x => Date.now() - new Date(x.date).getTime() < 7 * 24 * 60 * 60 * 1000);
+      const uniqueDays = new Set(lastWeek.map(x => new Date(x.date).toDateString()));
+      return { current: Math.min(uniqueDays.size, 4), target: 4 };
+    }
+  },
 ];
 
 // Motivational quotes
@@ -106,6 +184,20 @@ const MILESTONES = [
 
 // Changelog entries
 const CHANGELOG = [
+  {
+    version: '2.3.0',
+    date: '2025-11-28',
+    changes: [
+      '📱 Install app prompt - add to home screen easily',
+      '📊 Achievement progress bars (54/100 style)',
+      '📅 Achievement completion dates',
+      '🏅 Achievements show in activity feed when unlocked',
+      '🎖️ Rank promotions show in activity feed',
+      '📜 Feed pagination - load more button',
+      '🔍 Search in activity feed',
+      '🎨 Progress bars on rank progression',
+    ]
+  },
   {
     version: '2.2.0',
     date: '2025-11-28',
@@ -294,6 +386,12 @@ function App() {
   const [showAchievementModal, setShowAchievementModal] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [feedPage, setFeedPage] = useState(1);
+  const FEED_PAGE_SIZE = 15;
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
@@ -330,6 +428,62 @@ function App() {
       setTimeout(() => setTestTapCount(0), 2000);
       return newCount;
     });
+  };
+
+  // PWA Install Prompt Detection
+  useEffect(() => {
+    // Check if running as installed PWA
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || 
+                       window.navigator.standalone === true;
+    setIsStandalone(standalone);
+    
+    // Check if iOS
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    setIsIOS(iOS);
+    
+    // Check if user has dismissed the prompt before
+    const dismissed = localStorage.getItem('installPromptDismissed');
+    const dismissedTime = dismissed ? parseInt(dismissed, 10) : 0;
+    const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
+    
+    // Show prompt if not standalone, not recently dismissed (7 days)
+    if (!standalone && daysSinceDismissed > 7) {
+      // Listen for beforeinstallprompt (Android/Desktop Chrome)
+      const handleBeforeInstall = (e) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+        setShowInstallPrompt(true);
+      };
+      
+      window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+      
+      // For iOS, show prompt after a delay
+      if (iOS) {
+        setTimeout(() => {
+          if (!standalone) setShowInstallPrompt(true);
+        }, 3000);
+      }
+      
+      return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    }
+  }, []);
+
+  // Handle install button click
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShowInstallPrompt(false);
+      }
+      setDeferredPrompt(null);
+    }
+  };
+
+  // Dismiss install prompt
+  const dismissInstallPrompt = () => {
+    setShowInstallPrompt(false);
+    localStorage.setItem('installPromptDismissed', Date.now().toString());
   };
 
   // Listen for auth state changes
@@ -831,6 +985,12 @@ function App() {
           setShowPRModal(meters);
         }, 500);
       }
+
+      // Check for new achievements and rank promotion (after a delay to let state update)
+      setTimeout(async () => {
+        await checkAndSaveNewAchievements(currentUser.uid);
+        await checkAndSaveRankPromotion(currentUser.uid, newTotalMeters);
+      }, 1000);
       
       return true;
     } catch (error) {
@@ -1087,7 +1247,7 @@ function App() {
     return null;
   };
 
-  // Get user's achievements
+  // Get user's achievements with progress
   const getUserAchievements = (userId) => {
     const user = users[userId];
     if (!user) return [];
@@ -1095,7 +1255,82 @@ function App() {
     const userEntries = entries.filter(e => e.userId === userId);
     const streak = calculateStreak(userId);
     
-    return ACHIEVEMENTS.filter(a => a.check(user, userEntries, streak));
+    return ACHIEVEMENTS.filter(a => a.check(user, userEntries, streak)).map(a => ({
+      ...a,
+      progress: a.getProgress(user, userEntries, streak),
+      unlockedDate: user.unlockedAchievements?.[a.id] || null,
+    }));
+  };
+
+  // Get achievement progress for a user (including locked ones)
+  const getAchievementProgress = (userId, achievement) => {
+    const user = users[userId];
+    if (!user) return { current: 0, target: 1 };
+    
+    const userEntries = entries.filter(e => e.userId === userId);
+    const streak = calculateStreak(userId);
+    
+    return achievement.getProgress(user, userEntries, streak);
+  };
+
+  // Check and save new achievements
+  const checkAndSaveNewAchievements = async (userId) => {
+    const user = users[userId];
+    if (!user) return [];
+    
+    const userEntries = entries.filter(e => e.userId === userId);
+    const streak = calculateStreak(userId);
+    const existingAchievements = user.unlockedAchievements || {};
+    
+    const newlyUnlocked = [];
+    const updatedAchievements = { ...existingAchievements };
+    
+    for (const achievement of ACHIEVEMENTS) {
+      if (!existingAchievements[achievement.id] && achievement.check(user, userEntries, streak)) {
+        updatedAchievements[achievement.id] = new Date().toISOString();
+        newlyUnlocked.push(achievement);
+      }
+    }
+    
+    if (newlyUnlocked.length > 0) {
+      try {
+        const userRef = doc(db, 'users', userId);
+        await setDoc(userRef, { unlockedAchievements: updatedAchievements }, { merge: true });
+      } catch (error) {
+        console.error('Error saving achievements:', error);
+      }
+    }
+    
+    return newlyUnlocked;
+  };
+
+  // Check and save rank promotion
+  const checkAndSaveRankPromotion = async (userId, newTotalMeters) => {
+    const user = users[userId];
+    if (!user) return null;
+    
+    const oldRank = getUserRank(user.totalMeters || 0);
+    const newRank = getUserRank(newTotalMeters);
+    
+    if (newRank.title !== oldRank.title && newRank.minMeters > oldRank.minMeters) {
+      try {
+        const userRef = doc(db, 'users', userId);
+        const rankHistory = user.rankHistory || [];
+        rankHistory.push({
+          rank: newRank.title,
+          emoji: newRank.emoji,
+          date: new Date().toISOString(),
+        });
+        await setDoc(userRef, { 
+          currentRank: newRank.title,
+          rankHistory 
+        }, { merge: true });
+        return newRank;
+      } catch (error) {
+        console.error('Error saving rank promotion:', error);
+      }
+    }
+    return null;
   };
 
   // Get user's personal record
@@ -1171,23 +1406,71 @@ function App() {
   };
 
   // Get activity feed (last 20 entries across all users, with optional filter)
-  const getActivityFeed = (filterQuery = '') => {
-    let feed = entries
-      .slice(0, 20)
-      .map(entry => ({
-        ...entry,
-        user: users[entry.userId],
-      }))
-      .filter(entry => entry.user);
-    
+  const getActivityFeed = (filterQuery = '', page = 1) => {
+    // Get row entries
+    let feedItems = entries.map(entry => ({
+      ...entry,
+      type: 'row',
+      user: users[entry.userId],
+      sortDate: new Date(entry.date),
+    })).filter(entry => entry.user);
+
+    // Add achievement unlocks from all users
+    Object.values(users).forEach(user => {
+      if (user.unlockedAchievements) {
+        Object.entries(user.unlockedAchievements).forEach(([achievementId, dateStr]) => {
+          const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
+          if (achievement) {
+            feedItems.push({
+              id: `achievement-${user.id}-${achievementId}`,
+              type: 'achievement',
+              userId: user.id,
+              user,
+              achievement,
+              date: dateStr,
+              sortDate: new Date(dateStr),
+            });
+          }
+        });
+      }
+      
+      // Add rank promotions
+      if (user.rankHistory) {
+        user.rankHistory.forEach((rankEvent, index) => {
+          feedItems.push({
+            id: `rank-${user.id}-${index}`,
+            type: 'rank',
+            userId: user.id,
+            user,
+            rank: rankEvent,
+            date: rankEvent.date,
+            sortDate: new Date(rankEvent.date),
+          });
+        });
+      }
+    });
+
+    // Sort by date descending
+    feedItems.sort((a, b) => b.sortDate - a.sortDate);
+
+    // Filter by search query
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase();
-      feed = feed.filter(entry => 
-        entry.user?.name?.toLowerCase().includes(q)
+      feedItems = feedItems.filter(item => 
+        item.user?.name?.toLowerCase().includes(q)
       );
     }
+
+    // Return paginated results
+    const startIndex = 0;
+    const endIndex = page * FEED_PAGE_SIZE;
+    const hasMore = feedItems.length > endIndex;
     
-    return feed;
+    return {
+      items: feedItems.slice(startIndex, endIndex),
+      hasMore,
+      total: feedItems.length,
+    };
   };
 
   // Get weekly stats for current user
@@ -1473,11 +1756,11 @@ function App() {
                 type="text"
                 placeholder="Search rowers..."
                 value={feedSearchQuery}
-                onChange={(e) => setFeedSearchQuery(e.target.value)}
+                onChange={(e) => { setFeedSearchQuery(e.target.value); setFeedPage(1); }}
                 className="search-input"
               />
               {feedSearchQuery && (
-                <button className="search-clear" onClick={() => setFeedSearchQuery('')}>✕</button>
+                <button className="search-clear" onClick={() => { setFeedSearchQuery(''); setFeedPage(1); }}>✕</button>
               )}
             </div>
 
@@ -1491,45 +1774,72 @@ function App() {
               </div>
             )}
 
-            {getActivityFeed(feedSearchQuery).length === 0 ? (
-              <div className="empty-state">
-                {feedSearchQuery ? (
-                  <p>No activity found for "{feedSearchQuery}"</p>
-                ) : (
-                  <>
-                    <p>No activity yet!</p>
-                    <p>Be the first to log a row.</p>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="activity-feed">
-                {getActivityFeed(feedSearchQuery).map((entry) => (
-                  <div key={entry.id} className={`feed-item ${entry.userId === currentUser?.uid ? 'is-you' : ''}`}>
-                    <div className="feed-avatar">
-                      {entry.user?.photoURL ? (
-                        <img src={entry.user.photoURL} alt="" />
-                      ) : (
-                        <div className="feed-avatar-placeholder">
-                          {entry.user?.name?.charAt(0)?.toUpperCase() || '?'}
+            {(() => {
+              const feedData = getActivityFeed(feedSearchQuery, feedPage);
+              return feedData.items.length === 0 ? (
+                <div className="empty-state">
+                  {feedSearchQuery ? (
+                    <p>No activity found for "{feedSearchQuery}"</p>
+                  ) : (
+                    <>
+                      <p>No activity yet!</p>
+                      <p>Be the first to log a row.</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="activity-feed">
+                    {feedData.items.map((item) => (
+                      <div key={item.id} className={`feed-item feed-item-${item.type} ${item.userId === currentUser?.uid ? 'is-you' : ''}`}>
+                        <div className="feed-avatar">
+                          {item.user?.photoURL ? (
+                            <img src={item.user.photoURL} alt="" />
+                          ) : (
+                            <div className="feed-avatar-placeholder">
+                              {item.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="feed-content">
-                      <div className="feed-header">
-                        <span className="feed-name">{entry.user?.name}</span>
-                        <span className="feed-time">
-                          {formatTimeAgo(new Date(entry.date))}
-                        </span>
+                        <div className="feed-content">
+                          <div className="feed-header">
+                            <span className="feed-name">{item.user?.name}</span>
+                            <span className="feed-time">
+                              {formatTimeAgo(new Date(item.date))}
+                            </span>
+                          </div>
+                          <div className="feed-action">
+                            {item.type === 'row' && (
+                              <>rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span> 🚣</>
+                            )}
+                            {item.type === 'achievement' && (
+                              <span className="feed-achievement">
+                                unlocked <span className="feed-achievement-name">{item.achievement.emoji} {item.achievement.name}</span>
+                              </span>
+                            )}
+                            {item.type === 'rank' && (
+                              <span className="feed-rank">
+                                reached <span className="feed-rank-name">{item.rank.emoji} {item.rank.rank}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="feed-action">
-                        rowed <span className="feed-meters">{entry.meters.toLocaleString()}m</span> 🚣
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                  
+                  {/* Load More Button */}
+                  {feedData.hasMore && (
+                    <button 
+                      className="load-more-btn"
+                      onClick={() => setFeedPage(prev => prev + 1)}
+                    >
+                      Load More ({feedData.total - feedData.items.length} remaining)
+                    </button>
+                  )}
+                </>
+              );
+            })()}
           </section>
         )}
 
@@ -1721,15 +2031,28 @@ function App() {
               <div className="achievements-grid-full">
                 {ACHIEVEMENTS.map((achievement) => {
                   const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
+                  const progress = currentUser ? getAchievementProgress(currentUser.uid, achievement) : { current: 0, target: 1 };
+                  const unlockedAchievement = currentUser ? getUserAchievements(currentUser.uid).find(a => a.id === achievement.id) : null;
+                  const progressPercent = Math.min((progress.current / progress.target) * 100, 100);
+                  
                   return (
                     <div 
                       key={achievement.id} 
                       className={`achievement-card ${unlocked ? 'unlocked' : 'locked'}`}
-                      onClick={() => setShowAchievementModal(achievement)}
+                      onClick={() => setShowAchievementModal({ ...achievement, progress, unlockedDate: unlockedAchievement?.unlockedDate })}
                     >
                       <span className="achievement-card-emoji">{achievement.emoji}</span>
                       <span className="achievement-card-name">{achievement.name}</span>
-                      <span className="achievement-card-desc">{achievement.desc}</span>
+                      {!unlocked && currentUser && (
+                        <div className="achievement-card-progress">
+                          <div className="achievement-progress-bar">
+                            <div className="achievement-progress-fill" style={{ width: `${progressPercent}%` }} />
+                          </div>
+                          <span className="achievement-progress-text">
+                            {progress.target >= 1000 ? `${formatMeters(progress.current)}/${formatMeters(progress.target)}` : `${progress.current}/${progress.target}`}
+                          </span>
+                        </div>
+                      )}
                       {unlocked && <span className="achievement-card-check">✓ Unlocked</span>}
                     </div>
                   );
@@ -1750,12 +2073,22 @@ function App() {
                   const userMeters = userProfile?.totalMeters || 0;
                   const isCurrentRank = getUserRank(userMeters).title === rank.title;
                   const isUnlocked = userMeters >= rank.minMeters;
+                  const nextRank = RANKS[index + 1];
+                  const progressToNext = nextRank 
+                    ? Math.min(((userMeters - rank.minMeters) / (nextRank.minMeters - rank.minMeters)) * 100, 100)
+                    : 100;
+                  
                   return (
                     <div key={rank.title} className={`rank-item ${isCurrentRank ? 'current' : ''} ${isUnlocked ? 'unlocked' : 'locked'}`}>
                       <span className="rank-item-emoji">{rank.emoji}</span>
                       <div className="rank-item-info">
                         <span className="rank-item-title">{rank.title}</span>
                         <span className="rank-item-meters">{formatMeters(rank.minMeters)}m</span>
+                        {isCurrentRank && nextRank && (
+                          <div className="rank-progress-bar">
+                            <div className="rank-progress-fill" style={{ width: `${progressToNext}%` }} />
+                          </div>
+                        )}
                       </div>
                       {isCurrentRank && <span className="rank-current-badge">YOU</span>}
                       {isUnlocked && !isCurrentRank && <span className="rank-unlocked-check">✓</span>}
@@ -2080,27 +2413,94 @@ function App() {
               <h2>{showAchievementModal.name}</h2>
               <p className="achievement-modal-desc">{showAchievementModal.desc}</p>
               
-              {currentUser && (
-                <div className={`achievement-modal-status ${getUserAchievements(currentUser.uid).some(a => a.id === showAchievementModal.id) ? 'unlocked' : 'locked'}`}>
-                  {getUserAchievements(currentUser.uid).some(a => a.id === showAchievementModal.id) ? (
-                    <>
-                      <span className="status-icon">✓</span>
-                      <span>Unlocked!</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="status-icon">🔒</span>
-                      <span>Keep rowing to unlock!</span>
-                    </>
-                  )}
-                </div>
-              )}
+              {currentUser && (() => {
+                const isUnlocked = getUserAchievements(currentUser.uid).some(a => a.id === showAchievementModal.id);
+                const progress = showAchievementModal.progress || getAchievementProgress(currentUser.uid, showAchievementModal);
+                const progressPercent = Math.min((progress.current / progress.target) * 100, 100);
+                
+                return (
+                  <>
+                    {/* Progress Bar */}
+                    <div className="achievement-modal-progress">
+                      <div className="achievement-modal-progress-bar">
+                        <div 
+                          className={`achievement-modal-progress-fill ${isUnlocked ? 'complete' : ''}`} 
+                          style={{ width: `${progressPercent}%` }} 
+                        />
+                      </div>
+                      <span className="achievement-modal-progress-text">
+                        {progress.target >= 1000 
+                          ? `${formatMeters(progress.current)} / ${formatMeters(progress.target)}`
+                          : `${progress.current} / ${progress.target}`
+                        }
+                      </span>
+                    </div>
+
+                    {/* Status */}
+                    <div className={`achievement-modal-status ${isUnlocked ? 'unlocked' : 'locked'}`}>
+                      {isUnlocked ? (
+                        <>
+                          <span className="status-icon">✓</span>
+                          <span>Unlocked!</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="status-icon">🔒</span>
+                          <span>Keep rowing to unlock!</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Date Completed */}
+                    {isUnlocked && showAchievementModal.unlockedDate && (
+                      <p className="achievement-modal-date">
+                        Completed on {new Date(showAchievementModal.unlockedDate).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          year: 'numeric' 
+                        })}
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             
             <button className="achievement-modal-close-btn" onClick={() => setShowAchievementModal(null)}>
               Got it!
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Install App Prompt */}
+      {showInstallPrompt && !isStandalone && (
+        <div className="install-prompt">
+          <div className="install-prompt-content">
+            <span className="install-prompt-icon">📱</span>
+            <div className="install-prompt-text">
+              <strong>Install Row Crew</strong>
+              <p>Add to your home screen for quick access!</p>
+            </div>
+          </div>
+          
+          {isIOS ? (
+            <div className="install-prompt-ios">
+              <p>1. Tap the Share button <span className="ios-share-icon">⬆️</span></p>
+              <p>2. Scroll down and tap "Add to Home Screen"</p>
+              <button className="install-prompt-dismiss" onClick={dismissInstallPrompt}>Got it!</button>
+            </div>
+          ) : deferredPrompt ? (
+            <div className="install-prompt-actions">
+              <button className="install-prompt-btn" onClick={handleInstallClick}>Install</button>
+              <button className="install-prompt-dismiss" onClick={dismissInstallPrompt}>Maybe Later</button>
+            </div>
+          ) : (
+            <div className="install-prompt-ios">
+              <p>Open browser menu and select "Add to Home Screen"</p>
+              <button className="install-prompt-dismiss" onClick={dismissInstallPrompt}>Got it!</button>
+            </div>
+          )}
         </div>
       )}
 

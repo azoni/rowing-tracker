@@ -2694,6 +2694,249 @@ input[type="number"] {
   color: var(--text-primary);
 }
 
+/* Achievement Card Progress */
+.achievement-card-progress {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.achievement-progress-bar {
+  height: 4px;
+  background: var(--bg-card);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+
+.achievement-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), #00b894);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.achievement-progress-text {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* Achievement Modal Progress */
+.achievement-modal-progress {
+  margin: 1rem 0;
+  width: 100%;
+}
+
+.achievement-modal-progress-bar {
+  height: 8px;
+  background: var(--bg-dark);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.achievement-modal-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), #00b894);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.achievement-modal-progress-fill.complete {
+  background: linear-gradient(90deg, #ffd700, #ffb700);
+}
+
+.achievement-modal-progress-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.achievement-modal-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+/* Rank Progress Bar */
+.rank-progress-bar {
+  height: 4px;
+  background: var(--bg-card);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+.rank-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), #00b894);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Feed Item Types */
+.feed-item-achievement {
+  border-left: 3px solid #ffd700;
+}
+
+.feed-item-rank {
+  border-left: 3px solid var(--accent-primary);
+}
+
+.feed-achievement {
+  color: var(--text-primary);
+}
+
+.feed-achievement-name {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.feed-rank {
+  color: var(--text-primary);
+}
+
+.feed-rank-name {
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* Load More Button */
+.load-more-btn {
+  width: 100%;
+  padding: 1rem;
+  margin-top: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.load-more-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-primary);
+}
+
+/* Install App Prompt */
+.install-prompt {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  padding: 1rem;
+  z-index: 1000;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.install-prompt-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.install-prompt-icon {
+  font-size: 2rem;
+}
+
+.install-prompt-text {
+  flex: 1;
+}
+
+.install-prompt-text strong {
+  display: block;
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.install-prompt-text p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.install-prompt-ios {
+  text-align: center;
+}
+
+.install-prompt-ios p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.ios-share-icon {
+  display: inline-block;
+  padding: 0.15rem 0.35rem;
+  background: var(--bg-dark);
+  border-radius: 4px;
+}
+
+.install-prompt-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.install-prompt-btn {
+  flex: 1;
+  padding: 0.85rem;
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  border: none;
+  border-radius: 10px;
+  color: var(--bg-dark);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.install-prompt-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 212, 170, 0.3);
+}
+
+.install-prompt-dismiss {
+  padding: 0.85rem 1.25rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.install-prompt-dismiss:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+/* Add padding to footer when install prompt is visible */
+.app:has(.install-prompt) .footer {
+  padding-bottom: 8rem;
+}
+
 /* Error Screen */
 .error-screen {
   display: flex;

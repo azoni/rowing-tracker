@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
 import html2canvas from 'html2canvas';
+import confetti from 'canvas-confetti';
 import { db, auth, googleProvider } from './firebase';
 import { 
   collection, 
@@ -24,6 +25,67 @@ const MIN_METERS = 100;
 const MAX_METERS = 30000;
 const COOLDOWN_MINUTES = 15;
 
+// Rank titles based on total meters
+const RANKS = [
+  { minMeters: 0, title: 'Landlubber', emoji: '🚶' },
+  { minMeters: 5000, title: 'Novice Rower', emoji: '🚣' },
+  { minMeters: 15000, title: 'River Runner', emoji: '🏊' },
+  { minMeters: 30000, title: 'Lake Crosser', emoji: '⛵' },
+  { minMeters: 50000, title: 'Ocean Voyager', emoji: '🚤' },
+  { minMeters: 100000, title: 'Iron Oars', emoji: '💪' },
+  { minMeters: 200000, title: 'Sea Champion', emoji: '🏆' },
+  { minMeters: 500000, title: 'Row Legend', emoji: '👑' },
+  { minMeters: 1000000, title: 'Mythical Rower', emoji: '🔱' },
+];
+
+// Achievement definitions
+const ACHIEVEMENTS = [
+  // Session count achievements
+  { id: 'first_row', name: 'First Strokes', desc: 'Log your first row', emoji: '🎉', check: (u, e) => e.length >= 1 },
+  { id: 'ten_sessions', name: 'Getting Serious', desc: 'Complete 10 sessions', emoji: '💪', check: (u, e) => e.length >= 10 },
+  { id: 'fifty_sessions', name: 'Dedicated Rower', desc: 'Complete 50 sessions', emoji: '🏅', check: (u, e) => e.length >= 50 },
+  { id: 'hundred_sessions', name: 'Centurion', desc: 'Complete 100 sessions', emoji: '💯', check: (u, e) => e.length >= 100 },
+  
+  // Distance achievements
+  { id: 'first_5k', name: '5K Club', desc: 'Row 5,000 meters total', emoji: '🎯', check: (u) => u.totalMeters >= 5000 },
+  { id: 'first_10k', name: '10K Crusher', desc: 'Row 10,000 meters total', emoji: '🔥', check: (u) => u.totalMeters >= 10000 },
+  { id: 'marathon', name: 'Marathon Rower', desc: 'Row a marathon (42,195m)', emoji: '🏃', check: (u) => u.totalMeters >= 42195 },
+  { id: 'hundred_k', name: '100K Legend', desc: 'Row 100,000 meters total', emoji: '⭐', check: (u) => u.totalMeters >= 100000 },
+  
+  // Single session achievements
+  { id: 'big_session', name: 'Power Hour', desc: 'Row 5,000m in one session', emoji: '⚡', check: (u, e) => e.some(x => x.meters >= 5000) },
+  { id: 'huge_session', name: 'Beast Mode', desc: 'Row 10,000m in one session', emoji: '🦁', check: (u, e) => e.some(x => x.meters >= 10000) },
+  
+  // Streak achievements
+  { id: 'streak_3', name: 'Hat Trick', desc: 'Maintain a 3-day streak', emoji: '🎩', check: (u, e, s) => s >= 3 },
+  { id: 'streak_7', name: 'Week Warrior', desc: 'Maintain a 7-day streak', emoji: '📅', check: (u, e, s) => s >= 7 },
+  { id: 'streak_14', name: 'Fortnight Force', desc: 'Maintain a 14-day streak', emoji: '🔥', check: (u, e, s) => s >= 14 },
+  { id: 'streak_30', name: 'Monthly Master', desc: 'Maintain a 30-day streak', emoji: '🌟', check: (u, e, s) => s >= 30 },
+  
+  // Fun achievements
+  { id: 'early_bird', name: 'Early Bird', desc: 'Log a row before 7am', emoji: '🌅', check: (u, e) => e.some(x => new Date(x.date).getHours() < 7) },
+  { id: 'night_owl', name: 'Night Owl', desc: 'Log a row after 10pm', emoji: '🦉', check: (u, e) => e.some(x => new Date(x.date).getHours() >= 22) },
+  { id: 'consistent', name: 'Consistency King', desc: 'Row 4+ days in a week', emoji: '👑', check: (u, e) => {
+    const lastWeek = e.filter(x => Date.now() - new Date(x.date).getTime() < 7 * 24 * 60 * 60 * 1000);
+    const uniqueDays = new Set(lastWeek.map(x => new Date(x.date).toDateString()));
+    return uniqueDays.size >= 4;
+  }},
+];
+
+// Motivational quotes
+const QUOTES = [
+  { text: "The only bad workout is the one that didn't happen.", author: "Unknown" },
+  { text: "Row by row, we go far.", author: "Row Crew" },
+  { text: "Your body can stand almost anything. It's your mind you have to convince.", author: "Unknown" },
+  { text: "The pain you feel today will be the strength you feel tomorrow.", author: "Unknown" },
+  { text: "Champions are made when no one is watching.", author: "Unknown" },
+  { text: "Every stroke counts. Every meter matters.", author: "Row Crew" },
+  { text: "Sweat is just fat crying.", author: "Unknown" },
+  { text: "The harder you work, the luckier you get.", author: "Gary Player" },
+  { text: "Don't stop when you're tired. Stop when you're done.", author: "Unknown" },
+  { text: "Success is the sum of small efforts repeated daily.", author: "Robert Collier" },
+];
+
 // Milestone definitions
 const MILESTONES = [
   { meters: 1000, label: '1 km', comparison: 'Length of 10 football fields!' },
@@ -44,6 +106,21 @@ const MILESTONES = [
 
 // Changelog entries
 const CHANGELOG = [
+  {
+    version: '2.0.0',
+    date: '2025-11-28',
+    changes: [
+      '🎮 Major gamification update!',
+      '🏅 16 achievements to unlock (First Strokes, Beast Mode, Week Warrior, etc.)',
+      '🎖️ Rank titles: Landlubber → Novice Rower → Iron Oars → Row Legend',
+      '📣 Activity Feed - see when friends log rows in real-time',
+      '🏆 Personal Records - celebrate when you beat your best',
+      '🎉 Confetti celebration on every row logged',
+      '💪 Weekly stats with % change from last week',
+      '💬 Daily motivational quotes',
+      '📊 Your rank progress shown on Log tab',
+    ]
+  },
   {
     version: '1.8.0',
     date: '2025-11-28',
@@ -183,11 +260,46 @@ function App() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const [showBustedModal, setShowBustedModal] = useState(false);
+  const [testTapCount, setTestTapCount] = useState(0);
+  const [showAchievementUnlock, setShowAchievementUnlock] = useState(null);
+  const [showPRModal, setShowPRModal] = useState(null);
+  const [dailyQuote, setDailyQuote] = useState(null);
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
   const canvasRef = useRef(null);
   const shareCardRef = useRef(null);
+
+  // Secret test mode: Press "chinh" to trigger busted modal
+  useEffect(() => {
+    let buffer = '';
+    const handleKeyPress = (e) => {
+      buffer += e.key.toLowerCase();
+      if (buffer.includes('chinh')) {
+        setShowBustedModal(true);
+        buffer = '';
+      }
+      // Clear buffer after 2 seconds of no typing
+      setTimeout(() => { buffer = ''; }, 2000);
+    };
+    
+    window.addEventListener('keypress', handleKeyPress);
+    return () => window.removeEventListener('keypress', handleKeyPress);
+  }, []);
+
+  // Secret test mode: Tap footer 5 times quickly (for mobile)
+  const handleFooterTap = () => {
+    setTestTapCount(prev => {
+      const newCount = prev + 1;
+      if (newCount >= 5) {
+        setShowBustedModal(true);
+        return 0;
+      }
+      // Reset after 2 seconds
+      setTimeout(() => setTestTapCount(0), 2000);
+      return newCount;
+    });
+  };
 
   // Listen for auth state changes
   useEffect(() => {
@@ -575,8 +687,22 @@ function App() {
         lastRowDate: new Date().toISOString(),
       }, { merge: true });
 
+      // Check for Personal Record before adding to entries list
+      const isPR = checkForPR(currentUser.uid, meters);
+      
       // Store for share card
       setLastSessionMeters(meters);
+      
+      // Fire confetti!
+      fireConfetti();
+      
+      // Show PR celebration if applicable
+      if (isPR) {
+        setTimeout(() => {
+          firePRConfetti();
+          setShowPRModal(meters);
+        }, 500);
+      }
       
       return true;
     } catch (error) {
@@ -789,6 +915,17 @@ function App() {
     return meters.toString();
   };
 
+  // Format time ago
+  const formatTimeAgo = (date) => {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   // Get leaderboard
   const getLeaderboard = () => {
     return Object.values(users)
@@ -797,9 +934,145 @@ function App() {
         streak: calculateStreak(user.id),
         weeklyAvg: calculateWeeklyAverage(user.id),
         avgPerUpload: user.uploadCount > 0 ? Math.round(user.totalMeters / user.uploadCount) : 0,
+        rank: getUserRank(user.totalMeters),
       }))
       .sort((a, b) => b.totalMeters - a.totalMeters);
   };
+
+  // Get user's rank based on total meters
+  const getUserRank = (totalMeters) => {
+    for (let i = RANKS.length - 1; i >= 0; i--) {
+      if (totalMeters >= RANKS[i].minMeters) {
+        return RANKS[i];
+      }
+    }
+    return RANKS[0];
+  };
+
+  // Get next rank
+  const getNextRank = (totalMeters) => {
+    for (let i = 0; i < RANKS.length; i++) {
+      if (totalMeters < RANKS[i].minMeters) {
+        return RANKS[i];
+      }
+    }
+    return null;
+  };
+
+  // Get user's achievements
+  const getUserAchievements = (userId) => {
+    const user = users[userId];
+    if (!user) return [];
+    
+    const userEntries = entries.filter(e => e.userId === userId);
+    const streak = calculateStreak(userId);
+    
+    return ACHIEVEMENTS.filter(a => a.check(user, userEntries, streak));
+  };
+
+  // Get user's personal record
+  const getPersonalRecord = (userId) => {
+    const userEntries = entries.filter(e => e.userId === userId);
+    if (userEntries.length === 0) return 0;
+    return Math.max(...userEntries.map(e => e.meters));
+  };
+
+  // Check if this session is a PR
+  const checkForPR = (userId, newMeters) => {
+    const currentPR = getPersonalRecord(userId);
+    return newMeters > currentPR && currentPR > 0;
+  };
+
+  // Get activity feed (last 10 entries across all users)
+  const getActivityFeed = () => {
+    return entries
+      .slice(0, 10)
+      .map(entry => ({
+        ...entry,
+        user: users[entry.userId],
+      }))
+      .filter(entry => entry.user);
+  };
+
+  // Get weekly stats for current user
+  const getWeeklyStats = (userId) => {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    
+    const userEntries = entries.filter(e => e.userId === userId);
+    
+    const thisWeek = userEntries.filter(e => new Date(e.date) >= weekAgo);
+    const lastWeek = userEntries.filter(e => new Date(e.date) >= twoWeeksAgo && new Date(e.date) < weekAgo);
+    
+    const thisWeekMeters = thisWeek.reduce((sum, e) => sum + e.meters, 0);
+    const lastWeekMeters = lastWeek.reduce((sum, e) => sum + e.meters, 0);
+    
+    const percentChange = lastWeekMeters > 0 
+      ? Math.round(((thisWeekMeters - lastWeekMeters) / lastWeekMeters) * 100)
+      : thisWeekMeters > 0 ? 100 : 0;
+    
+    return {
+      meters: thisWeekMeters,
+      sessions: thisWeek.length,
+      percentChange,
+      isUp: percentChange >= 0,
+    };
+  };
+
+  // Fire confetti celebration
+  const fireConfetti = () => {
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.7 },
+        colors: ['#00d4aa', '#00ffcc', '#ffd700', '#ff6b35'],
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.7 },
+        colors: ['#00d4aa', '#00ffcc', '#ffd700', '#ff6b35'],
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+    frame();
+  };
+
+  // Big confetti for PR
+  const firePRConfetti = () => {
+    confetti({
+      particleCount: 150,
+      spread: 100,
+      origin: { y: 0.6 },
+      colors: ['#ffd700', '#ffec8b', '#fff8dc', '#00d4aa'],
+    });
+  };
+
+  // Set daily quote on load
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const storedDate = localStorage.getItem('quoteDate');
+    const storedQuote = localStorage.getItem('dailyQuote');
+    
+    if (storedDate === today && storedQuote) {
+      setDailyQuote(JSON.parse(storedQuote));
+    } else {
+      const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+      setDailyQuote(quote);
+      localStorage.setItem('quoteDate', today);
+      localStorage.setItem('dailyQuote', JSON.stringify(quote));
+    }
+  }, []);
 
   const milestoneProgress = getCurrentMilestone();
   const totalMeters = getTotalMeters();
@@ -923,14 +1196,14 @@ function App() {
         <button className={`tab ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>
           📸 Log
         </button>
+        <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
+          📣 Feed
+        </button>
         <button className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
           🏆 Board
         </button>
         <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
           📊 Stats
-        </button>
-        <button className={`tab ${activeTab === 'updates' ? 'active' : ''}`} onClick={() => setActiveTab('updates')}>
-          🆕 Updates
         </button>
       </nav>
 
@@ -938,10 +1211,40 @@ function App() {
       <main className="main-content">
         {activeTab === 'upload' && (
           <section className="upload-section">
+            {/* Motivational Quote */}
+            {dailyQuote && (
+              <div className="daily-quote">
+                <p className="quote-text">"{dailyQuote.text}"</p>
+                <p className="quote-author">— {dailyQuote.author}</p>
+              </div>
+            )}
+
+            {/* User Rank & Weekly Stats */}
             {userProfile && (
-              <div className="current-user-card">
-                <span className="current-user-label">Logging as:</span>
-                <span className="current-user-name">{userProfile.name}</span>
+              <div className="user-status-card">
+                <div className="user-rank-display">
+                  <span className="rank-emoji">{getUserRank(userProfile.totalMeters).emoji}</span>
+                  <div className="rank-info">
+                    <span className="rank-title">{getUserRank(userProfile.totalMeters).title}</span>
+                    {getNextRank(userProfile.totalMeters) && (
+                      <span className="rank-next">
+                        {formatMeters(getNextRank(userProfile.totalMeters).minMeters - userProfile.totalMeters)}m to {getNextRank(userProfile.totalMeters).title}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="weekly-stats-mini">
+                  <div className="weekly-stat">
+                    <span className="weekly-stat-value">{formatMeters(getWeeklyStats(currentUser?.uid).meters)}</span>
+                    <span className="weekly-stat-label">this week</span>
+                  </div>
+                  <div className="weekly-stat">
+                    <span className={`weekly-stat-change ${getWeeklyStats(currentUser?.uid).isUp ? 'up' : 'down'}`}>
+                      {getWeeklyStats(currentUser?.uid).isUp ? '↑' : '↓'} {Math.abs(getWeeklyStats(currentUser?.uid).percentChange)}%
+                    </span>
+                    <span className="weekly-stat-label">vs last week</span>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -974,6 +1277,85 @@ function App() {
                 <p>⏱️ {COOLDOWN_MINUTES} minute cooldown between entries</p>
               </div>
             </div>
+
+            {/* Personal Record Display */}
+            {userProfile && getPersonalRecord(currentUser?.uid) > 0 && (
+              <div className="pr-display">
+                <span className="pr-label">🏆 Personal Record</span>
+                <span className="pr-value">{getPersonalRecord(currentUser?.uid).toLocaleString()}m</span>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Activity Feed Tab */}
+        {activeTab === 'feed' && (
+          <section className="feed-section">
+            <h2>Activity Feed</h2>
+            {getActivityFeed().length === 0 ? (
+              <div className="empty-state">
+                <p>No activity yet!</p>
+                <p>Be the first to log a row.</p>
+              </div>
+            ) : (
+              <div className="activity-feed">
+                {getActivityFeed().map((entry) => (
+                  <div key={entry.id} className={`feed-item ${entry.userId === currentUser?.uid ? 'is-you' : ''}`}>
+                    <div className="feed-avatar">
+                      {entry.user?.photoURL ? (
+                        <img src={entry.user.photoURL} alt="" />
+                      ) : (
+                        <div className="feed-avatar-placeholder">
+                          {entry.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                    </div>
+                    <div className="feed-content">
+                      <div className="feed-header">
+                        <span className="feed-name">{entry.user?.name}</span>
+                        <span className="feed-time">
+                          {formatTimeAgo(new Date(entry.date))}
+                        </span>
+                      </div>
+                      <div className="feed-action">
+                        rowed <span className="feed-meters">{entry.meters.toLocaleString()}m</span> 🚣
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Achievements Section */}
+            {userProfile && (
+              <div className="achievements-section">
+                <h3>🏅 Your Achievements</h3>
+                <div className="achievements-grid">
+                  {ACHIEVEMENTS.map((achievement) => {
+                    const unlocked = getUserAchievements(currentUser?.uid).some(a => a.id === achievement.id);
+                    return (
+                      <div 
+                        key={achievement.id} 
+                        className={`achievement-badge ${unlocked ? 'unlocked' : 'locked'}`}
+                        title={achievement.desc}
+                      >
+                        <span className="achievement-emoji">{achievement.emoji}</span>
+                        <span className="achievement-name">{achievement.name}</span>
+                        {unlocked && <span className="achievement-check">✓</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="achievements-count">
+                  {getUserAchievements(currentUser?.uid).length} / {ACHIEVEMENTS.length} unlocked
+                </p>
+              </div>
+            )}
+
+            {/* Link to Updates */}
+            <button className="updates-link-btn" onClick={() => setActiveTab('updates')}>
+              🆕 View App Updates
+            </button>
           </section>
         )}
 
@@ -1005,6 +1387,9 @@ function App() {
                       <span className="user-name">
                         {user.name}
                         {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
+                      </span>
+                      <span className="user-rank-label">
+                        {user.rank?.emoji} {user.rank?.title}
                       </span>
                       <span className="user-streak">{user.streak > 0 && `🔥 ${user.streak} day streak`}</span>
                     </div>
@@ -1264,6 +1649,25 @@ function App() {
         </div>
       )}
 
+      {/* Personal Record Modal */}
+      {showPRModal && (
+        <div className="modal-overlay pr-overlay" onClick={() => setShowPRModal(null)}>
+          <div className="pr-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pr-fireworks">🎆</div>
+            <h2 className="pr-title">NEW PR! 🏆</h2>
+            <p className="pr-meters">{showPRModal?.toLocaleString()}m</p>
+            <p className="pr-subtitle">Personal Record Smashed!</p>
+            <div className="pr-message">
+              <p>You just beat your previous best!</p>
+              <p>Keep pushing those limits! 💪</p>
+            </div>
+            <button className="pr-btn" onClick={() => setShowPRModal(null)}>
+              Let's Go! 🚀
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Busted Modal - Nice try Chinh! */}
       {showBustedModal && (
         <div className="modal-overlay busted-overlay" onClick={() => setShowBustedModal(false)}>
@@ -1285,7 +1689,7 @@ function App() {
         </div>
       )}
 
-      <footer className="footer">
+      <footer className="footer" onClick={handleFooterTap}>
         <p>🌍 Goal: Row {formatMeters(WORLD_CIRCUMFERENCE)}m around the world!</p>
       </footer>
     </div>

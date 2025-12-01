@@ -1641,6 +1641,401 @@ input[type="number"] {
   box-shadow: 0 5px 20px rgba(255, 68, 68, 0.5);
 }
 
+/* Daily Quote */
+.daily-quote {
+  background: linear-gradient(135deg, rgba(0, 212, 170, 0.1) 0%, rgba(0, 180, 148, 0.05) 100%);
+  border: 1px solid rgba(0, 212, 170, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.quote-text {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-style: italic;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+.quote-author {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+/* User Status Card */
+.user-status-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-rank-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rank-emoji {
+  font-size: 2rem;
+}
+
+.rank-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.rank-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  color: var(--accent-primary);
+  letter-spacing: 0.05em;
+}
+
+.rank-next {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.weekly-stats-mini {
+  display: flex;
+  gap: 1rem;
+  text-align: center;
+}
+
+.weekly-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.weekly-stat-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.weekly-stat-change {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+}
+
+.weekly-stat-change.up {
+  color: #10b981;
+}
+
+.weekly-stat-change.down {
+  color: #ef4444;
+}
+
+.weekly-stat-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* PR Display */
+.pr-display {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.05) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pr-label {
+  color: #ffd700;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.pr-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  color: #ffd700;
+}
+
+/* Activity Feed */
+.feed-section h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.75rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.feed-item {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 0.875rem;
+  border: 1px solid var(--border-color);
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.feed-item.is-you {
+  border-color: var(--accent-primary);
+  background: rgba(0, 212, 170, 0.05);
+}
+
+.feed-avatar img,
+.feed-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.feed-avatar-placeholder {
+  background: linear-gradient(135deg, var(--accent-primary), #00b894);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--bg-dark);
+}
+
+.feed-content {
+  flex: 1;
+}
+
+.feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.feed-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.feed-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.feed-action {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.feed-meters {
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+/* Achievements Section */
+.achievements-section {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.achievements-section h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: 0.05em;
+  margin: 0 0 1rem 0;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.achievement-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.25rem;
+  border-radius: 8px;
+  text-align: center;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.achievement-badge.unlocked {
+  background: rgba(0, 212, 170, 0.1);
+  border: 1px solid rgba(0, 212, 170, 0.3);
+}
+
+.achievement-badge.locked {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.achievement-emoji {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.achievement-name {
+  font-size: 0.55rem;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.achievement-check {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.achievements-count {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+
+/* Updates Link Button */
+.updates-link-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.updates-link-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+/* User Rank Label in Leaderboard */
+.user-rank-label {
+  font-size: 0.7rem;
+  color: var(--accent-primary);
+  display: block;
+  margin-top: 0.1rem;
+}
+
+/* PR Modal */
+.pr-overlay {
+  background: rgba(255, 215, 0, 0.1) !important;
+}
+
+.pr-modal {
+  background: linear-gradient(145deg, #1a1a0a 0%, #2d2d0a 100%);
+  border: 2px solid #ffd700;
+  border-radius: 20px;
+  padding: 2rem 1.5rem;
+  max-width: 320px;
+  width: 90%;
+  text-align: center;
+  animation: prBounce 0.5s ease;
+  box-shadow: 0 0 60px rgba(255, 215, 0, 0.4),
+              0 0 100px rgba(255, 215, 0, 0.2);
+}
+
+@keyframes prBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.pr-fireworks {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  animation: prPulse 0.5s ease infinite alternate;
+}
+
+@keyframes prPulse {
+  from { transform: scale(1) rotate(-5deg); }
+  to { transform: scale(1.1) rotate(5deg); }
+}
+
+.pr-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.5rem;
+  color: #ffd700;
+  letter-spacing: 0.1em;
+  margin: 0;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+.pr-meters {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3rem;
+  color: #fff;
+  margin: 0.5rem 0;
+  text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+.pr-subtitle {
+  color: #ffd700;
+  font-size: 1.1rem;
+  margin: 0 0 1rem 0;
+}
+
+.pr-message {
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.pr-message p {
+  color: #fffacd;
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.pr-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #ffd700, #ffb300);
+  border: none;
+  border-radius: 12px;
+  color: #1a1a0a;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.pr-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
+}
+
 /* Error Screen */
 .error-screen {
   display: flex;

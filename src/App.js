@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
 import html2canvas from 'html2canvas';
 import confetti from 'canvas-confetti';
-import { db, auth, googleProvider } from './firebase';
+import { db, auth, googleProvider, storage, functions } from './firebase';
 import { 
   collection, 
   doc, 
@@ -17,12 +17,14 @@ import {
   limit
 } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
 import './App.css';
 
 // Constants
 const WORLD_CIRCUMFERENCE = 40075000;
 const MIN_METERS = 100;
-const MAX_METERS = 30000;
+const MAX_METERS = 50000; // Increased for very long sessions
 const COOLDOWN_MINUTES = 15;
 
 // Rank titles based on total meters
@@ -185,8 +187,21 @@ const MILESTONES = [
 // Changelog entries
 const CHANGELOG = [
   {
+    version: '3.0.0',
+    date: '2025-12-01',
+    changes: [
+      '🛡️ AI-powered image verification using Claude Vision',
+      '📸 Photos now shown in activity feed (click to enlarge)',
+      '✓ Verification badges on all entries',
+      '🔒 Multi-layer anti-cheat: AI + duplicate detection + behavioral analysis',
+      '👮 Admin review panel for manual verification',
+      '🖼️ Images stored securely in Firebase Storage',
+      '📊 Verification confidence scores',
+    ]
+  },
+  {
     version: '2.3.0',
-    date: '2025-11-28',
+    date: '2025-12-01',
     changes: [
       '📱 Install app prompt - add to home screen easily',
       '📊 Achievement progress bars (54/100 style)',
@@ -200,7 +215,7 @@ const CHANGELOG = [
   },
   {
     version: '2.2.0',
-    date: '2025-11-28',
+    date: '2025-12-01',
     changes: [
       '👀 Guest viewing - see everything without signing in',
       '🔍 Search bar in Activity Feed',
@@ -213,7 +228,7 @@ const CHANGELOG = [
   },
   {
     version: '2.1.0',
-    date: '2025-11-28',
+    date: '2025-12-01',
     changes: [
       '🔍 Search bar to find rowers quickly',
       '📊 Enhanced Stats tab with new metrics',
@@ -226,7 +241,7 @@ const CHANGELOG = [
   },
   {
     version: '2.0.0',
-    date: '2025-11-28',
+    date: '2025-12-01',
     changes: [
       '🎮 Major gamification update!',
       '🏅 16 achievements to unlock (First Strokes, Beast Mode, Week Warrior, etc.)',
@@ -241,7 +256,7 @@ const CHANGELOG = [
   },
   {
     version: '1.8.0',
-    date: '2025-11-28',
+    date: '2025-11-30',
     changes: [
       'Added Firestore security rules to prevent tampering',
       'Users can only add entries for themselves',
@@ -392,6 +407,15 @@ function App() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [feedPage, setFeedPage] = useState(1);
   const FEED_PAGE_SIZE = 15;
+  const [verificationStatus, setVerificationStatus] = useState(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [pendingReviews, setPendingReviews] = useState([]);
+  const [adminStats, setAdminStats] = useState(null);
+  const [reviewingEntry, setReviewingEntry] = useState(null);
+  const [adjustedMeters, setAdjustedMeters] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
@@ -497,14 +521,18 @@ function App() {
         const profileSnap = await getDoc(profileRef);
         
         if (profileSnap.exists()) {
-          setUserProfile({ id: user.uid, ...profileSnap.data() });
+          const profileData = profileSnap.data();
+          setUserProfile({ id: user.uid, ...profileData });
+          setIsAdmin(profileData.isAdmin === true);
         } else {
           // New user - show setup modal
           setDisplayName(user.displayName || '');
           setShowSetupModal(true);
+          setIsAdmin(false);
         }
       } else {
         setUserProfile(null);
+        setIsAdmin(false);
       }
       
       setAuthLoading(false);
@@ -939,7 +967,7 @@ function App() {
   };
 
   // Add entry to Firebase
-  const addEntry = async (meters) => {
+  const addEntry = async (meters, imageFile) => {
     if (!currentUser || !userProfile) return false;
 
     try {
@@ -951,17 +979,89 @@ function App() {
       }
 
       const entryId = `${Date.now()}_${currentUser.uid}`;
+      let imageUrl = null;
+      let imageBase64 = null;
+      let verification = { status: 'unverified' };
+
+      // Process image if provided
+      if (imageFile) {
+        setProcessingStatus('Processing image...');
+        
+        // Extract base64 from data URL
+        if (typeof imageFile === 'string' && imageFile.startsWith('data:')) {
+          // Remove data URL prefix to get pure base64
+          imageBase64 = imageFile.split(',')[1];
+        }
+        
+        // Verify the image with Cloud Function FIRST
+        if (imageBase64) {
+          setProcessingStatus('Verifying image...');
+          try {
+            const verifyRowEntry = httpsCallable(functions, 'verifyRowEntry');
+            const result = await verifyRowEntry({
+              imageBase64,
+              claimedMeters: meters,
+            });
+            verification = result.data;
+            setVerificationStatus(verification);
+          } catch (verifyError) {
+            console.error('Verification error:', verifyError);
+            // Continue with unverified status if verification fails
+            verification = { 
+              status: 'pending_review', 
+              reason: 'Verification service unavailable',
+              confidence: 0 
+            };
+          }
+        }
+
+        // If rejected without review option, stop here
+        if (verification.status === 'rejected' && !verification.requiresReview) {
+          setValidationError(verification.reason || 'Entry rejected');
+          return false;
+        }
+
+        // Upload to Storage for feed display
+        setProcessingStatus('Uploading image...');
+        try {
+          const imagePath = `row-images/${currentUser.uid}/${entryId}.jpg`;
+          const imageRef = ref(storage, imagePath);
+          
+          // Convert data URL to blob for upload
+          const response = await fetch(imageFile);
+          const imageBlob = await response.blob();
+          
+          await uploadBytes(imageRef, imageBlob);
+          imageUrl = await getDownloadURL(imageRef);
+        } catch (uploadError) {
+          console.error('Image upload error:', uploadError);
+          // Continue without image URL if upload fails
+        }
+      }
+
+      setProcessingStatus('Saving entry...');
       const entryRef = doc(db, 'entries', entryId);
 
       await setDoc(entryRef, {
         userId: currentUser.uid,
-        meters,
+        meters: verification.suggestedMeters || meters,
         date: new Date().toISOString(),
         createdAt: serverTimestamp(),
+        imageUrl,
+        verificationStatus: verification.status,
+        verificationDetails: {
+          confidence: verification.confidence,
+          extractedMeters: verification.extractedMeters,
+          displayType: verification.displayType,
+          reason: verification.reason,
+          flags: verification.flags,
+          imageHash: verification.imageHash,
+        },
       });
 
       const userRef = doc(db, 'users', currentUser.uid);
-      const newTotalMeters = (userProfile.totalMeters || 0) + meters;
+      const finalMeters = verification.suggestedMeters || meters;
+      const newTotalMeters = (userProfile.totalMeters || 0) + finalMeters;
       await setDoc(userRef, {
         ...userProfile,
         totalMeters: newTotalMeters,
@@ -970,19 +1070,21 @@ function App() {
       }, { merge: true });
 
       // Check for Personal Record before adding to entries list
-      const isPR = checkForPR(currentUser.uid, meters);
+      const isPR = checkForPR(currentUser.uid, finalMeters);
       
       // Store for share card
-      setLastSessionMeters(meters);
+      setLastSessionMeters(finalMeters);
       
-      // Fire confetti!
-      fireConfetti();
+      // Fire confetti only if verified
+      if (verification.status === 'verified') {
+        fireConfetti();
+      }
       
       // Show PR celebration if applicable
-      if (isPR) {
+      if (isPR && verification.status === 'verified') {
         setTimeout(() => {
           firePRConfetti();
-          setShowPRModal(meters);
+          setShowPRModal(finalMeters);
         }, 500);
       }
 
@@ -1018,17 +1120,61 @@ function App() {
       return;
     }
 
-    const success = await addEntry(meters);
+    setIsProcessing(true);
+    const success = await addEntry(meters, capturedImage);
+    setIsProcessing(false);
     
     if (success) {
       setShowConfirmModal(false);
       setDetectedMeters('');
       setEditableMeters('');
       setValidationError('');
+      setVerificationStatus(null);
       // Show share modal (keep capturedImage for share card)
       setShareImageUrl(capturedImage);
       setShowShareModal(true);
       setLinkCopied(false);
+    }
+  };
+
+  // Admin: Load pending reviews
+  const loadPendingReviews = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      const getPendingReviews = httpsCallable(functions, 'getPendingReviews');
+      const result = await getPendingReviews();
+      setPendingReviews(result.data.entries || []);
+      
+      const getVerificationStats = httpsCallable(functions, 'getVerificationStats');
+      const statsResult = await getVerificationStats();
+      setAdminStats(statsResult.data);
+    } catch (error) {
+      console.error('Error loading pending reviews:', error);
+    }
+  };
+
+  // Admin: Approve or reject entry
+  const handleReviewEntry = async (entryId, action) => {
+    if (!isAdmin) return;
+    
+    try {
+      const reviewEntry = httpsCallable(functions, 'reviewEntry');
+      await reviewEntry({
+        entryId,
+        action,
+        adjustedMeters: adjustedMeters ? parseInt(adjustedMeters, 10) : null,
+        reviewNote,
+      });
+      
+      // Refresh pending reviews
+      await loadPendingReviews();
+      setReviewingEntry(null);
+      setAdjustedMeters('');
+      setReviewNote('');
+    } catch (error) {
+      console.error('Error reviewing entry:', error);
+      alert('Failed to process review');
     }
   };
 
@@ -1604,6 +1750,15 @@ function App() {
           <div className="user-menu">
             {currentUser && userProfile ? (
               <>
+                {isAdmin && (
+                  <button 
+                    className="admin-btn-header" 
+                    onClick={() => { setShowAdminPanel(true); loadPendingReviews(); }}
+                    title="Admin Panel"
+                  >
+                    🛡️
+                  </button>
+                )}
                 {userProfile.photoURL && (
                   <img src={userProfile.photoURL} alt="" className="user-avatar" onClick={() => setShowSettingsModal(true)} />
                 )}
@@ -1810,7 +1965,18 @@ function App() {
                           </div>
                           <div className="feed-action">
                             {item.type === 'row' && (
-                              <>rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span> 🚣</>
+                              <>
+                                rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span>
+                                {item.verificationStatus === 'verified' && (
+                                  <span className="verification-badge verified" title="Verified">✓</span>
+                                )}
+                                {item.verificationStatus === 'pending_review' && (
+                                  <span className="verification-badge pending" title="Pending Review">⏳</span>
+                                )}
+                                {!item.verificationStatus && (
+                                  <span className="verification-badge unverified" title="Unverified">?</span>
+                                )}
+                              </>
                             )}
                             {item.type === 'achievement' && (
                               <span className="feed-achievement">
@@ -1824,6 +1990,15 @@ function App() {
                             )}
                           </div>
                         </div>
+                        {/* Photo thumbnail for row entries */}
+                        {item.type === 'row' && item.imageUrl && (
+                          <div 
+                            className="feed-photo-thumb"
+                            onClick={() => setShowPhotoModal({ url: item.imageUrl, entry: item })}
+                          >
+                            <img src={item.imageUrl} alt="Row evidence" />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -2469,6 +2644,161 @@ function App() {
             <button className="achievement-modal-close-btn" onClick={() => setShowAchievementModal(null)}>
               Got it!
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Enlargement Modal */}
+      {showPhotoModal && (
+        <div className="modal-overlay" onClick={() => setShowPhotoModal(null)}>
+          <div className="modal photo-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowPhotoModal(null)}>✕</button>
+            
+            <div className="photo-modal-content">
+              <img src={showPhotoModal.url} alt="Row evidence" className="photo-modal-image" />
+              
+              <div className="photo-modal-details">
+                <p><strong>{showPhotoModal.entry?.user?.name}</strong></p>
+                <p>{showPhotoModal.entry?.meters?.toLocaleString()}m</p>
+                <p className="photo-modal-date">
+                  {new Date(showPhotoModal.entry?.date).toLocaleString()}
+                </p>
+                
+                {showPhotoModal.entry?.verificationDetails && (
+                  <div className="photo-modal-verification">
+                    <p>
+                      <span className={`verification-status-badge ${showPhotoModal.entry.verificationStatus}`}>
+                        {showPhotoModal.entry.verificationStatus === 'verified' ? '✓ Verified' : 
+                         showPhotoModal.entry.verificationStatus === 'pending_review' ? '⏳ Pending Review' : 
+                         '? Unverified'}
+                      </span>
+                    </p>
+                    {showPhotoModal.entry.verificationDetails.displayType && (
+                      <p className="photo-modal-detail">Machine: {showPhotoModal.entry.verificationDetails.displayType}</p>
+                    )}
+                    {showPhotoModal.entry.verificationDetails.confidence > 0 && (
+                      <p className="photo-modal-detail">Confidence: {showPhotoModal.entry.verificationDetails.confidence}%</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Panel Modal */}
+      {showAdminPanel && isAdmin && (
+        <div className="modal-overlay" onClick={() => setShowAdminPanel(false)}>
+          <div className="modal admin-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowAdminPanel(false)}>✕</button>
+            
+            <h2>🛡️ Admin Panel</h2>
+            
+            {/* Stats */}
+            {adminStats && (
+              <div className="admin-stats">
+                <div className="admin-stat">
+                  <span className="admin-stat-value">{adminStats.verified}</span>
+                  <span className="admin-stat-label">Verified</span>
+                </div>
+                <div className="admin-stat pending">
+                  <span className="admin-stat-value">{adminStats.pending}</span>
+                  <span className="admin-stat-label">Pending</span>
+                </div>
+                <div className="admin-stat rejected">
+                  <span className="admin-stat-value">{adminStats.rejected}</span>
+                  <span className="admin-stat-label">Rejected</span>
+                </div>
+              </div>
+            )}
+            
+            <button className="admin-refresh-btn" onClick={loadPendingReviews}>
+              🔄 Refresh
+            </button>
+            
+            <h3>Pending Reviews ({pendingReviews.length})</h3>
+            
+            {pendingReviews.length === 0 ? (
+              <p className="admin-empty">No entries pending review 🎉</p>
+            ) : (
+              <div className="admin-review-list">
+                {pendingReviews.map((entry) => (
+                  <div key={entry.id} className="admin-review-item">
+                    <div className="admin-review-header">
+                      <span className="admin-review-user">{entry.userName}</span>
+                      <span className="admin-review-meters">{entry.meters?.toLocaleString()}m</span>
+                    </div>
+                    
+                    {entry.imageUrl && (
+                      <img 
+                        src={entry.imageUrl} 
+                        alt="Evidence" 
+                        className="admin-review-image"
+                        onClick={() => setShowPhotoModal({ url: entry.imageUrl, entry })}
+                      />
+                    )}
+                    
+                    <div className="admin-review-details">
+                      <p><strong>Reason:</strong> {entry.verificationDetails?.reason}</p>
+                      {entry.verificationDetails?.extractedMeters && (
+                        <p><strong>AI Saw:</strong> {entry.verificationDetails.extractedMeters}m</p>
+                      )}
+                      {entry.verificationDetails?.flags?.length > 0 && (
+                        <p><strong>Flags:</strong> {entry.verificationDetails.flags.join(', ')}</p>
+                      )}
+                      <p><strong>Date:</strong> {new Date(entry.date).toLocaleString()}</p>
+                    </div>
+                    
+                    {reviewingEntry === entry.id ? (
+                      <div className="admin-review-actions-expanded">
+                        <input
+                          type="number"
+                          placeholder="Adjusted meters (optional)"
+                          value={adjustedMeters}
+                          onChange={(e) => setAdjustedMeters(e.target.value)}
+                          className="admin-input"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Review note (optional)"
+                          value={reviewNote}
+                          onChange={(e) => setReviewNote(e.target.value)}
+                          className="admin-input"
+                        />
+                        <div className="admin-review-buttons">
+                          <button 
+                            className="admin-btn approve"
+                            onClick={() => handleReviewEntry(entry.id, 'approve')}
+                          >
+                            ✓ Approve
+                          </button>
+                          <button 
+                            className="admin-btn reject"
+                            onClick={() => handleReviewEntry(entry.id, 'reject')}
+                          >
+                            ✕ Reject
+                          </button>
+                          <button 
+                            className="admin-btn cancel"
+                            onClick={() => { setReviewingEntry(null); setAdjustedMeters(''); setReviewNote(''); }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button 
+                        className="admin-review-btn"
+                        onClick={() => setReviewingEntry(entry.id)}
+                      >
+                        Review
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -407,7 +407,7 @@ function App() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [feedPage, setFeedPage] = useState(1);
   const FEED_PAGE_SIZE = 15;
-  const [verificationStatus, setVerificationStatus] = useState(null);
+  const [, setVerificationStatus] = useState(null);
   const [showPhotoModal, setShowPhotoModal] = useState(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [pendingReviews, setPendingReviews] = useState([]);

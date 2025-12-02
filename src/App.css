@@ -1111,6 +1111,45 @@ input[type="number"] {
   object-fit: contain;
 }
 
+/* AI Detection Result */
+.ai-detection-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.ai-detection-result.high-confidence {
+  background: rgba(0, 212, 170, 0.1);
+  border: 1px solid rgba(0, 212, 170, 0.3);
+  color: var(--accent-primary);
+}
+
+.ai-detection-result.low-confidence {
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: #ffc107;
+}
+
+.ai-detection-result .ai-icon {
+  font-size: 1.1rem;
+}
+
+.ai-detection-result .ai-machine {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.ai-detection-result .ai-check {
+  font-size: 1rem;
+  margin-left: 0.25rem;
+}
+
 .detected-meters-display {
   display: flex;
   flex-direction: column;

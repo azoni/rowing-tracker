@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
 import html2canvas from 'html2canvas';
 import confetti from 'canvas-confetti';
-import { db, auth, googleProvider, storage, functions } from './firebase';
+import { db, auth, googleProvider, functions } from './firebase';
 import { 
   collection, 
   doc, 
@@ -17,7 +17,6 @@ import {
   limit
 } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import './App.css';
 
@@ -931,7 +930,7 @@ function App() {
     }
   };
 
-  // Handle image upload
+  // Handle image upload - verify with Claude first
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -945,13 +944,51 @@ function App() {
       const imageData = e.target.result;
       setCapturedImage(imageData);
 
-      const meters = await extractMetersFromImage(imageData);
+      // Extract base64 for Claude verification
+      const imageBase64 = imageData.split(',')[1];
+      
+      let claudeResult = null;
+      let detectedMeterValue = null;
+      
+      // Try Claude verification first
+      setProcessingStatus('AI analyzing image...');
+      try {
+        const verifyRowEntry = httpsCallable(functions, 'verifyRowEntry');
+        const result = await verifyRowEntry({
+          imageBase64,
+          claimedMeters: 0, // We don't know yet, Claude will extract
+        });
+        claudeResult = result.data;
+        
+        // If Claude extracted meters successfully
+        if (claudeResult.extractedMeters && claudeResult.confidence >= 60) {
+          detectedMeterValue = claudeResult.extractedMeters;
+          setProcessingStatus(`AI detected: ${detectedMeterValue}m`);
+        } else if (claudeResult.extractedMeters) {
+          // Low confidence but has a reading
+          detectedMeterValue = claudeResult.extractedMeters;
+          setProcessingStatus('AI detected meters (low confidence)');
+        }
+      } catch (verifyError) {
+        console.error('Claude verification error:', verifyError);
+        setProcessingStatus('AI unavailable, using OCR...');
+        
+        // Fallback to Tesseract OCR
+        detectedMeterValue = await extractMetersFromImage(imageData);
+      }
 
       setIsProcessing(false);
       
-      if (meters) {
-        setDetectedMeters(meters.toString());
-        setEditableMeters(meters.toString());
+      // Store Claude result for later use
+      setCapturedImage({ 
+        data: imageData, 
+        base64: imageBase64,
+        claudeResult 
+      });
+      
+      if (detectedMeterValue) {
+        setDetectedMeters(detectedMeterValue.toString());
+        setEditableMeters(detectedMeterValue.toString());
       } else {
         setDetectedMeters('');
         setEditableMeters('');
@@ -967,7 +1004,7 @@ function App() {
   };
 
   // Add entry to Firebase
-  const addEntry = async (meters, imageFile) => {
+  const addEntry = async (meters, imageData) => {
     if (!currentUser || !userProfile) return false;
 
     try {
@@ -979,88 +1016,93 @@ function App() {
       }
 
       const entryId = `${Date.now()}_${currentUser.uid}`;
-      let imageUrl = null;
-      let imageBase64 = null;
       let verification = { status: 'unverified' };
+      let imageHash = null;
 
-      // Process image if provided
-      if (imageFile) {
-        setProcessingStatus('Processing image...');
+      // Use Claude result from image upload if available
+      if (imageData && imageData.claudeResult) {
+        const claudeResult = imageData.claudeResult;
+        imageHash = claudeResult.imageHash;
         
-        // Extract base64 from data URL
-        if (typeof imageFile === 'string' && imageFile.startsWith('data:')) {
-          // Remove data URL prefix to get pure base64
-          imageBase64 = imageFile.split(',')[1];
-        }
-        
-        // Verify the image with Cloud Function FIRST
-        if (imageBase64) {
-          setProcessingStatus('Verifying image...');
-          try {
-            const verifyRowEntry = httpsCallable(functions, 'verifyRowEntry');
-            const result = await verifyRowEntry({
-              imageBase64,
-              claimedMeters: meters,
-            });
-            verification = result.data;
-            setVerificationStatus(verification);
-          } catch (verifyError) {
-            console.error('Verification error:', verifyError);
-            // Continue with unverified status if verification fails
-            verification = { 
-              status: 'pending_review', 
-              reason: 'Verification service unavailable',
-              confidence: 0 
+        // Check if user's meters match what Claude saw
+        if (claudeResult.extractedMeters) {
+          const difference = Math.abs(meters - claudeResult.extractedMeters);
+          const tolerance = claudeResult.extractedMeters * 0.10; // 10% tolerance
+          
+          if (difference <= tolerance && claudeResult.confidence >= 60) {
+            // Meters match and good confidence - verified!
+            verification = {
+              status: 'verified',
+              reason: 'AI verification passed',
+              confidence: claudeResult.confidence,
+              extractedMeters: claudeResult.extractedMeters,
+              displayType: claudeResult.displayType,
+            };
+          } else if (difference > tolerance) {
+            // Meters don't match - needs review
+            verification = {
+              status: 'pending_review',
+              reason: `Entered ${meters}m but AI detected ${claudeResult.extractedMeters}m`,
+              confidence: claudeResult.confidence,
+              extractedMeters: claudeResult.extractedMeters,
+              displayType: claudeResult.displayType,
+            };
+          } else {
+            // Low confidence - needs review
+            verification = {
+              status: 'pending_review',
+              reason: 'Low AI confidence - manual review required',
+              confidence: claudeResult.confidence,
+              extractedMeters: claudeResult.extractedMeters,
+              displayType: claudeResult.displayType,
             };
           }
+        } else if (!claudeResult.isRowingMachineDisplay) {
+          // Not a rowing machine display
+          verification = {
+            status: 'pending_review',
+            reason: 'Image does not appear to be a rowing machine display',
+            confidence: 0,
+          };
+        } else {
+          // Claude couldn't read meters
+          verification = {
+            status: 'pending_review',
+            reason: 'AI could not read meters from display',
+            confidence: claudeResult.confidence || 0,
+            displayType: claudeResult.displayType,
+          };
         }
-
-        // If rejected without review option, stop here
-        if (verification.status === 'rejected' && !verification.requiresReview) {
-          setValidationError(verification.reason || 'Entry rejected');
-          return false;
-        }
-
-        // Upload to Storage for feed display
-        setProcessingStatus('Uploading image...');
-        try {
-          const imagePath = `row-images/${currentUser.uid}/${entryId}.jpg`;
-          const imageRef = ref(storage, imagePath);
-          
-          // Convert data URL to blob for upload
-          const response = await fetch(imageFile);
-          const imageBlob = await response.blob();
-          
-          await uploadBytes(imageRef, imageBlob);
-          imageUrl = await getDownloadURL(imageRef);
-        } catch (uploadError) {
-          console.error('Image upload error:', uploadError);
-          // Continue without image URL if upload fails
-        }
+      } else if (imageData) {
+        // Image provided but no Claude result (fallback/error case)
+        verification = {
+          status: 'pending_review',
+          reason: 'AI verification unavailable',
+          confidence: 0,
+        };
       }
+      // If no image at all, stays as 'unverified'
 
       setProcessingStatus('Saving entry...');
       const entryRef = doc(db, 'entries', entryId);
 
       await setDoc(entryRef, {
         userId: currentUser.uid,
-        meters: verification.suggestedMeters || meters,
+        meters: meters,
         date: new Date().toISOString(),
         createdAt: serverTimestamp(),
-        imageUrl,
         verificationStatus: verification.status,
         verificationDetails: {
-          confidence: verification.confidence,
-          extractedMeters: verification.extractedMeters,
-          displayType: verification.displayType,
-          reason: verification.reason,
-          flags: verification.flags,
-          imageHash: verification.imageHash,
+          confidence: verification.confidence || 0,
+          extractedMeters: verification.extractedMeters || null,
+          displayType: verification.displayType || null,
+          reason: verification.reason || null,
+          imageHash: imageHash,
         },
       });
 
       const userRef = doc(db, 'users', currentUser.uid);
-      const finalMeters = verification.suggestedMeters || meters;
+      const finalMeters = meters;
       const newTotalMeters = (userProfile.totalMeters || 0) + finalMeters;
       await setDoc(userRef, {
         ...userProfile,
@@ -1075,13 +1117,13 @@ function App() {
       // Store for share card
       setLastSessionMeters(finalMeters);
       
-      // Fire confetti only if verified
-      if (verification.status === 'verified') {
+      // Fire confetti for verified or pending_review (entry counts until rejected)
+      if (verification.status === 'verified' || verification.status === 'pending_review') {
         fireConfetti();
       }
       
-      // Show PR celebration if applicable
-      if (isPR && verification.status === 'verified') {
+      // Show PR celebration if applicable (entry counts until rejected)
+      if (isPR && (verification.status === 'verified' || verification.status === 'pending_review')) {
         setTimeout(() => {
           firePRConfetti();
           setShowPRModal(finalMeters);
@@ -1130,8 +1172,8 @@ function App() {
       setEditableMeters('');
       setValidationError('');
       setVerificationStatus(null);
-      // Show share modal (keep capturedImage for share card)
-      setShareImageUrl(capturedImage);
+      // Show share modal (use image data for share card)
+      setShareImageUrl(capturedImage?.data || capturedImage);
       setShowShareModal(true);
       setLinkCopied(false);
     }
@@ -2305,7 +2347,33 @@ function App() {
             
             {capturedImage && (
               <div className="captured-image-preview">
-                <img src={capturedImage} alt="Captured rowing screen" />
+                <img src={capturedImage.data || capturedImage} alt="Captured rowing screen" />
+              </div>
+            )}
+
+            {/* Show AI detection result */}
+            {capturedImage?.claudeResult && (
+              <div className={`ai-detection-result ${capturedImage.claudeResult.confidence >= 60 ? 'high-confidence' : 'low-confidence'}`}>
+                {capturedImage.claudeResult.extractedMeters ? (
+                  <>
+                    <span className="ai-icon">🤖</span>
+                    <span>AI detected: <strong>{capturedImage.claudeResult.extractedMeters.toLocaleString()}m</strong></span>
+                    {capturedImage.claudeResult.displayType && capturedImage.claudeResult.displayType !== 'Unknown' && (
+                      <span className="ai-machine"> ({capturedImage.claudeResult.displayType})</span>
+                    )}
+                    {capturedImage.claudeResult.confidence >= 60 && <span className="ai-check">✓</span>}
+                  </>
+                ) : capturedImage.claudeResult.isRowingMachineDisplay === false ? (
+                  <>
+                    <span className="ai-icon">⚠️</span>
+                    <span>Image doesn't appear to be a rowing machine display</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="ai-icon">❓</span>
+                    <span>AI couldn't read meters - please enter manually</span>
+                  </>
+                )}
               </div>
             )}
 

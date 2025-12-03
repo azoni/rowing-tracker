@@ -149,6 +149,146 @@ const ACHIEVEMENTS = [
       return { current: Math.min(uniqueDays.size, 4), target: 4 };
     }
   },
+  
+  // More distance achievements
+  { 
+    id: 'half_marathon', name: 'Half Marathon', desc: 'Row 21,097m total', emoji: '🏃‍♂️', 
+    check: (u) => u.totalMeters >= 21097,
+    getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 21097), target: 21097 })
+  },
+  { 
+    id: 'quarter_million', name: '250K Club', desc: 'Row 250,000m total', emoji: '🌟', 
+    check: (u) => u.totalMeters >= 250000,
+    getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 250000), target: 250000 })
+  },
+  { 
+    id: 'half_million', name: 'Half Million Hero', desc: 'Row 500,000m total', emoji: '🦸', 
+    check: (u) => u.totalMeters >= 500000,
+    getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 500000), target: 500000 })
+  },
+  { 
+    id: 'million', name: 'Millionaire', desc: 'Row 1,000,000m total', emoji: '💎', 
+    check: (u) => u.totalMeters >= 1000000,
+    getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 1000000), target: 1000000 })
+  },
+  
+  // Fun achievements
+  { 
+    id: 'double_trouble', name: 'Double Trouble', desc: 'Log 2 rows in one day', emoji: '✌️', 
+    check: (u, e) => {
+      const dayGroups = {};
+      e.forEach(x => {
+        const day = new Date(x.date).toDateString();
+        dayGroups[day] = (dayGroups[day] || 0) + 1;
+      });
+      return Object.values(dayGroups).some(count => count >= 2);
+    },
+    getProgress: (u, e) => {
+      const dayGroups = {};
+      e.forEach(x => {
+        const day = new Date(x.date).toDateString();
+        dayGroups[day] = (dayGroups[day] || 0) + 1;
+      });
+      const maxInDay = Math.max(...Object.values(dayGroups), 0);
+      return { current: Math.min(maxInDay, 2), target: 2 };
+    }
+  },
+  { 
+    id: 'perfect_week', name: 'Perfect Week', desc: 'Row every day for 7 consecutive days', emoji: '🌈', 
+    check: (u, e, s) => s >= 7,
+    getProgress: (u, e, s) => ({ current: Math.min(s, 7), target: 7 })
+  },
+  { 
+    id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Row on both Saturday and Sunday', emoji: '🎉', 
+    check: (u, e) => {
+      const saturdays = e.filter(x => new Date(x.date).getDay() === 6);
+      const sundays = e.filter(x => new Date(x.date).getDay() === 0);
+      return saturdays.length > 0 && sundays.length > 0;
+    },
+    getProgress: (u, e) => {
+      const saturdays = e.filter(x => new Date(x.date).getDay() === 6);
+      const sundays = e.filter(x => new Date(x.date).getDay() === 0);
+      const count = (saturdays.length > 0 ? 1 : 0) + (sundays.length > 0 ? 1 : 0);
+      return { current: count, target: 2 };
+    }
+  },
+  { 
+    id: 'veteran', name: 'Veteran Rower', desc: 'Be a member for 30 days', emoji: '🎖️', 
+    check: (u) => {
+      if (!u.createdAt) return false;
+      const joinDate = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
+      const daysSinceJoin = (Date.now() - joinDate.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceJoin >= 30;
+    },
+    getProgress: (u) => {
+      if (!u.createdAt) return { current: 0, target: 30 };
+      const joinDate = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
+      const daysSinceJoin = Math.floor((Date.now() - joinDate.getTime()) / (1000 * 60 * 60 * 24));
+      return { current: Math.min(daysSinceJoin, 30), target: 30 };
+    }
+  },
+  // Weekly Champion achievements (awarded manually/via cloud function)
+  { 
+    id: 'weekly_champion', name: 'Weekly Champion', desc: 'Win the weekly leaderboard', emoji: '👑', 
+    check: (u) => u.weeklyWins >= 1,
+    getProgress: (u) => ({ current: u.weeklyWins || 0, target: 1 })
+  },
+  { 
+    id: 'weekly_champion_3', name: 'Triple Crown', desc: 'Win weekly leaderboard 3 times', emoji: '🏆', 
+    check: (u) => u.weeklyWins >= 3,
+    getProgress: (u) => ({ current: Math.min(u.weeklyWins || 0, 3), target: 3 })
+  },
+  { 
+    id: 'weekly_champion_10', name: 'Dynasty Builder', desc: 'Win weekly leaderboard 10 times', emoji: '💎', 
+    check: (u) => u.weeklyWins >= 10,
+    getProgress: (u) => ({ current: Math.min(u.weeklyWins || 0, 10), target: 10 })
+  },
+  // Streak achievements extended
+  { 
+    id: 'streak_60', name: '60 Day Fire', desc: 'Maintain a 60-day streak', emoji: '🔥🔥', 
+    check: (u, e, s) => s >= 60,
+    getProgress: (u, e, s) => ({ current: Math.min(s, 60), target: 60 })
+  },
+  { 
+    id: 'streak_100', name: 'Century Streak', desc: 'Maintain a 100-day streak', emoji: '💯🔥', 
+    check: (u, e, s) => s >= 100,
+    getProgress: (u, e, s) => ({ current: Math.min(s, 100), target: 100 })
+  },
+  // Fun achievements
+  { 
+    id: 'triple_session', name: 'Triple Threat', desc: 'Log 3 rows in one day', emoji: '🎯', 
+    check: (u, e) => {
+      const dayGroups = {};
+      e.forEach(x => {
+        const day = new Date(x.date).toDateString();
+        dayGroups[day] = (dayGroups[day] || 0) + 1;
+      });
+      return Object.values(dayGroups).some(count => count >= 3);
+    },
+    getProgress: (u, e) => {
+      const dayGroups = {};
+      e.forEach(x => {
+        const day = new Date(x.date).toDateString();
+        dayGroups[day] = (dayGroups[day] || 0) + 1;
+      });
+      const maxInDay = Math.max(...Object.values(dayGroups), 0);
+      return { current: Math.min(maxInDay, 3), target: 3 };
+    }
+  },
+  { 
+    id: 'lunch_rower', name: 'Lunch Break Legend', desc: 'Log a row between 11am and 1pm', emoji: '🍽️', 
+    check: (u, e) => e.some(x => {
+      const hour = new Date(x.date).getHours();
+      return hour >= 11 && hour < 13;
+    }),
+    getProgress: (u, e) => ({ 
+      current: e.some(x => {
+        const hour = new Date(x.date).getHours();
+        return hour >= 11 && hour < 13;
+      }) ? 1 : 0, 
+      target: 1 
+    })
+  },
 ];
 
 // Motivational quotes
@@ -186,6 +326,19 @@ const MILESTONES = [
 // Changelog entries
 const CHANGELOG = [
   {
+    version: '3.1.0',
+    date: '2025-12-03',
+    changes: [
+      '👤 Click any user to view their profile card',
+      '📋 Session History in More tab - see all your rows',
+      '🏆 4 new leaderboards: All-Time, Weekly, Streak, Achievements',
+      '🏅 7 new achievements including Weekly Champion series',
+      '🎖️ Click your title to see rank progress & all titles',
+      '🔥 More streak achievements (60-day, 100-day)',
+      '🎯 New achievements: Triple Threat, Lunch Break Legend',
+    ]
+  },
+  {
     version: '3.0.0',
     date: '2025-12-01',
     changes: [
@@ -210,6 +363,19 @@ const CHANGELOG = [
       '📜 Feed pagination - load more button',
       '🔍 Search in activity feed',
       '🎨 Progress bars on rank progression',
+    ]
+  },
+  {
+    version: '3.1.0',
+    date: '2025-12-03',
+    changes: [
+      '👤 Click any user to see their full profile & stats',
+      '📊 Multiple leaderboards: All-Time, Weekly, Streaks, Achievements',
+      '👑 Weekly leaderboard badges in feed (gold crown for #1)',
+      '📋 Session history in settings',
+      '🎖️ Click your rank to see all titles & progress',
+      '🆕 New user join notifications in feed',
+      '🏆 Weekly champion achievements',
     ]
   },
   {
@@ -415,6 +581,10 @@ function App() {
   const [adjustedMeters, setAdjustedMeters] = useState('');
   const [reviewNote, setReviewNote] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showUserProfileModal, setShowUserProfileModal] = useState(null);
+  const [showRankProgressModal, setShowRankProgressModal] = useState(false);
+  const [leaderboardTab, setLeaderboardTab] = useState('alltime'); // alltime, weekly, streak, achievements
+  const [showSessionHistory, setShowSessionHistory] = useState(false);
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
@@ -469,8 +639,8 @@ function App() {
     const dismissedTime = dismissed ? parseInt(dismissed, 10) : 0;
     const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
     
-    // Show prompt if not standalone, not recently dismissed (7 days)
-    if (!standalone && daysSinceDismissed > 7) {
+    // Show prompt if not standalone, not recently dismissed (1 day)
+    if (!standalone && daysSinceDismissed > 1) {
       // Listen for beforeinstallprompt (Android/Desktop Chrome)
       const handleBeforeInstall = (e) => {
         e.preventDefault();
@@ -1411,8 +1581,105 @@ function App() {
         weeklyAvg: calculateWeeklyAverage(user.id),
         avgPerUpload: user.uploadCount > 0 ? Math.round(user.totalMeters / user.uploadCount) : 0,
         rank: getUserRank(user.totalMeters),
+        achievementCount: getUserAchievementCount(user.id),
       }))
       .sort((a, b) => b.totalMeters - a.totalMeters);
+  };
+
+  // Get weekly leaderboard (this week's meters only)
+  const getWeeklyLeaderboard = () => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const weeklyTotals = {};
+    entries.forEach(entry => {
+      const entryDate = new Date(entry.date);
+      if (entryDate >= startOfWeek) {
+        weeklyTotals[entry.userId] = (weeklyTotals[entry.userId] || 0) + entry.meters;
+      }
+    });
+    
+    return Object.values(users)
+      .map((user) => ({
+        ...user,
+        weeklyMeters: weeklyTotals[user.id] || 0,
+        rank: getUserRank(user.totalMeters),
+      }))
+      .filter(u => u.weeklyMeters > 0)
+      .sort((a, b) => b.weeklyMeters - a.weeklyMeters);
+  };
+
+  // Get streak leaderboard
+  const getStreakLeaderboard = () => {
+    return Object.values(users)
+      .map((user) => ({
+        ...user,
+        streak: calculateStreak(user.id),
+        longestStreak: calculateLongestStreak(user.id),
+        rank: getUserRank(user.totalMeters),
+      }))
+      .filter(u => u.streak > 0 || u.longestStreak > 0)
+      .sort((a, b) => b.streak - a.streak || b.longestStreak - a.longestStreak);
+  };
+
+  // Get achievements leaderboard
+  const getAchievementsLeaderboard = () => {
+    return Object.values(users)
+      .map((user) => ({
+        ...user,
+        achievementCount: getUserAchievementCount(user.id),
+        rank: getUserRank(user.totalMeters),
+      }))
+      .filter(u => u.achievementCount > 0)
+      .sort((a, b) => b.achievementCount - a.achievementCount);
+  };
+
+  // Get user's achievement count
+  const getUserAchievementCount = (userId) => {
+    const user = users[userId];
+    if (!user) return 0;
+    const userEntries = entries.filter(e => e.userId === userId);
+    const streak = calculateStreak(userId);
+    return ACHIEVEMENTS.filter(a => a.check(user, userEntries, streak)).length;
+  };
+
+  // Calculate longest streak ever for a user
+  const calculateLongestStreak = (userId) => {
+    const userEntries = entries
+      .filter(e => e.userId === userId)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    if (userEntries.length === 0) return 0;
+    
+    let longestStreak = 1;
+    let currentStreak = 1;
+    
+    for (let i = 1; i < userEntries.length; i++) {
+      const prevDate = new Date(userEntries[i-1].date);
+      const currDate = new Date(userEntries[i].date);
+      prevDate.setHours(0, 0, 0, 0);
+      currDate.setHours(0, 0, 0, 0);
+      
+      const dayDiff = (currDate - prevDate) / (1000 * 60 * 60 * 24);
+      
+      if (dayDiff === 1) {
+        currentStreak++;
+        longestStreak = Math.max(longestStreak, currentStreak);
+      } else if (dayDiff > 1) {
+        currentStreak = 1;
+      }
+    }
+    
+    return longestStreak;
+  };
+
+  // Get user's session history
+  const getUserSessionHistory = (userId) => {
+    return entries
+      .filter(e => e.userId === userId)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
   // Get user's rank based on total meters
@@ -1636,6 +1903,19 @@ function App() {
           });
         });
       }
+
+      // Add new user join events
+      if (user.createdAt) {
+        const joinDate = user.createdAt.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
+        feedItems.push({
+          id: `join-${user.id}`,
+          type: 'join',
+          userId: user.id,
+          user,
+          date: joinDate.toISOString(),
+          sortDate: joinDate,
+        });
+      }
     });
 
     // Sort by date descending
@@ -1852,9 +2132,6 @@ function App() {
         <button className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
           🏆 Board
         </button>
-        <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
-          📊 Stats
-        </button>
         <button className={`tab ${activeTab === 'more' ? 'active' : ''}`} onClick={() => setActiveTab('more')}>
           🏅 More
         </button>
@@ -1875,7 +2152,10 @@ function App() {
             {/* User Rank & Weekly Stats */}
             {userProfile && (
               <div className="user-status-card">
-                <div className="user-rank-display">
+                <div 
+                  className="user-rank-display clickable"
+                  onClick={() => setShowRankProgressModal(true)}
+                >
                   <span className="rank-emoji">{getUserRank(userProfile.totalMeters).emoji}</span>
                   <div className="rank-info">
                     <span className="rank-title">{getUserRank(userProfile.totalMeters).title}</span>
@@ -1885,6 +2165,7 @@ function App() {
                       </span>
                     )}
                   </div>
+                  <span className="rank-tap-hint">Tap for all ranks →</span>
                 </div>
                 <div className="weekly-stats-mini">
                   <div className="weekly-stat">
@@ -1987,62 +2268,93 @@ function App() {
               ) : (
                 <>
                   <div className="activity-feed">
-                    {feedData.items.map((item) => (
-                      <div key={item.id} className={`feed-item feed-item-${item.type} ${item.userId === currentUser?.uid ? 'is-you' : ''}`}>
-                        <div className="feed-avatar">
-                          {item.user?.photoURL ? (
-                            <img src={item.user.photoURL} alt="" />
-                          ) : (
-                            <div className="feed-avatar-placeholder">
-                              {item.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                    {feedData.items.map((item) => {
+                      const itemStreak = item.user ? calculateStreak(item.user.id) : 0;
+                      const itemRank = item.user ? getUserRank(item.user.totalMeters) : null;
+                      
+                      return (
+                        <div key={item.id} className={`feed-item feed-item-${item.type} ${item.userId === currentUser?.uid ? 'is-you' : ''}`}>
+                          <div 
+                            className="feed-avatar clickable"
+                            onClick={() => item.user && setShowUserProfileModal(item.user)}
+                          >
+                            {item.user?.photoURL ? (
+                              <img src={item.user.photoURL} alt="" />
+                            ) : (
+                              <div className="feed-avatar-placeholder">
+                                {item.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="feed-content">
+                            <div className="feed-header">
+                              <span 
+                                className="feed-name clickable"
+                                onClick={() => item.user && setShowUserProfileModal(item.user)}
+                              >
+                                {item.user?.name}
+                                {itemRank && <span className="feed-rank-badge">{itemRank.emoji}</span>}
+                                {/* Weekly leaderboard position badge */}
+                                {(() => {
+                                  const weeklyPos = getWeeklyLeaderboard().findIndex(u => u.id === item.userId);
+                                  if (weeklyPos === 0) return <span className="feed-weekly-badge gold" title="Weekly Leader">👑</span>;
+                                  if (weeklyPos === 1) return <span className="feed-weekly-badge silver" title="2nd This Week">🥈</span>;
+                                  if (weeklyPos === 2) return <span className="feed-weekly-badge bronze" title="3rd This Week">🥉</span>;
+                                  return null;
+                                })()}
+                              </span>
+                              <span className="feed-time">
+                                {formatTimeAgo(new Date(item.date))}
+                              </span>
+                            </div>
+                            <div className="feed-action">
+                              {item.type === 'row' && (
+                                <>
+                                  rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span>
+                                  {item.verificationStatus === 'verified' && (
+                                    <span className="verification-badge verified" title="Verified">✓</span>
+                                  )}
+                                  {item.verificationStatus === 'pending_review' && (
+                                    <span className="verification-badge pending" title="Pending Review">⏳</span>
+                                  )}
+                                  {!item.verificationStatus && (
+                                    <span className="verification-badge unverified" title="Unverified">?</span>
+                                  )}
+                                </>
+                              )}
+                              {item.type === 'achievement' && (
+                                <span className="feed-achievement">
+                                  unlocked <span className="feed-achievement-name">{item.achievement.emoji} {item.achievement.name}</span>
+                                </span>
+                              )}
+                              {item.type === 'rank' && (
+                                <span className="feed-rank">
+                                  reached <span className="feed-rank-name">{item.rank.emoji} {item.rank.rank}</span>
+                                </span>
+                              )}
+                              {item.type === 'join' && (
+                                <span className="feed-join">
+                                  joined Row Crew! 🎉
+                                </span>
+                              )}
+                            </div>
+                            {/* Show streak for row entries */}
+                            {item.type === 'row' && itemStreak > 1 && (
+                              <div className="feed-streak-badge">🔥 {itemStreak} day streak</div>
+                            )}
+                          </div>
+                          {/* Photo thumbnail for row entries */}
+                          {item.type === 'row' && item.imageUrl && (
+                            <div 
+                              className="feed-photo-thumb"
+                              onClick={() => setShowPhotoModal({ url: item.imageUrl, entry: item })}
+                            >
+                              <img src={item.imageUrl} alt="Row evidence" />
                             </div>
                           )}
                         </div>
-                        <div className="feed-content">
-                          <div className="feed-header">
-                            <span className="feed-name">{item.user?.name}</span>
-                            <span className="feed-time">
-                              {formatTimeAgo(new Date(item.date))}
-                            </span>
-                          </div>
-                          <div className="feed-action">
-                            {item.type === 'row' && (
-                              <>
-                                rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span>
-                                {item.verificationStatus === 'verified' && (
-                                  <span className="verification-badge verified" title="Verified">✓</span>
-                                )}
-                                {item.verificationStatus === 'pending_review' && (
-                                  <span className="verification-badge pending" title="Pending Review">⏳</span>
-                                )}
-                                {!item.verificationStatus && (
-                                  <span className="verification-badge unverified" title="Unverified">?</span>
-                                )}
-                              </>
-                            )}
-                            {item.type === 'achievement' && (
-                              <span className="feed-achievement">
-                                unlocked <span className="feed-achievement-name">{item.achievement.emoji} {item.achievement.name}</span>
-                              </span>
-                            )}
-                            {item.type === 'rank' && (
-                              <span className="feed-rank">
-                                reached <span className="feed-rank-name">{item.rank.emoji} {item.rank.rank}</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {/* Photo thumbnail for row entries */}
-                        {item.type === 'row' && item.imageUrl && (
-                          <div 
-                            className="feed-photo-thumb"
-                            onClick={() => setShowPhotoModal({ url: item.imageUrl, entry: item })}
-                          >
-                            <img src={item.imageUrl} alt="Row evidence" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   
                   {/* Load More Button */}
@@ -2063,180 +2375,231 @@ function App() {
         {activeTab === 'leaderboard' && (
           <section className="leaderboard-section">
             <h2>Leaderboard</h2>
-            {getLeaderboard().length === 0 ? (
-              <div className="empty-state">
-                <p>No rowers yet!</p>
-                <p>Be the first to log a row.</p>
-              </div>
-            ) : (
-              <div className="leaderboard">
-                {getLeaderboard().map((user, index) => (
-                  <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}>
-                    <div className="rank">
-                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-                    </div>
-                    <div className="user-avatar-wrapper">
-                      {user.photoURL ? (
-                        <img src={user.photoURL} alt="" className="leaderboard-avatar" />
-                      ) : (
-                        <div className="leaderboard-avatar-placeholder">
-                          {user.name?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                      )}
-                    </div>
-                    <div className="user-info">
-                      <span className="user-name">
-                        {user.name}
-                        {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
-                      </span>
-                      <span className="user-rank-label">
-                        {user.rank?.emoji} {user.rank?.title}
-                      </span>
-                      <span className="user-streak">{user.streak > 0 && `🔥 ${user.streak} day streak`}</span>
-                    </div>
-                    <div className="user-meters">
-                      <span className="meters-value">{formatMeters(user.totalMeters)}</span>
-                      <span className="meters-label">meters</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {activeTab === 'stats' && (
-          <section className="stats-section">
-            <h2>Detailed Stats</h2>
             
-            {/* Search Bar */}
-            <div className="search-bar">
-              <span className="search-icon">🔍</span>
-              <input
-                type="text"
-                placeholder="Search rowers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-              />
-              {searchQuery && (
-                <button className="search-clear" onClick={() => setSearchQuery('')}>✕</button>
-              )}
+            {/* Leaderboard Tabs */}
+            <div className="leaderboard-tabs">
+              <button 
+                className={`lb-tab ${leaderboardTab === 'alltime' ? 'active' : ''}`}
+                onClick={() => setLeaderboardTab('alltime')}
+              >
+                🏆 All Time
+              </button>
+              <button 
+                className={`lb-tab ${leaderboardTab === 'weekly' ? 'active' : ''}`}
+                onClick={() => setLeaderboardTab('weekly')}
+              >
+                📅 This Week
+              </button>
+              <button 
+                className={`lb-tab ${leaderboardTab === 'streak' ? 'active' : ''}`}
+                onClick={() => setLeaderboardTab('streak')}
+              >
+                🔥 Streaks
+              </button>
+              <button 
+                className={`lb-tab ${leaderboardTab === 'achievements' ? 'active' : ''}`}
+                onClick={() => setLeaderboardTab('achievements')}
+              >
+                🏅 Achievements
+              </button>
             </div>
 
-            {getFilteredLeaderboard().length === 0 ? (
-              <div className="empty-state">
-                {searchQuery ? (
-                  <p>No rowers found matching "{searchQuery}"</p>
+            {/* All Time Leaderboard */}
+            {leaderboardTab === 'alltime' && (
+              <>
+                {getLeaderboard().length === 0 ? (
+                  <div className="empty-state">
+                    <p>No rowers yet!</p>
+                    <p>Be the first to log a row.</p>
+                  </div>
                 ) : (
-                  <p>No stats yet!</p>
-                )}
-              </div>
-            ) : (
-              <div className="stats-grid">
-                {getFilteredLeaderboard().map((user) => {
-                  const userAchievements = getUserAchievements(user.id);
-                  const longestStreak = getLongestStreak(user.id);
-                  const personalRecord = getPersonalRecord(user.id);
-                  const totalDays = getTotalDaysRowed(user.id);
-                  const firstRow = getFirstRowDate(user.id);
-                  
-                  return (
-                    <div key={user.id} className={`stats-card ${user.id === currentUser?.uid ? 'is-you' : ''}`}>
-                      {/* Header with avatar, name, rank */}
-                      <div className="stats-card-header">
-                        <div className="stats-header-left">
+                  <div className="leaderboard">
+                    {getLeaderboard().map((user, index) => (
+                      <div 
+                        key={user.id} 
+                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
+                        onClick={() => setShowUserProfileModal(user)}
+                      >
+                        <div className="rank">
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                        </div>
+                        <div className="user-avatar-wrapper">
                           {user.photoURL ? (
-                            <img src={user.photoURL} alt="" className="stats-avatar" />
+                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
                           ) : (
-                            <div className="stats-avatar-placeholder">
+                            <div className="leaderboard-avatar-placeholder">
                               {user.name?.charAt(0)?.toUpperCase() || '?'}
                             </div>
                           )}
-                          <div className="stats-header-info">
-                            <h3>{user.name} {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</h3>
-                            <span className="stats-rank">{user.rank?.emoji} {user.rank?.title}</span>
-                          </div>
+                        </div>
+                        <div className="user-info">
+                          <span className="user-name">
+                            {user.name}
+                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
+                          </span>
+                          <span className="user-rank-label">
+                            {user.rank?.emoji} {user.rank?.title}
+                          </span>
+                          <span className="user-streak">{user.streak > 0 && `🔥 ${user.streak} day streak`}</span>
+                        </div>
+                        <div className="user-meters">
+                          <span className="meters-value">{formatMeters(user.totalMeters)}</span>
+                          <span className="meters-label">meters</span>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
 
-                      {/* Main Stats Grid */}
-                      <div className="stats-main-grid">
-                        <div className="stat-box">
-                          <span className="stat-box-value">{formatMeters(user.totalMeters)}</span>
-                          <span className="stat-box-label">Total Meters</span>
+            {/* Weekly Leaderboard */}
+            {leaderboardTab === 'weekly' && (
+              <>
+                {getWeeklyLeaderboard().length === 0 ? (
+                  <div className="empty-state">
+                    <p>No rows this week yet!</p>
+                    <p>Be the first to get on the board.</p>
+                  </div>
+                ) : (
+                  <div className="leaderboard">
+                    {getWeeklyLeaderboard().map((user, index) => (
+                      <div 
+                        key={user.id} 
+                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
+                        onClick={() => setShowUserProfileModal(user)}
+                      >
+                        <div className="rank">
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                         </div>
-                        <div className="stat-box">
-                          <span className="stat-box-value">{user.uploadCount}</span>
-                          <span className="stat-box-label">Sessions</span>
+                        <div className="user-avatar-wrapper">
+                          {user.photoURL ? (
+                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
+                          ) : (
+                            <div className="leaderboard-avatar-placeholder">
+                              {user.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                          )}
+                          {index === 0 && <span className="weekly-crown">👑</span>}
                         </div>
-                        <div className="stat-box highlight-gold">
-                          <span className="stat-box-value">{formatMeters(personalRecord)}</span>
-                          <span className="stat-box-label">🏆 Best Row</span>
+                        <div className="user-info">
+                          <span className="user-name">
+                            {user.name}
+                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
+                          </span>
+                          <span className="user-rank-label">
+                            {user.rank?.emoji} {user.rank?.title}
+                          </span>
                         </div>
-                        <div className="stat-box highlight-fire">
-                          <span className="stat-box-value">{longestStreak}</span>
-                          <span className="stat-box-label">🔥 Best Streak</span>
+                        <div className="user-meters">
+                          <span className="meters-value">{formatMeters(user.weeklyMeters)}</span>
+                          <span className="meters-label">this week</span>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
 
-                      {/* Secondary Stats */}
-                      <div className="stats-secondary">
-                        <div className="stat-row-mini">
-                          <span>Avg/Session</span>
-                          <span>{formatMeters(user.avgPerUpload)}m</span>
+            {/* Streak Leaderboard */}
+            {leaderboardTab === 'streak' && (
+              <>
+                {getStreakLeaderboard().length === 0 ? (
+                  <div className="empty-state">
+                    <p>No active streaks!</p>
+                    <p>Row consistently to build yours.</p>
+                  </div>
+                ) : (
+                  <div className="leaderboard">
+                    {getStreakLeaderboard().map((user, index) => (
+                      <div 
+                        key={user.id} 
+                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
+                        onClick={() => setShowUserProfileModal(user)}
+                      >
+                        <div className="rank">
+                          {index === 0 ? '🔥' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                         </div>
-                        <div className="stat-row-mini">
-                          <span>Sessions/Week</span>
-                          <span>{user.weeklyAvg}x</span>
-                        </div>
-                        <div className="stat-row-mini">
-                          <span>Days Rowed</span>
-                          <span>{totalDays}</span>
-                        </div>
-                        <div className="stat-row-mini">
-                          <span>Current Streak</span>
-                          <span>{user.streak} days</span>
-                        </div>
-                        {firstRow && (
-                          <div className="stat-row-mini">
-                            <span>Member Since</span>
-                            <span>{firstRow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Achievements */}
-                      <div className="stats-achievements">
-                        <div className="stats-achievements-header">
-                          <span>Achievements</span>
-                          <span className="achievements-fraction">{userAchievements.length}/{ACHIEVEMENTS.length}</span>
-                        </div>
-                        <div className="stats-badges">
-                          {ACHIEVEMENTS.slice(0, 8).map((achievement) => {
-                            const unlocked = userAchievements.some(a => a.id === achievement.id);
-                            return (
-                              <div 
-                                key={achievement.id} 
-                                className={`stats-badge ${unlocked ? 'unlocked' : 'locked'}`}
-                                title={`${achievement.name}: ${achievement.desc}`}
-                              >
-                                {achievement.emoji}
-                              </div>
-                            );
-                          })}
-                          {userAchievements.length > 8 && (
-                            <div className="stats-badge more">+{userAchievements.length - 8}</div>
+                        <div className="user-avatar-wrapper">
+                          {user.photoURL ? (
+                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
+                          ) : (
+                            <div className="leaderboard-avatar-placeholder">
+                              {user.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
                           )}
                         </div>
+                        <div className="user-info">
+                          <span className="user-name">
+                            {user.name}
+                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
+                          </span>
+                          <span className="user-rank-label">
+                            Best: {user.longestStreak} days
+                          </span>
+                        </div>
+                        <div className="user-meters streak-display">
+                          <span className="meters-value">{user.streak}</span>
+                          <span className="meters-label">day streak</span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Achievements Leaderboard */}
+            {leaderboardTab === 'achievements' && (
+              <>
+                {getAchievementsLeaderboard().length === 0 ? (
+                  <div className="empty-state">
+                    <p>No achievements unlocked yet!</p>
+                    <p>Start rowing to earn badges.</p>
+                  </div>
+                ) : (
+                  <div className="leaderboard">
+                    {getAchievementsLeaderboard().map((user, index) => (
+                      <div 
+                        key={user.id} 
+                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
+                        onClick={() => setShowUserProfileModal(user)}
+                      >
+                        <div className="rank">
+                          {index === 0 ? '🏅' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                        </div>
+                        <div className="user-avatar-wrapper">
+                          {user.photoURL ? (
+                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
+                          ) : (
+                            <div className="leaderboard-avatar-placeholder">
+                              {user.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                          )}
+                        </div>
+                        <div className="user-info">
+                          <span className="user-name">
+                            {user.name}
+                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
+                          </span>
+                          <span className="user-rank-label">
+                            {user.rank?.emoji} {user.rank?.title}
+                          </span>
+                        </div>
+                        <div className="user-meters">
+                          <span className="meters-value">{user.achievementCount}/{ACHIEVEMENTS.length}</span>
+                          <span className="meters-label">badges</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
         )}
+
 
         {activeTab === 'more' && (
           <section className="more-section">
@@ -2314,6 +2677,67 @@ function App() {
                 })}
               </div>
             </div>
+
+            {/* Account Section */}
+            {currentUser && (
+              <div className="account-section">
+                <h3>👤 Account</h3>
+                <div className="account-buttons">
+                  <button className="account-btn" onClick={() => setShowSessionHistory(true)}>
+                    <span className="account-btn-icon">📋</span>
+                    <span className="account-btn-text">Session History</span>
+                    <span className="account-btn-arrow">→</span>
+                  </button>
+                  <button className="account-btn" onClick={() => setShowRankProgressModal(true)}>
+                    <span className="account-btn-icon">🎖️</span>
+                    <span className="account-btn-text">Rank Progress</span>
+                    <span className="account-btn-arrow">→</span>
+                  </button>
+                  {isAdmin && (
+                    <button className="account-btn admin" onClick={() => { setShowAdminPanel(true); loadPendingReviews(); }}>
+                      <span className="account-btn-icon">🛡️</span>
+                      <span className="account-btn-text">Admin Panel</span>
+                      <span className="account-btn-arrow">→</span>
+                    </button>
+                  )}
+                  <button className="account-btn danger" onClick={handleSignOut}>
+                    <span className="account-btn-icon">🚪</span>
+                    <span className="account-btn-text">Sign Out</span>
+                    <span className="account-btn-arrow">→</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Session History */}
+            {currentUser && (
+              <div className="session-history-section">
+                <h3>📋 Your Session History</h3>
+                <div className="session-history-list">
+                  {entries
+                    .filter(e => e.userId === currentUser.uid)
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .slice(0, 20)
+                    .map((entry, index) => (
+                      <div key={entry.id || index} className="session-history-item">
+                        <div className="session-history-date">
+                          {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                        <div className="session-history-meters">
+                          {entry.meters.toLocaleString()}m
+                        </div>
+                        <div className={`session-history-status ${entry.verificationStatus || 'unverified'}`}>
+                          {entry.verificationStatus === 'verified' ? '✓' : 
+                           entry.verificationStatus === 'pending_review' ? '⏳' : '?'}
+                        </div>
+                      </div>
+                    ))}
+                  {entries.filter(e => e.userId === currentUser.uid).length === 0 && (
+                    <p className="empty-history">No sessions yet. Start rowing!</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Changelog */}
             <div className="changelog-section">
@@ -2635,6 +3059,17 @@ function App() {
                   </div>
                 </div>
 
+                {/* Session History Button */}
+                <div className="settings-section">
+                  <h3>History</h3>
+                  <button 
+                    className="settings-history-btn" 
+                    onClick={() => { setShowSessionHistory(true); setShowSettingsModal(false); }}
+                  >
+                    📋 View Session History
+                  </button>
+                </div>
+
                 {/* Sign Out */}
                 <button className="settings-signout-btn" onClick={() => { handleSignOut(); setShowSettingsModal(false); }}>
                   Sign Out
@@ -2867,6 +3302,220 @@ function App() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* User Profile Modal */}
+      {showUserProfileModal && (
+        <div className="modal-overlay" onClick={() => setShowUserProfileModal(null)}>
+          <div className="modal user-profile-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowUserProfileModal(null)}>✕</button>
+            
+            {(() => {
+              const user = showUserProfileModal;
+              const userAchievements = getUserAchievements(user.id);
+              const longestStreak = calculateLongestStreak(user.id);
+              const personalRecord = getPersonalRecord(user.id);
+              const totalDays = getTotalDaysRowed(user.id);
+              const firstRow = getFirstRowDate(user.id);
+              const streak = calculateStreak(user.id);
+              const rank = getUserRank(user.totalMeters);
+              const weeklyAvg = calculateWeeklyAverage(user.id);
+              const avgPerUpload = user.uploadCount > 0 ? Math.round(user.totalMeters / user.uploadCount) : 0;
+              
+              return (
+                <>
+                  {/* Header */}
+                  <div className="profile-modal-header">
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt="" className="profile-modal-avatar" />
+                    ) : (
+                      <div className="profile-modal-avatar-placeholder">
+                        {user.name?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                    )}
+                    <div className="profile-modal-info">
+                      <h2>{user.name}</h2>
+                      <span className="profile-modal-rank">{rank?.emoji} {rank?.title}</span>
+                      {streak > 0 && <span className="profile-modal-streak">🔥 {streak} day streak</span>}
+                    </div>
+                  </div>
+
+                  {/* Main Stats */}
+                  <div className="profile-stats-grid">
+                    <div className="profile-stat-box">
+                      <span className="profile-stat-value">{formatMeters(user.totalMeters)}</span>
+                      <span className="profile-stat-label">Total Meters</span>
+                    </div>
+                    <div className="profile-stat-box">
+                      <span className="profile-stat-value">{user.uploadCount || 0}</span>
+                      <span className="profile-stat-label">Sessions</span>
+                    </div>
+                    <div className="profile-stat-box highlight">
+                      <span className="profile-stat-value">{formatMeters(personalRecord)}</span>
+                      <span className="profile-stat-label">🏆 Best Row</span>
+                    </div>
+                    <div className="profile-stat-box highlight">
+                      <span className="profile-stat-value">{longestStreak}</span>
+                      <span className="profile-stat-label">🔥 Best Streak</span>
+                    </div>
+                  </div>
+
+                  {/* Secondary Stats */}
+                  <div className="profile-secondary-stats">
+                    <div className="profile-stat-row">
+                      <span>Avg/Session</span>
+                      <span>{formatMeters(avgPerUpload)}m</span>
+                    </div>
+                    <div className="profile-stat-row">
+                      <span>Sessions/Week</span>
+                      <span>{weeklyAvg}x</span>
+                    </div>
+                    <div className="profile-stat-row">
+                      <span>Days Rowed</span>
+                      <span>{totalDays}</span>
+                    </div>
+                    {firstRow && (
+                      <div className="profile-stat-row">
+                        <span>Member Since</span>
+                        <span>{firstRow.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Achievements */}
+                  <div className="profile-achievements">
+                    <div className="profile-achievements-header">
+                      <span>Achievements</span>
+                      <span>{userAchievements.length}/{ACHIEVEMENTS.length}</span>
+                    </div>
+                    <div className="profile-badges">
+                      {ACHIEVEMENTS.map((achievement) => {
+                        const unlocked = userAchievements.some(a => a.id === achievement.id);
+                        return (
+                          <div 
+                            key={achievement.id} 
+                            className={`profile-badge ${unlocked ? 'unlocked' : 'locked'}`}
+                            title={`${achievement.name}: ${achievement.desc}`}
+                          >
+                            {achievement.emoji}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Rank Progress Modal */}
+      {showRankProgressModal && currentUser && userProfile && (
+        <div className="modal-overlay" onClick={() => setShowRankProgressModal(false)}>
+          <div className="modal rank-progress-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowRankProgressModal(false)}>✕</button>
+            
+            <h2>🎖️ Rank Progress</h2>
+            
+            {(() => {
+              const currentRank = getUserRank(userProfile.totalMeters);
+              const nextRank = getNextRank(userProfile.totalMeters);
+              const metersToNext = nextRank ? nextRank.minMeters - userProfile.totalMeters : 0;
+              const progressPercent = nextRank 
+                ? ((userProfile.totalMeters - currentRank.minMeters) / (nextRank.minMeters - currentRank.minMeters)) * 100
+                : 100;
+              
+              return (
+                <>
+                  {/* Current Rank */}
+                  <div className="current-rank-display">
+                    <span className="current-rank-emoji">{currentRank.emoji}</span>
+                    <div className="current-rank-info">
+                      <span className="current-rank-title">{currentRank.title}</span>
+                      <span className="current-rank-meters">{formatMeters(userProfile.totalMeters)}m total</span>
+                    </div>
+                  </div>
+
+                  {/* Progress to Next */}
+                  {nextRank && (
+                    <div className="next-rank-progress">
+                      <div className="progress-header">
+                        <span>Next: {nextRank.emoji} {nextRank.title}</span>
+                        <span>{formatMeters(metersToNext)}m to go</span>
+                      </div>
+                      <div className="rank-progress-bar">
+                        <div className="rank-progress-fill" style={{ width: `${progressPercent}%` }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* All Ranks */}
+                  <div className="all-ranks">
+                    <h3>All Ranks</h3>
+                    <div className="ranks-list">
+                      {RANKS.map((rank, index) => {
+                        const isCurrentRank = currentRank.title === rank.title;
+                        const isUnlocked = userProfile.totalMeters >= rank.minMeters;
+                        return (
+                          <div key={rank.title} className={`rank-item ${isCurrentRank ? 'current' : ''} ${isUnlocked ? 'unlocked' : 'locked'}`}>
+                            <span className="rank-item-emoji">{rank.emoji}</span>
+                            <div className="rank-item-info">
+                              <span className="rank-item-title">{rank.title}</span>
+                              <span className="rank-item-req">{formatMeters(rank.minMeters)}m</span>
+                            </div>
+                            {isCurrentRank && <span className="rank-current-badge">YOU</span>}
+                            {isUnlocked && !isCurrentRank && <span className="rank-check">✓</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Session History Modal */}
+      {showSessionHistory && currentUser && (
+        <div className="modal-overlay" onClick={() => setShowSessionHistory(false)}>
+          <div className="modal session-history-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowSessionHistory(false)}>✕</button>
+            
+            <h2>📋 Session History</h2>
+            
+            {(() => {
+              const sessions = getUserSessionHistory(currentUser.uid);
+              
+              if (sessions.length === 0) {
+                return <div className="empty-state"><p>No sessions yet!</p></div>;
+              }
+              
+              return (
+                <div className="session-list">
+                  {sessions.map((session, index) => {
+                    const date = new Date(session.date);
+                    return (
+                      <div key={session.id || index} className="session-item">
+                        <div className="session-date">
+                          <span className="session-day">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                          <span className="session-full-date">{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                        <div className="session-meters">
+                          <span className="session-meters-value">{session.meters.toLocaleString()}m</span>
+                          {session.verificationStatus === 'verified' && <span className="session-verified">✓</span>}
+                          {session.verificationStatus === 'pending_review' && <span className="session-pending">⏳</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

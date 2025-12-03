@@ -561,7 +561,6 @@ function App() {
   const [, setTestTapCount] = useState(0);
   const [showPRModal, setShowPRModal] = useState(null);
   const [dailyQuote, setDailyQuote] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [feedSearchQuery, setFeedSearchQuery] = useState('');
   const [showAchievementModal, setShowAchievementModal] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -1795,37 +1794,6 @@ function App() {
     return Math.max(...userEntries.map(e => e.meters));
   };
 
-  // Get longest streak ever achieved
-  const getLongestStreak = (userId) => {
-    const userEntries = entries
-      .filter((e) => e.userId === userId)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    if (userEntries.length === 0) return 0;
-
-    let longestStreak = 1;
-    let currentStreak = 1;
-    
-    const entryDates = [...new Set(userEntries.map(e => 
-      new Date(e.date).toDateString()
-    ))].sort((a, b) => new Date(a) - new Date(b));
-
-    for (let i = 1; i < entryDates.length; i++) {
-      const prevDate = new Date(entryDates[i - 1]);
-      const currDate = new Date(entryDates[i]);
-      const diffDays = Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays === 1) {
-        currentStreak++;
-        longestStreak = Math.max(longestStreak, currentStreak);
-      } else {
-        currentStreak = 1;
-      }
-    }
-    
-    return longestStreak;
-  };
-
   // Get total unique days rowed
   const getTotalDaysRowed = (userId) => {
     const userEntries = entries.filter(e => e.userId === userId);
@@ -1841,17 +1809,6 @@ function App() {
     
     if (userEntries.length === 0) return null;
     return new Date(userEntries[0].date);
-  };
-
-  // Filter users by search query
-  const getFilteredLeaderboard = () => {
-    const leaderboard = getLeaderboard();
-    if (!searchQuery.trim()) return leaderboard;
-    
-    const q = searchQuery.toLowerCase();
-    return leaderboard.filter(user => 
-      user.name?.toLowerCase().includes(q)
-    );
   };
 
   // Check if this session is a PR

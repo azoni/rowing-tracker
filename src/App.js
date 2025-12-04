@@ -608,6 +608,37 @@ function App() {
     return () => window.removeEventListener('keypress', handleKeyPress);
   }, []);
 
+  // Service Worker Auto-Update
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      // Listen for messages from service worker
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SW_UPDATED') {
+          console.log('App updated to version:', event.data.version);
+          // Automatically reload to get the new version
+          window.location.reload();
+        }
+      });
+
+      // Check for updates periodically (every 5 minutes)
+      const checkForUpdates = () => {
+        navigator.serviceWorker.getRegistration().then((registration) => {
+          if (registration) {
+            registration.update();
+          }
+        });
+      };
+
+      // Check immediately on mount
+      checkForUpdates();
+
+      // Then check every 5 minutes
+      const interval = setInterval(checkForUpdates, 5 * 60 * 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, []);
+
   // Secret test mode: Tap footer 5 times quickly (for mobile)
   const handleFooterTap = () => {
     setTestTapCount(prev => {
@@ -1410,8 +1441,21 @@ function App() {
         backgroundColor: '#0d1220',
         scale: 2,
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         logging: false,
+        imageTimeout: 5000,
+        onclone: (clonedDoc) => {
+          // Remove external images that might cause CORS issues
+          const avatarImg = clonedDoc.querySelector('.share-user-avatar');
+          if (avatarImg && avatarImg.src.includes('googleusercontent')) {
+            // Replace with placeholder
+            const placeholder = clonedDoc.createElement('div');
+            placeholder.className = 'share-user-avatar-placeholder';
+            placeholder.textContent = userProfile?.name?.charAt(0)?.toUpperCase() || '?';
+            placeholder.style.cssText = 'width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#00d4aa,#00b894);display:flex;align-items:center;justify-content:center;font-weight:700;color:#0a0e17;';
+            avatarImg.parentNode.replaceChild(placeholder, avatarImg);
+          }
+        }
       });
       
       // Convert to blob
@@ -2230,11 +2274,12 @@ function App() {
                       const itemRank = item.user ? getUserRank(item.user.totalMeters) : null;
                       
                       return (
-                        <div key={item.id} className={`feed-item feed-item-${item.type} ${item.userId === currentUser?.uid ? 'is-you' : ''}`}>
-                          <div 
-                            className="feed-avatar clickable"
-                            onClick={() => item.user && setShowUserProfileModal(item.user)}
-                          >
+                        <div 
+                          key={item.id} 
+                          className={`feed-item feed-item-${item.type} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
+                          onClick={() => item.user && setShowUserProfileModal(item.user)}
+                        >
+                          <div className="feed-avatar">
                             {item.user?.photoURL ? (
                               <img src={item.user.photoURL} alt="" />
                             ) : (
@@ -2245,10 +2290,7 @@ function App() {
                           </div>
                           <div className="feed-content">
                             <div className="feed-header">
-                              <span 
-                                className="feed-name clickable"
-                                onClick={() => item.user && setShowUserProfileModal(item.user)}
-                              >
+                              <span className="feed-name">
                                 {item.user?.name}
                                 {itemRank && <span className="feed-rank-badge">{itemRank.emoji}</span>}
                                 {/* Weekly leaderboard position badge */}
@@ -2304,7 +2346,7 @@ function App() {
                           {item.type === 'row' && item.imageUrl && (
                             <div 
                               className="feed-photo-thumb"
-                              onClick={() => setShowPhotoModal({ url: item.imageUrl, entry: item })}
+                              onClick={(e) => { e.stopPropagation(); setShowPhotoModal({ url: item.imageUrl, entry: item }); }}
                             >
                               <img src={item.imageUrl} alt="Row evidence" />
                             </div>
@@ -2857,7 +2899,7 @@ function App() {
 
               <div className="share-card-user">
                 {userProfile?.photoURL ? (
-                  <img src={userProfile.photoURL} alt="" className="share-user-avatar" />
+                  <img src={userProfile.photoURL} alt="" className="share-user-avatar" crossOrigin="anonymous" />
                 ) : (
                   <div className="share-user-avatar-placeholder">
                     {userProfile?.name?.charAt(0)?.toUpperCase() || '?'}
@@ -2868,7 +2910,7 @@ function App() {
 
               {shareImageUrl && (
                 <div className="share-card-image">
-                  <img src={shareImageUrl} alt="Rowing session" />
+                  <img src={shareImageUrl} alt="Rowing session" crossOrigin="anonymous" />
                 </div>
               )}
 

@@ -326,16 +326,28 @@ const MILESTONES = [
 // Changelog entries
 const CHANGELOG = [
   {
+    version: '3.2.0',
+    date: '2025-12-26',
+    changes: [
+      '🎁 2025 Wrapped - see your year in rowing!',
+      '✏️ Manual meter entry (no photo required)',
+      '✗ Unverified badge for manual entries',
+      '🎉 All users can view Wrapped (even new ones)',
+      '📊 10 story slides with fun stats & comparisons',
+      '📤 Share your Wrapped card with friends',
+    ]
+  },
+  {
     version: '3.1.0',
     date: '2025-12-03',
     changes: [
       '👤 Click any user to view their profile card',
-      '📋 Session History in More tab - see all your rows',
-      '🏆 4 new leaderboards: All-Time, Weekly, Streak, Achievements',
-      '🏅 7 new achievements including Weekly Champion series',
+      '📋 Session History in settings',
+      '🏆 4 leaderboards: All-Time, Weekly, Streak, Achievements',
+      '🏅 Weekly champion achievements',
       '🎖️ Click your title to see rank progress & all titles',
-      '🔥 More streak achievements (60-day, 100-day)',
-      '🎯 New achievements: Triple Threat, Lunch Break Legend',
+      '👑 Weekly leaderboard badges in feed',
+      '🆕 New user join notifications in feed',
     ]
   },
   {
@@ -363,19 +375,6 @@ const CHANGELOG = [
       '📜 Feed pagination - load more button',
       '🔍 Search in activity feed',
       '🎨 Progress bars on rank progression',
-    ]
-  },
-  {
-    version: '3.1.0',
-    date: '2025-12-03',
-    changes: [
-      '👤 Click any user to see their full profile & stats',
-      '📊 Multiple leaderboards: All-Time, Weekly, Streaks, Achievements',
-      '👑 Weekly leaderboard badges in feed (gold crown for #1)',
-      '📋 Session history in settings',
-      '🎖️ Click your rank to see all titles & progress',
-      '🆕 New user join notifications in feed',
-      '🏆 Weekly champion achievements',
     ]
   },
   {
@@ -546,6 +545,8 @@ function App() {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [detectedMeters, setDetectedMeters] = useState('');
   const [editableMeters, setEditableMeters] = useState('');
+  const [manualMeters, setManualMeters] = useState('');
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [recentMilestone, setRecentMilestone] = useState(null);
   const [activeTab, setActiveTab] = useState('feed');
@@ -584,6 +585,12 @@ function App() {
   const [showRankProgressModal, setShowRankProgressModal] = useState(false);
   const [leaderboardTab, setLeaderboardTab] = useState('alltime'); // alltime, weekly, streak, achievements
   const [showSessionHistory, setShowSessionHistory] = useState(false);
+  const [showWrapped, setShowWrapped] = useState(false);
+  const [wrappedSlide, setWrappedSlide] = useState(0);
+  const [wrappedDismissed, setWrappedDismissed] = useState(() => {
+    return localStorage.getItem('wrappedDismissed2025') === 'true';
+  });
+  const wrappedCardRef = useRef(null);
   
   const fileInputRef = useRef(null);
   const previousTotalRef = useRef(0);
@@ -1317,13 +1324,16 @@ function App() {
       // Store for share card
       setLastSessionMeters(finalMeters);
       
-      // Fire confetti for verified or pending_review (entry counts until rejected)
+      // Fire confetti for all entries (verified gets full, unverified gets smaller)
       if (verification.status === 'verified' || verification.status === 'pending_review') {
         fireConfetti();
+      } else {
+        // Smaller confetti for unverified manual entries
+        fireConfetti(0.3);
       }
       
-      // Show PR celebration if applicable (entry counts until rejected)
-      if (isPR && (verification.status === 'verified' || verification.status === 'pending_review')) {
+      // Show PR celebration if applicable
+      if (isPR) {
         setTimeout(() => {
           firePRConfetti();
           setShowPRModal(finalMeters);
@@ -1350,6 +1360,38 @@ function App() {
       
       setValidationError('Failed to save entry. Please try again.');
       return false;
+    }
+  };
+
+  // Handle manual meter entry (no photo)
+  const handleManualSubmit = async () => {
+    const meters = parseInt(manualMeters, 10);
+    
+    if (!meters || isNaN(meters)) {
+      setValidationError('Please enter a valid number');
+      return;
+    }
+    
+    if (meters < 100 || meters > 30000) {
+      setValidationError('Meters must be between 100 and 30,000');
+      return;
+    }
+
+    setIsSubmittingManual(true);
+    setValidationError('');
+    
+    // Add entry without image (will be marked as unverified)
+    const success = await addEntry(meters, null);
+    
+    setIsSubmittingManual(false);
+    
+    if (success) {
+      setManualMeters('');
+      setValidationError('');
+      // Show share modal without image
+      setShareImageUrl(null);
+      setShowShareModal(true);
+      setLinkCopied(false);
     }
   };
 
@@ -1942,6 +1984,172 @@ function App() {
     };
   };
 
+  // Calculate 2025 Wrapped stats
+  const getWrappedStats = (userId) => {
+    if (!userId) return null;
+    
+    const year = 2025;
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+    
+    // Get all 2025 entries for this user
+    const yearEntries = entries
+      .filter(e => e.userId === userId)
+      .filter(e => {
+        const d = new Date(e.date);
+        return d >= yearStart && d <= yearEnd;
+      })
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    if (yearEntries.length === 0) {
+      // Return default stats for users with no 2025 data
+      return {
+        totalMeters: 0,
+        sessionCount: 0,
+        bestRow: 0,
+        bestRowDate: null,
+        bestStreak: 0,
+        favoriteDay: 'Any day',
+        favoriteDayCount: 0,
+        bestMonth: 'the new year',
+        bestMonthMeters: 0,
+        monthMeters: Array(12).fill(0),
+        achievementsUnlocked: [],
+        startRank: getUserRank(0),
+        currentRank: getUserRank(users[userId]?.totalMeters || 0),
+        rankImproved: false,
+        topPercentage: 100,
+        bridgeCrossings: 0,
+        marathonCount: '0',
+        everestClimbs: '0',
+        firstRowDate: null,
+        daysRowed: 0,
+        hasData: false,
+      };
+    }
+    
+    // Total meters
+    const totalMeters = yearEntries.reduce((sum, e) => sum + e.meters, 0);
+    
+    // Session count
+    const sessionCount = yearEntries.length;
+    
+    // Best single row
+    const bestRow = Math.max(...yearEntries.map(e => e.meters));
+    const bestRowEntry = yearEntries.find(e => e.meters === bestRow);
+    const bestRowDate = bestRowEntry ? new Date(bestRowEntry.date) : null;
+    
+    // Calculate best streak in 2025
+    const uniqueDays = [...new Set(yearEntries.map(e => 
+      new Date(e.date).toDateString()
+    ))].sort((a, b) => new Date(a) - new Date(b));
+    
+    let bestStreak = 1;
+    let currentStreak = 1;
+    for (let i = 1; i < uniqueDays.length; i++) {
+      const prev = new Date(uniqueDays[i - 1]);
+      const curr = new Date(uniqueDays[i]);
+      const diff = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
+      if (diff === 1) {
+        currentStreak++;
+        bestStreak = Math.max(bestStreak, currentStreak);
+      } else {
+        currentStreak = 1;
+      }
+    }
+    
+    // Favorite day of week
+    const dayCount = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
+    yearEntries.forEach(e => {
+      dayCount[new Date(e.date).getDay()]++;
+    });
+    const favoriteDayIndex = dayCount.indexOf(Math.max(...dayCount));
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const favoriteDay = dayNames[favoriteDayIndex];
+    
+    // Most active month
+    const monthCount = Array(12).fill(0);
+    const monthMeters = Array(12).fill(0);
+    yearEntries.forEach(e => {
+      const month = new Date(e.date).getMonth();
+      monthCount[month]++;
+      monthMeters[month] += e.meters;
+    });
+    const bestMonthIndex = monthMeters.indexOf(Math.max(...monthMeters));
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const bestMonth = monthNames[bestMonthIndex];
+    const bestMonthMeters = monthMeters[bestMonthIndex];
+    
+    // Achievements unlocked in 2025
+    const user = users[userId];
+    const achievementsUnlocked = user?.unlockedAchievements 
+      ? Object.entries(user.unlockedAchievements)
+          .filter(([_, date]) => {
+            const d = new Date(date);
+            return d >= yearStart && d <= yearEnd;
+          })
+          .map(([id]) => ACHIEVEMENTS.find(a => a.id === id))
+          .filter(Boolean)
+      : [];
+    
+    // Rank journey - get first and current rank
+    const firstEntryMeters = yearEntries.length > 0 ? yearEntries[0].meters : 0;
+    const userTotalAtStart = (user?.totalMeters || 0) - totalMeters + firstEntryMeters;
+    const startRank = getUserRank(Math.max(0, userTotalAtStart));
+    const currentRank = getUserRank(user?.totalMeters || 0);
+    const rankImproved = startRank.title !== currentRank.title;
+    
+    // Top percentage among all rowers
+    const allUserMeters = Object.values(users)
+      .map(u => u.totalMeters || 0)
+      .filter(m => m > 0)
+      .sort((a, b) => b - a);
+    const userRankIndex = allUserMeters.findIndex(m => m <= (user?.totalMeters || 0));
+    const topPercentage = allUserMeters.length > 0 
+      ? Math.max(1, Math.round((userRankIndex + 1) / allUserMeters.length * 100))
+      : 50;
+    
+    // Fun equivalents
+    const goldenGateBridge = 2737; // meters
+    const marathons = 42195; // meters
+    const everestHeight = 8849; // meters
+    
+    const bridgeCrossings = Math.floor(totalMeters / goldenGateBridge);
+    const marathonCount = (totalMeters / marathons).toFixed(1);
+    const everestClimbs = (totalMeters / everestHeight).toFixed(1);
+    
+    // First row date
+    const firstRowDate = yearEntries.length > 0 ? new Date(yearEntries[0].date) : null;
+    
+    // Days rowed
+    const daysRowed = uniqueDays.length;
+    
+    return {
+      totalMeters,
+      sessionCount,
+      bestRow,
+      bestRowDate,
+      bestStreak,
+      favoriteDay,
+      favoriteDayCount: dayCount[favoriteDayIndex],
+      bestMonth,
+      bestMonthMeters,
+      monthMeters,
+      achievementsUnlocked,
+      startRank,
+      currentRank,
+      rankImproved,
+      topPercentage,
+      bridgeCrossings,
+      marathonCount,
+      everestClimbs,
+      firstRowDate,
+      daysRowed,
+      hasData: true,
+    };
+  };
+
   // Get weekly stats for current user
   const getWeeklyStats = (userId) => {
     const now = new Date();
@@ -1969,20 +2177,21 @@ function App() {
   };
 
   // Fire confetti celebration
-  const fireConfetti = () => {
-    const duration = 2000;
+  const fireConfetti = (scale = 1) => {
+    const duration = Math.round(2000 * scale);
+    const particleCount = Math.max(1, Math.round(3 * scale));
     const end = Date.now() + duration;
 
     const frame = () => {
       confetti({
-        particleCount: 3,
+        particleCount: particleCount,
         angle: 60,
         spread: 55,
         origin: { x: 0, y: 0.7 },
         colors: ['#00d4aa', '#00ffcc', '#ffd700', '#ff6b35'],
       });
       confetti({
-        particleCount: 3,
+        particleCount: particleCount,
         angle: 120,
         spread: 55,
         origin: { x: 1, y: 0.7 },
@@ -2211,6 +2420,40 @@ function App() {
                 <p>📏 {MIN_METERS.toLocaleString()} - {MAX_METERS.toLocaleString()} meters per entry</p>
                 <p>⏱️ {COOLDOWN_MINUTES} minute cooldown between entries</p>
               </div>
+
+              {/* Divider */}
+              <div className="upload-divider">
+                <span>or enter manually</span>
+              </div>
+
+              {/* Manual Entry */}
+              <div className="manual-entry">
+                <div className="manual-entry-input">
+                  <input
+                    type="number"
+                    placeholder="Enter meters"
+                    value={manualMeters}
+                    onChange={(e) => setManualMeters(e.target.value)}
+                    disabled={isSubmittingManual || !userProfile}
+                    min={MIN_METERS}
+                    max={MAX_METERS}
+                  />
+                  <button 
+                    className="manual-submit-btn"
+                    onClick={handleManualSubmit}
+                    disabled={isSubmittingManual || !userProfile || !manualMeters}
+                  >
+                    {isSubmittingManual ? 'Saving...' : 'Log'}
+                  </button>
+                </div>
+                <p className="manual-entry-note">
+                  ⚠️ Manual entries are marked as unverified
+                </p>
+              </div>
+
+              {validationError && (
+                <div className="validation-error">{validationError}</div>
+              )}
             </div>
 
             {/* Personal Record Display */}
@@ -2227,6 +2470,36 @@ function App() {
         {activeTab === 'feed' && (
           <section className="feed-section">
             <h2>Activity Feed</h2>
+            
+            {/* 2025 Wrapped Banner */}
+            {currentUser && !wrappedDismissed && getWrappedStats(currentUser.uid) && (
+              <div className="wrapped-banner">
+                <div className="wrapped-banner-content">
+                  <span className="wrapped-banner-icon">🎁</span>
+                  <div className="wrapped-banner-text">
+                    <strong>Your 2025 Wrapped is here!</strong>
+                    <span>See your year in rowing</span>
+                  </div>
+                </div>
+                <div className="wrapped-banner-actions">
+                  <button 
+                    className="wrapped-banner-view"
+                    onClick={() => setShowWrapped(true)}
+                  >
+                    View
+                  </button>
+                  <button 
+                    className="wrapped-banner-dismiss"
+                    onClick={() => {
+                      setWrappedDismissed(true);
+                      localStorage.setItem('wrappedDismissed2025', 'true');
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
             
             {/* Search Bar */}
             <div className="search-bar">
@@ -2311,13 +2584,13 @@ function App() {
                                 <>
                                   rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span>
                                   {item.verificationStatus === 'verified' && (
-                                    <span className="verification-badge verified" title="Verified">✓</span>
+                                    <span className="verification-badge verified" title="Verified with photo">✓</span>
                                   )}
                                   {item.verificationStatus === 'pending_review' && (
                                     <span className="verification-badge pending" title="Pending Review">⏳</span>
                                   )}
-                                  {!item.verificationStatus && (
-                                    <span className="verification-badge unverified" title="Unverified">?</span>
+                                  {(item.verificationStatus === 'unverified' || !item.verificationStatus) && (
+                                    <span className="verification-badge unverified" title="No photo - unverified">✗</span>
                                   )}
                                 </>
                               )}
@@ -3069,6 +3342,19 @@ function App() {
                   </button>
                 </div>
 
+                {/* 2025 Wrapped */}
+                {getWrappedStats(currentUser?.uid) && (
+                  <div className="settings-section">
+                    <h3>Year in Review</h3>
+                    <button 
+                      className="settings-wrapped-btn" 
+                      onClick={() => { setShowWrapped(true); setShowSettingsModal(false); setWrappedSlide(0); }}
+                    >
+                      🎁 View 2025 Wrapped
+                    </button>
+                  </div>
+                )}
+
                 {/* Sign Out */}
                 <button className="settings-signout-btn" onClick={() => { handleSignOut(); setShowSettingsModal(false); }}>
                   Sign Out
@@ -3508,6 +3794,7 @@ function App() {
                           <span className="session-meters-value">{session.meters.toLocaleString()}m</span>
                           {session.verificationStatus === 'verified' && <span className="session-verified">✓</span>}
                           {session.verificationStatus === 'pending_review' && <span className="session-pending">⏳</span>}
+                          {(session.verificationStatus === 'unverified' || !session.verificationStatus) && <span className="session-unverified">✗</span>}
                         </div>
                       </div>
                     );
@@ -3518,6 +3805,355 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* 2025 Wrapped Modal */}
+      {showWrapped && currentUser && (() => {
+        const stats = getWrappedStats(currentUser.uid);
+        if (!stats) return null;
+        
+        // Different slides for users with no data
+        const noDataSlides = [
+          {
+            type: 'intro',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            content: (
+              <div className="wrapped-slide-content intro">
+                <div className="wrapped-year">2025</div>
+                <div className="wrapped-logo">🚣 ROW CREW</div>
+                <h1>Your Year Awaits!</h1>
+                <p>Let's make it count...</p>
+                <div className="wrapped-tap-hint">Tap to continue →</div>
+              </div>
+            )
+          },
+          {
+            type: 'no-data',
+            background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+            content: (
+              <div className="wrapped-slide-content">
+                <div className="wrapped-big-text">🚣</div>
+                <h2 style={{ marginTop: '1rem' }}>Your rowing journey starts now!</h2>
+                <div className="wrapped-fun-fact">
+                  Log your first row and start building your 2025 story
+                </div>
+              </div>
+            )
+          },
+          {
+            type: 'cta',
+            background: 'linear-gradient(135deg, #0a0e17 0%, #1a1f2e 100%)',
+            content: (
+              <div className="wrapped-slide-content summary">
+                <div className="wrapped-summary-header">
+                  <span>🚣</span> ROW CREW 2025
+                </div>
+                <div className="wrapped-summary-name">{userProfile?.name}</div>
+                <div style={{ padding: '2rem 0', fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
+                  Your story is waiting to be written.<br/>Start rowing today!
+                </div>
+                <div className="wrapped-summary-rank">
+                  {stats.currentRank.emoji} {stats.currentRank.title}
+                </div>
+                <div className="wrapped-summary-footer">
+                  rowcrew.netlify.app
+                </div>
+              </div>
+            )
+          }
+        ];
+
+        const slides = stats.hasData ? [
+          // Slide 0: Intro
+          {
+            type: 'intro',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            content: (
+              <div className="wrapped-slide-content intro">
+                <div className="wrapped-year">2025</div>
+                <div className="wrapped-logo">🚣 ROW CREW</div>
+                <h1>Your Year in Rowing</h1>
+                <p>Let's see what you accomplished...</p>
+                <div className="wrapped-tap-hint">Tap to continue →</div>
+              </div>
+            )
+          },
+          // Slide 1: Total Meters
+          {
+            type: 'meters',
+            background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+            content: (
+              <div className="wrapped-slide-content">
+                <div className="wrapped-small-label">This year, you rowed</div>
+                <div className="wrapped-big-number">{stats.totalMeters.toLocaleString()}</div>
+                <div className="wrapped-unit">meters</div>
+                <div className="wrapped-fun-fact">
+                  That's {stats.bridgeCrossings} trips across the Golden Gate Bridge! 🌉
+                </div>
+              </div>
+            )
+          },
+          // Slide 2: Sessions
+          {
+            type: 'sessions',
+            background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            content: (
+              <div className="wrapped-slide-content">
+                <div className="wrapped-small-label">You showed up</div>
+                <div className="wrapped-big-number">{stats.sessionCount}</div>
+                <div className="wrapped-unit">times</div>
+                <div className="wrapped-fun-fact">
+                  That's {stats.daysRowed} unique days on the rower! 💪
+                </div>
+              </div>
+            )
+          },
+          // Slide 3: Best Day
+          {
+            type: 'favorite-day',
+            background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            content: (
+              <div className="wrapped-slide-content">
+                <div className="wrapped-small-label">Your favorite day to row was</div>
+                <div className="wrapped-big-text">{stats.favoriteDay}</div>
+                <div className="wrapped-fun-fact">
+                  You rowed on {stats.favoriteDay}s {stats.favoriteDayCount} times!
+                </div>
+              </div>
+            )
+          },
+          // Slide 4: Best Month
+          {
+            type: 'best-month',
+            background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+            content: (
+              <div className="wrapped-slide-content dark-text">
+                <div className="wrapped-small-label">Your most active month was</div>
+                <div className="wrapped-big-text">{stats.bestMonth}</div>
+                <div className="wrapped-fun-fact">
+                  You crushed {stats.bestMonthMeters.toLocaleString()}m that month! 📈
+                </div>
+              </div>
+            )
+          },
+          // Slide 5: Beast Mode (Best Row)
+          {
+            type: 'beast-mode',
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            content: (
+              <div className="wrapped-slide-content">
+                <div className="wrapped-small-label">Your beast mode moment 🏆</div>
+                <div className="wrapped-big-number">{stats.bestRow.toLocaleString()}</div>
+                <div className="wrapped-unit">meters in one session</div>
+                {stats.bestRowDate && (
+                  <div className="wrapped-fun-fact">
+                    On {stats.bestRowDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                  </div>
+                )}
+              </div>
+            )
+          },
+          // Slide 6: Best Streak
+          {
+            type: 'streak',
+            background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+            content: (
+              <div className="wrapped-slide-content dark-text">
+                <div className="wrapped-small-label">Your longest streak</div>
+                <div className="wrapped-big-number">{stats.bestStreak}</div>
+                <div className="wrapped-unit">days in a row 🔥</div>
+                <div className="wrapped-fun-fact">
+                  Consistency is key!
+                </div>
+              </div>
+            )
+          },
+          // Slide 7: Rank Journey (if improved)
+          ...(stats.rankImproved ? [{
+            type: 'rank',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            content: (
+              <div className="wrapped-slide-content">
+                <div className="wrapped-small-label">You leveled up!</div>
+                <div className="wrapped-rank-journey">
+                  <div className="wrapped-rank-from">
+                    <span className="wrapped-rank-emoji">{stats.startRank.emoji}</span>
+                    <span>{stats.startRank.title}</span>
+                  </div>
+                  <div className="wrapped-rank-arrow">→</div>
+                  <div className="wrapped-rank-to">
+                    <span className="wrapped-rank-emoji">{stats.currentRank.emoji}</span>
+                    <span>{stats.currentRank.title}</span>
+                  </div>
+                </div>
+              </div>
+            )
+          }] : []),
+          // Slide 8: Achievements
+          ...(stats.achievementsUnlocked.length > 0 ? [{
+            type: 'achievements',
+            background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+            content: (
+              <div className="wrapped-slide-content dark-text">
+                <div className="wrapped-small-label">You unlocked</div>
+                <div className="wrapped-big-number">{stats.achievementsUnlocked.length}</div>
+                <div className="wrapped-unit">achievements</div>
+                <div className="wrapped-badges">
+                  {stats.achievementsUnlocked.slice(0, 6).map((a, i) => (
+                    <span key={i} className="wrapped-badge">{a.emoji}</span>
+                  ))}
+                </div>
+              </div>
+            )
+          }] : []),
+          // Slide 9: Top Percentage
+          {
+            type: 'top-percent',
+            background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+            content: (
+              <div className="wrapped-slide-content">
+                <div className="wrapped-small-label">You're in the</div>
+                <div className="wrapped-big-number">Top {stats.topPercentage}%</div>
+                <div className="wrapped-unit">of all Row Crew rowers</div>
+                <div className="wrapped-fun-fact">
+                  {stats.topPercentage <= 10 ? "Elite status! 👑" : 
+                   stats.topPercentage <= 25 ? "Outstanding! 🌟" : 
+                   stats.topPercentage <= 50 ? "Great work! 💪" : "Keep rowing! 🚣"}
+                </div>
+              </div>
+            )
+          },
+          // Slide 10: Summary (shareable)
+          {
+            type: 'summary',
+            background: 'linear-gradient(135deg, #0a0e17 0%, #1a1f2e 100%)',
+            content: (
+              <div className="wrapped-slide-content summary" ref={wrappedCardRef}>
+                <div className="wrapped-summary-header">
+                  <span>🚣</span> ROW CREW 2025
+                </div>
+                <div className="wrapped-summary-name">{userProfile?.name}</div>
+                <div className="wrapped-summary-stats">
+                  <div className="wrapped-summary-stat">
+                    <span className="wrapped-summary-value">{formatMeters(stats.totalMeters)}</span>
+                    <span className="wrapped-summary-label">meters</span>
+                  </div>
+                  <div className="wrapped-summary-stat">
+                    <span className="wrapped-summary-value">{stats.sessionCount}</span>
+                    <span className="wrapped-summary-label">sessions</span>
+                  </div>
+                  <div className="wrapped-summary-stat">
+                    <span className="wrapped-summary-value">{stats.bestStreak}</span>
+                    <span className="wrapped-summary-label">day streak</span>
+                  </div>
+                </div>
+                <div className="wrapped-summary-rank">
+                  {stats.currentRank.emoji} {stats.currentRank.title}
+                </div>
+                <div className="wrapped-summary-footer">
+                  rowcrew.netlify.app
+                </div>
+              </div>
+            )
+          }
+        ] : noDataSlides;
+        
+        const currentSlideData = slides[wrappedSlide];
+        const isLastSlide = wrappedSlide === slides.length - 1;
+        
+        const handleSlideClick = (e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const isLeftSide = x < rect.width / 3;
+          
+          if (isLeftSide && wrappedSlide > 0) {
+            setWrappedSlide(prev => prev - 1);
+          } else if (!isLeftSide && wrappedSlide < slides.length - 1) {
+            setWrappedSlide(prev => prev + 1);
+          }
+        };
+        
+        const handleShareWrapped = async () => {
+          if (!wrappedCardRef.current) return;
+          
+          try {
+            const canvas = await html2canvas(wrappedCardRef.current, {
+              backgroundColor: '#0a0e17',
+              scale: 2,
+            });
+            
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const file = new File([blob], 'row-crew-wrapped-2025.png', { type: 'image/png' });
+            
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: 'My Row Crew 2025 Wrapped',
+                text: `🚣 My 2025 Row Crew Wrapped! I rowed ${stats.totalMeters.toLocaleString()}m this year!`,
+              });
+            } else if (navigator.clipboard?.write) {
+              await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+              alert('Copied to clipboard!');
+            }
+          } catch (err) {
+            console.error('Share failed:', err);
+          }
+        };
+        
+        return (
+          <div 
+            className="wrapped-overlay"
+            onClick={handleSlideClick}
+            style={{ background: currentSlideData.background }}
+          >
+            {/* Progress bar */}
+            <div className="wrapped-progress">
+              {slides.map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`wrapped-progress-bar ${i <= wrappedSlide ? 'active' : ''} ${i === wrappedSlide ? 'current' : ''}`}
+                />
+              ))}
+            </div>
+            
+            {/* Close button */}
+            <button 
+              className="wrapped-close"
+              onClick={(e) => { e.stopPropagation(); setShowWrapped(false); setWrappedSlide(0); }}
+            >
+              ✕
+            </button>
+            
+            {/* Slide content */}
+            <div className={`wrapped-slide wrapped-slide-${currentSlideData.type}`}>
+              {currentSlideData.content}
+            </div>
+            
+            {/* Navigation hint */}
+            <div className="wrapped-nav-hint">
+              {wrappedSlide > 0 && <span className="nav-left">‹</span>}
+              <span className="nav-dots">
+                {wrappedSlide + 1} / {slides.length}
+              </span>
+              {!isLastSlide && <span className="nav-right">›</span>}
+            </div>
+            
+            {/* Share button on last slide */}
+            {isLastSlide && (
+              <div className="wrapped-share-actions" onClick={(e) => e.stopPropagation()}>
+                <button className="wrapped-share-btn" onClick={handleShareWrapped}>
+                  📤 Share Your Wrapped
+                </button>
+                <button 
+                  className="wrapped-done-btn"
+                  onClick={() => { setShowWrapped(false); setWrappedSlide(0); }}
+                >
+                  Done
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Install App Prompt */}
       {showInstallPrompt && !isStandalone && (

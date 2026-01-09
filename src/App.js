@@ -14,7 +14,11 @@ import {
   serverTimestamp,
   where,
   getDocs,
-  limit
+  limit,
+  updateDoc,
+  deleteDoc,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
@@ -326,6 +330,18 @@ const MILESTONES = [
 // Changelog entries
 const CHANGELOG = [
   {
+    version: '4.0.0',
+    date: '2025-01-08',
+    changes: [
+      '👥 Groups - Create private groups with friends',
+      '🎯 Challenges - 5 types: Collective, Distance Race, Time Trial, Streak, Sessions',
+      '🔗 Join groups via invite code',
+      '📊 Group-filtered leaderboards & feeds',
+      '⏱️ Time trials with verified/unverified times',
+      '🏆 Challenge leaderboards & progress tracking',
+    ]
+  },
+  {
     version: '3.2.0',
     date: '2025-12-26',
     changes: [
@@ -590,6 +606,33 @@ function App() {
   const [wrappedDismissed, setWrappedDismissed] = useState(() => {
     return localStorage.getItem('wrappedDismissed2025') === 'true';
   });
+  
+  // Groups & Challenges
+  const [groups, setGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState(null); // null = global view
+  const [challenges, setChallenges] = useState([]);
+  const [showGroupSelector, setShowGroupSelector] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showJoinGroupModal, setShowJoinGroupModal] = useState(false);
+  const [showCreateChallengeModal, setShowCreateChallengeModal] = useState(false);
+  const [showChallengeDetail, setShowChallengeDetail] = useState(null);
+  const [showTimeTrialModal, setShowTimeTrialModal] = useState(null);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupDescription, setNewGroupDescription] = useState('');
+  const [joinGroupCode, setJoinGroupCode] = useState('');
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [isJoiningGroup, setIsJoiningGroup] = useState(false);
+  const [groupError, setGroupError] = useState('');
+  const [newChallengeName, setNewChallengeName] = useState('');
+  const [newChallengeType, setNewChallengeType] = useState('collective');
+  const [newChallengeTarget, setNewChallengeTarget] = useState('');
+  const [newChallengeStartDate, setNewChallengeStartDate] = useState('');
+  const [newChallengeEndDate, setNewChallengeEndDate] = useState('');
+  const [isCreatingChallenge, setIsCreatingChallenge] = useState(false);
+  const [timeTrialTime, setTimeTrialTime] = useState('');
+  const [timeTrialImage, setTimeTrialImage] = useState(null);
+  const [isSubmittingTimeTrial, setIsSubmittingTimeTrial] = useState(false);
+  
   const wrappedCardRef = useRef(null);
   
   const fileInputRef = useRef(null);
@@ -788,6 +831,68 @@ function App() {
     };
   }, []);
 
+  // Load groups for current user
+  useEffect(() => {
+    if (!currentUser) {
+      setGroups([]);
+      setChallenges([]);
+      setSelectedGroupId(null);
+      return;
+    }
+
+    // Listen to groups where user is a member
+    const groupsQuery = query(
+      collection(db, 'groups'),
+      where('memberIds', 'array-contains', currentUser.uid)
+    );
+
+    const unsubGroups = onSnapshot(
+      groupsQuery,
+      (snapshot) => {
+        const groupsData = [];
+        snapshot.forEach((docSnap) => {
+          groupsData.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        setGroups(groupsData);
+      },
+      (error) => {
+        console.error('Error fetching groups:', error);
+      }
+    );
+
+    return () => unsubGroups();
+  }, [currentUser]);
+
+  // Load challenges for selected group
+  useEffect(() => {
+    if (!selectedGroupId) {
+      setChallenges([]);
+      return;
+    }
+
+    const challengesQuery = query(
+      collection(db, 'challenges'),
+      where('groupId', '==', selectedGroupId),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubChallenges = onSnapshot(
+      challengesQuery,
+      (snapshot) => {
+        const challengesData = [];
+        snapshot.forEach((docSnap) => {
+          challengesData.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        setChallenges(challengesData);
+      },
+      (error) => {
+        console.error('Error fetching challenges:', error);
+      }
+    );
+
+    return () => unsubChallenges();
+  }, [selectedGroupId]);
+
   // Update user profile when it changes in Firebase
   useEffect(() => {
     if (currentUser && users[currentUser.uid]) {
@@ -904,6 +1009,384 @@ function App() {
       
       alert('Failed to create profile. Please try again.');
     }
+  };
+
+  // Generate random invite code
+  const generateInviteCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+
+  // Create a new group
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim() || !currentUser) return;
+
+    setIsCreatingGroup(true);
+    setGroupError('');
+
+    try {
+      const groupId = `group_${Date.now()}_${currentUser.uid.slice(0, 6)}`;
+      const inviteCode = generateInviteCode();
+
+      await setDoc(doc(db, 'groups', groupId), {
+        name: newGroupName.trim(),
+        description: newGroupDescription.trim(),
+        inviteCode,
+        createdBy: currentUser.uid,
+        adminIds: [currentUser.uid],
+        memberIds: [currentUser.uid],
+        createdAt: serverTimestamp(),
+      });
+
+      setNewGroupName('');
+      setNewGroupDescription('');
+      setShowCreateGroupModal(false);
+      setSelectedGroupId(groupId);
+    } catch (error) {
+      console.error('Error creating group:', error);
+      setGroupError('Failed to create group. Please try again.');
+    }
+
+    setIsCreatingGroup(false);
+  };
+
+  // Join a group by invite code
+  const handleJoinGroup = async () => {
+    if (!joinGroupCode.trim() || !currentUser) return;
+
+    setIsJoiningGroup(true);
+    setGroupError('');
+
+    try {
+      // Find group by invite code
+      const groupsQuery = query(
+        collection(db, 'groups'),
+        where('inviteCode', '==', joinGroupCode.trim().toUpperCase())
+      );
+      const snapshot = await getDocs(groupsQuery);
+
+      if (snapshot.empty) {
+        setGroupError('Invalid invite code. Please check and try again.');
+        setIsJoiningGroup(false);
+        return;
+      }
+
+      const groupDoc = snapshot.docs[0];
+      const groupData = groupDoc.data();
+
+      if (groupData.memberIds?.includes(currentUser.uid)) {
+        setGroupError('You are already a member of this group!');
+        setIsJoiningGroup(false);
+        return;
+      }
+
+      // Add user to group
+      await updateDoc(doc(db, 'groups', groupDoc.id), {
+        memberIds: arrayUnion(currentUser.uid)
+      });
+
+      setJoinGroupCode('');
+      setShowJoinGroupModal(false);
+      setSelectedGroupId(groupDoc.id);
+    } catch (error) {
+      console.error('Error joining group:', error);
+      setGroupError('Failed to join group. Please try again.');
+    }
+
+    setIsJoiningGroup(false);
+  };
+
+  // Leave a group
+  const handleLeaveGroup = async (groupId) => {
+    if (!currentUser || !groupId) return;
+
+    try {
+      const group = groups.find(g => g.id === groupId);
+      if (!group) return;
+
+      // Check if user is the only admin
+      if (group.adminIds?.length === 1 && group.adminIds[0] === currentUser.uid) {
+        if (group.memberIds?.length > 1) {
+          alert('You must assign another admin before leaving, or remove all other members first.');
+          return;
+        }
+        // User is last member, delete the group
+        await deleteDoc(doc(db, 'groups', groupId));
+      } else {
+        // Remove user from group
+        await updateDoc(doc(db, 'groups', groupId), {
+          memberIds: arrayRemove(currentUser.uid),
+          adminIds: arrayRemove(currentUser.uid)
+        });
+      }
+
+      if (selectedGroupId === groupId) {
+        setSelectedGroupId(null);
+      }
+    } catch (error) {
+      console.error('Error leaving group:', error);
+    }
+  };
+
+  // Get selected group
+  const getSelectedGroup = () => {
+    return groups.find(g => g.id === selectedGroupId);
+  };
+
+  // Check if current user is group admin
+  const isGroupAdmin = (groupId) => {
+    const group = groups.find(g => g.id === groupId);
+    return group?.adminIds?.includes(currentUser?.uid);
+  };
+
+  // Create a new challenge
+  const handleCreateChallenge = async () => {
+    if (!newChallengeName.trim() || !selectedGroupId || !currentUser) return;
+    if (!newChallengeStartDate || !newChallengeEndDate) {
+      setGroupError('Please select start and end dates');
+      return;
+    }
+
+    setIsCreatingChallenge(true);
+    setGroupError('');
+
+    try {
+      const challengeId = `challenge_${Date.now()}`;
+      const targetValue = parseInt(newChallengeTarget, 10) || 0;
+
+      await setDoc(doc(db, 'challenges', challengeId), {
+        groupId: selectedGroupId,
+        name: newChallengeName.trim(),
+        type: newChallengeType,
+        targetMeters: newChallengeType === 'collective' ? targetValue : null,
+        targetDistance: newChallengeType === 'time_trial' ? targetValue : null,
+        startDate: new Date(newChallengeStartDate).toISOString(),
+        endDate: new Date(newChallengeEndDate).toISOString(),
+        createdBy: currentUser.uid,
+        createdAt: serverTimestamp(),
+        participants: {},
+      });
+
+      setNewChallengeName('');
+      setNewChallengeType('collective');
+      setNewChallengeTarget('');
+      setNewChallengeStartDate('');
+      setNewChallengeEndDate('');
+      setShowCreateChallengeModal(false);
+    } catch (error) {
+      console.error('Error creating challenge:', error);
+      setGroupError('Failed to create challenge. Please try again.');
+    }
+
+    setIsCreatingChallenge(false);
+  };
+
+  // Get challenge status
+  const getChallengeStatus = (challenge) => {
+    const now = new Date();
+    const start = new Date(challenge.startDate);
+    const end = new Date(challenge.endDate);
+
+    if (now < start) return 'upcoming';
+    if (now > end) return 'completed';
+    return 'active';
+  };
+
+  // Calculate challenge progress for collective challenges
+  const getChallengeProgress = (challenge) => {
+    if (challenge.type !== 'collective') return null;
+
+    const group = groups.find(g => g.id === challenge.groupId);
+    if (!group) return { current: 0, target: challenge.targetMeters || 0 };
+
+    const start = new Date(challenge.startDate);
+    const end = new Date(challenge.endDate);
+
+    // Sum entries from group members during challenge period
+    const challengeEntries = entries.filter(e => 
+      group.memberIds?.includes(e.userId) &&
+      new Date(e.date) >= start &&
+      new Date(e.date) <= end
+    );
+
+    const currentMeters = challengeEntries.reduce((sum, e) => sum + e.meters, 0);
+
+    return {
+      current: currentMeters,
+      target: challenge.targetMeters || 0,
+      percentage: challenge.targetMeters ? Math.min(100, (currentMeters / challenge.targetMeters) * 100) : 0
+    };
+  };
+
+  // Get leaderboard for a challenge
+  const getChallengeLeaderboard = (challenge) => {
+    const group = groups.find(g => g.id === challenge.groupId);
+    if (!group) return [];
+
+    const start = new Date(challenge.startDate);
+    const end = new Date(challenge.endDate);
+
+    if (challenge.type === 'time_trial') {
+      // Get best times from participants
+      const attempts = Object.entries(challenge.participants || {})
+        .map(([odometer, data]) => ({
+          odometer,
+          user: users[odometer],
+          time: data.bestTime,
+          verified: data.verified,
+          date: data.date
+        }))
+        .filter(a => a.time && a.user)
+        .sort((a, b) => a.time - b.time);
+
+      return attempts;
+    }
+
+    // For distance-based challenges
+    const memberProgress = group.memberIds?.map(odometer => {
+      const memberEntries = entries.filter(e => 
+        e.userId === odometer &&
+        new Date(e.date) >= start &&
+        new Date(e.date) <= end
+      );
+
+      const totalMeters = memberEntries.reduce((sum, e) => sum + e.meters, 0);
+      const sessionCount = memberEntries.length;
+
+      // Calculate streak during challenge period
+      const uniqueDays = [...new Set(memberEntries.map(e => 
+        new Date(e.date).toDateString()
+      ))].sort((a, b) => new Date(a) - new Date(b));
+
+      let bestStreak = uniqueDays.length > 0 ? 1 : 0;
+      let currentStreak = 1;
+      for (let i = 1; i < uniqueDays.length; i++) {
+        const prev = new Date(uniqueDays[i - 1]);
+        const curr = new Date(uniqueDays[i]);
+        const diff = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
+        if (diff === 1) {
+          currentStreak++;
+          bestStreak = Math.max(bestStreak, currentStreak);
+        } else {
+          currentStreak = 1;
+        }
+      }
+
+      return {
+        odometer,
+        user: users[odometer],
+        totalMeters,
+        sessionCount,
+        bestStreak,
+      };
+    }).filter(m => m.user);
+
+    // Sort based on challenge type
+    if (challenge.type === 'distance_race' || challenge.type === 'collective') {
+      return memberProgress.sort((a, b) => b.totalMeters - a.totalMeters);
+    } else if (challenge.type === 'streak') {
+      return memberProgress.sort((a, b) => b.bestStreak - a.bestStreak);
+    } else if (challenge.type === 'sessions') {
+      return memberProgress.sort((a, b) => b.sessionCount - a.sessionCount);
+    }
+
+    return memberProgress;
+  };
+
+  // Submit time trial attempt
+  const handleSubmitTimeTrial = async () => {
+    if (!showTimeTrialModal || !currentUser || !timeTrialTime) return;
+
+    setIsSubmittingTimeTrial(true);
+
+    try {
+      const challenge = showTimeTrialModal;
+      const timeInSeconds = parseTimeToSeconds(timeTrialTime);
+
+      if (!timeInSeconds || timeInSeconds <= 0) {
+        setGroupError('Please enter a valid time (e.g., 1:45.3 or 105.3)');
+        setIsSubmittingTimeTrial(false);
+        return;
+      }
+
+      // Get current best time for this user
+      const currentBest = challenge.participants?.[currentUser.uid]?.bestTime;
+
+      // Only update if better time or no previous attempt
+      if (!currentBest || timeInSeconds < currentBest) {
+        await updateDoc(doc(db, 'challenges', challenge.id), {
+          [`participants.${currentUser.uid}`]: {
+            bestTime: timeInSeconds,
+            verified: !!timeTrialImage,
+            date: new Date().toISOString(),
+            imageUrl: timeTrialImage || null,
+          }
+        });
+      }
+
+      setTimeTrialTime('');
+      setTimeTrialImage(null);
+      setShowTimeTrialModal(null);
+    } catch (error) {
+      console.error('Error submitting time trial:', error);
+      setGroupError('Failed to submit. Please try again.');
+    }
+
+    setIsSubmittingTimeTrial(false);
+  };
+
+  // Parse time string to seconds (e.g., "1:45.3" -> 105.3)
+  const parseTimeToSeconds = (timeStr) => {
+    if (!timeStr) return null;
+
+    // Handle MM:SS.ms format
+    if (timeStr.includes(':')) {
+      const parts = timeStr.split(':');
+      const minutes = parseInt(parts[0], 10) || 0;
+      const seconds = parseFloat(parts[1]) || 0;
+      return minutes * 60 + seconds;
+    }
+
+    // Handle pure seconds
+    return parseFloat(timeStr) || null;
+  };
+
+  // Format seconds to time string
+  const formatTime = (seconds) => {
+    if (!seconds) return '--';
+    const mins = Math.floor(seconds / 60);
+    const secs = (seconds % 60).toFixed(1);
+    if (mins > 0) {
+      return `${mins}:${secs.padStart(4, '0')}`;
+    }
+    return `${secs}s`;
+  };
+
+  // Get filtered users/entries for selected group
+  const getGroupFilteredUsers = () => {
+    if (!selectedGroupId) return users;
+    const group = groups.find(g => g.id === selectedGroupId);
+    if (!group) return users;
+
+    const filtered = {};
+    group.memberIds?.forEach(id => {
+      if (users[id]) {
+        filtered[id] = users[id];
+      }
+    });
+    return filtered;
+  };
+
+  const getGroupFilteredEntries = () => {
+    if (!selectedGroupId) return entries;
+    const group = groups.find(g => g.id === selectedGroupId);
+    if (!group) return entries;
+
+    return entries.filter(e => group.memberIds?.includes(e.userId));
   };
 
   // Upload profile picture
@@ -1659,7 +2142,8 @@ function App() {
 
   // Get leaderboard
   const getLeaderboard = () => {
-    return Object.values(users)
+    const filteredUsers = getGroupFilteredUsers();
+    return Object.values(filteredUsers)
       .map((user) => ({
         ...user,
         streak: calculateStreak(user.id),
@@ -1673,20 +2157,22 @@ function App() {
 
   // Get weekly leaderboard (this week's meters only)
   const getWeeklyLeaderboard = () => {
+    const filteredUsers = getGroupFilteredUsers();
+    const filteredEntries = getGroupFilteredEntries();
     const now = new Date();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
     startOfWeek.setHours(0, 0, 0, 0);
     
     const weeklyTotals = {};
-    entries.forEach(entry => {
+    filteredEntries.forEach(entry => {
       const entryDate = new Date(entry.date);
       if (entryDate >= startOfWeek) {
         weeklyTotals[entry.userId] = (weeklyTotals[entry.userId] || 0) + entry.meters;
       }
     });
     
-    return Object.values(users)
+    return Object.values(filteredUsers)
       .map((user) => ({
         ...user,
         weeklyMeters: weeklyTotals[user.id] || 0,
@@ -1698,7 +2184,8 @@ function App() {
 
   // Get streak leaderboard
   const getStreakLeaderboard = () => {
-    return Object.values(users)
+    const filteredUsers = getGroupFilteredUsers();
+    return Object.values(filteredUsers)
       .map((user) => ({
         ...user,
         streak: calculateStreak(user.id),
@@ -1711,7 +2198,8 @@ function App() {
 
   // Get achievements leaderboard
   const getAchievementsLeaderboard = () => {
-    return Object.values(users)
+    const filteredUsers = getGroupFilteredUsers();
+    return Object.values(filteredUsers)
       .map((user) => ({
         ...user,
         achievementCount: getUserAchievementCount(user.id),
@@ -1905,16 +2393,19 @@ function App() {
 
   // Get activity feed (last 20 entries across all users, with optional filter)
   const getActivityFeed = (filterQuery = '', page = 1) => {
+    const filteredUsers = getGroupFilteredUsers();
+    const filteredEntries = getGroupFilteredEntries();
+    
     // Get row entries
-    let feedItems = entries.map(entry => ({
+    let feedItems = filteredEntries.map(entry => ({
       ...entry,
       type: 'row',
-      user: users[entry.userId],
+      user: filteredUsers[entry.userId],
       sortDate: new Date(entry.date),
     })).filter(entry => entry.user);
 
-    // Add achievement unlocks from all users
-    Object.values(users).forEach(user => {
+    // Add achievement unlocks from filtered users
+    Object.values(filteredUsers).forEach(user => {
       if (user.unlockedAchievements) {
         Object.entries(user.unlockedAchievements).forEach(([achievementId, dateStr]) => {
           const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
@@ -2347,6 +2838,71 @@ function App() {
         </button>
       </nav>
 
+      {/* Group Selector */}
+      {currentUser && userProfile && (
+        <div className="group-selector-container">
+          <button 
+            className="group-selector-btn"
+            onClick={() => setShowGroupSelector(!showGroupSelector)}
+          >
+            <span className="group-selector-icon">
+              {selectedGroupId ? '👥' : '🌍'}
+            </span>
+            <span className="group-selector-name">
+              {selectedGroupId ? getSelectedGroup()?.name || 'Group' : 'Everyone'}
+            </span>
+            <span className="group-selector-arrow">{showGroupSelector ? '▲' : '▼'}</span>
+          </button>
+
+          {showGroupSelector && (
+            <>
+              <div 
+                className="group-selector-backdrop"
+                onClick={() => setShowGroupSelector(false)}
+              />
+              <div className="group-selector-dropdown">
+              <button 
+                className={`group-option ${!selectedGroupId ? 'active' : ''}`}
+                onClick={() => { setSelectedGroupId(null); setShowGroupSelector(false); }}
+              >
+                <span>🌍</span>
+                <span>Everyone</span>
+                {!selectedGroupId && <span className="check">✓</span>}
+              </button>
+              
+              {groups.map(group => (
+                <button 
+                  key={group.id}
+                  className={`group-option ${selectedGroupId === group.id ? 'active' : ''}`}
+                  onClick={() => { setSelectedGroupId(group.id); setShowGroupSelector(false); }}
+                >
+                  <span>👥</span>
+                  <span>{group.name}</span>
+                  <span className="group-member-count">{group.memberIds?.length || 0}</span>
+                  {selectedGroupId === group.id && <span className="check">✓</span>}
+                </button>
+              ))}
+
+              <div className="group-selector-actions">
+                <button 
+                  className="group-action-btn"
+                  onClick={() => { setShowCreateGroupModal(true); setShowGroupSelector(false); }}
+                >
+                  ➕ Create Group
+                </button>
+                <button 
+                  className="group-action-btn"
+                  onClick={() => { setShowJoinGroupModal(true); setShowGroupSelector(false); }}
+                >
+                  🔗 Join Group
+                </button>
+              </div>
+            </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="main-content">
         {activeTab === 'upload' && (
@@ -2469,10 +3025,12 @@ function App() {
         {/* Activity Feed Tab */}
         {activeTab === 'feed' && (
           <section className="feed-section">
-            <h2>Activity Feed</h2>
+            <h2>
+              {selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Feed` : 'Activity Feed'}
+            </h2>
             
             {/* 2025 Wrapped Banner */}
-            {currentUser && !wrappedDismissed && getWrappedStats(currentUser.uid) && (
+            {currentUser && !wrappedDismissed && !selectedGroupId && getWrappedStats(currentUser.uid) && (
               <div className="wrapped-banner">
                 <div className="wrapped-banner-content">
                   <span className="wrapped-banner-icon">🎁</span>
@@ -2498,6 +3056,123 @@ function App() {
                     ✕
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Group Info & Challenges (when group selected) */}
+            {selectedGroupId && getSelectedGroup() && (
+              <div className="group-info-section">
+                {/* Group Header */}
+                <div className="group-header-card">
+                  <div className="group-header-info">
+                    <h3>{getSelectedGroup()?.name}</h3>
+                    {getSelectedGroup()?.description && (
+                      <p className="group-description">{getSelectedGroup().description}</p>
+                    )}
+                    <div className="group-meta">
+                      <span>👥 {getSelectedGroup()?.memberIds?.length || 0} members</span>
+                      <span className="group-code">Code: {getSelectedGroup()?.inviteCode}</span>
+                    </div>
+                  </div>
+                  <div className="group-header-actions">
+                    {isGroupAdmin(selectedGroupId) && (
+                      <button 
+                        className="group-add-challenge-btn"
+                        onClick={() => setShowCreateChallengeModal(true)}
+                      >
+                        ➕ Challenge
+                      </button>
+                    )}
+                    <button 
+                      className="group-leave-btn"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to leave this group?')) {
+                          handleLeaveGroup(selectedGroupId);
+                        }
+                      }}
+                    >
+                      Leave
+                    </button>
+                  </div>
+                </div>
+
+                {/* Active Challenges */}
+                {challenges.length > 0 && (
+                  <div className="challenges-section">
+                    <h4>Challenges</h4>
+                    <div className="challenges-list">
+                      {challenges.map(challenge => {
+                        const status = getChallengeStatus(challenge);
+                        const progress = getChallengeProgress(challenge);
+                        
+                        return (
+                          <div 
+                            key={challenge.id} 
+                            className={`challenge-card challenge-${status}`}
+                            onClick={() => setShowChallengeDetail(challenge)}
+                          >
+                            <div className="challenge-card-header">
+                              <span className="challenge-type-icon">
+                                {challenge.type === 'collective' && '🎯'}
+                                {challenge.type === 'time_trial' && '⏱️'}
+                                {challenge.type === 'distance_race' && '🏃'}
+                                {challenge.type === 'streak' && '🔥'}
+                                {challenge.type === 'sessions' && '📅'}
+                              </span>
+                              <span className="challenge-name">{challenge.name}</span>
+                              <span className={`challenge-status-badge ${status}`}>
+                                {status === 'active' && '🟢 Active'}
+                                {status === 'upcoming' && '🟡 Upcoming'}
+                                {status === 'completed' && '✅ Done'}
+                              </span>
+                            </div>
+                            
+                            {challenge.type === 'collective' && progress && (
+                              <div className="challenge-progress">
+                                <div className="challenge-progress-bar">
+                                  <div 
+                                    className="challenge-progress-fill"
+                                    style={{ width: `${progress.percentage}%` }}
+                                  />
+                                </div>
+                                <div className="challenge-progress-text">
+                                  {formatMeters(progress.current)} / {formatMeters(progress.target)}
+                                </div>
+                              </div>
+                            )}
+
+                            {challenge.type === 'time_trial' && (
+                              <div className="challenge-time-trial-info">
+                                <span>{challenge.targetDistance}m time trial</span>
+                                {challenge.participants?.[currentUser?.uid] && (
+                                  <span className="your-time">
+                                    Your best: {formatTime(challenge.participants[currentUser.uid].bestTime)}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="challenge-dates">
+                              {new Date(challenge.startDate).toLocaleDateString()} - {new Date(challenge.endDate).toLocaleDateString()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {challenges.length === 0 && isGroupAdmin(selectedGroupId) && (
+                  <div className="no-challenges">
+                    <p>No challenges yet!</p>
+                    <button 
+                      className="create-first-challenge-btn"
+                      onClick={() => setShowCreateChallengeModal(true)}
+                    >
+                      Create First Challenge
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             
@@ -3761,6 +4436,381 @@ function App() {
                 </>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Create Group Modal */}
+      {showCreateGroupModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateGroupModal(false)}>
+          <div className="modal group-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowCreateGroupModal(false)}>✕</button>
+            
+            <h2>Create Group</h2>
+            <p>Create a private group for your crew</p>
+
+            <div className="form-group">
+              <label>Group Name</label>
+              <input
+                type="text"
+                placeholder="e.g., Redeemer Rowers"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                maxLength={30}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Description (optional)</label>
+              <textarea
+                placeholder="What's this group about?"
+                value={newGroupDescription}
+                onChange={(e) => setNewGroupDescription(e.target.value)}
+                maxLength={100}
+                rows={2}
+              />
+            </div>
+
+            {groupError && <div className="form-error">{groupError}</div>}
+
+            <button 
+              className="primary-btn"
+              onClick={handleCreateGroup}
+              disabled={!newGroupName.trim() || isCreatingGroup}
+            >
+              {isCreatingGroup ? 'Creating...' : 'Create Group'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Join Group Modal */}
+      {showJoinGroupModal && (
+        <div className="modal-overlay" onClick={() => setShowJoinGroupModal(false)}>
+          <div className="modal group-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowJoinGroupModal(false)}>✕</button>
+            
+            <h2>Join Group</h2>
+            <p>Enter the invite code to join a group</p>
+
+            <div className="form-group">
+              <label>Invite Code</label>
+              <input
+                type="text"
+                placeholder="e.g., ABC123"
+                value={joinGroupCode}
+                onChange={(e) => setJoinGroupCode(e.target.value.toUpperCase())}
+                maxLength={6}
+                style={{ textTransform: 'uppercase', letterSpacing: '0.2em', textAlign: 'center', fontSize: '1.25rem' }}
+              />
+            </div>
+
+            {groupError && <div className="form-error">{groupError}</div>}
+
+            <button 
+              className="primary-btn"
+              onClick={handleJoinGroup}
+              disabled={joinGroupCode.length < 6 || isJoiningGroup}
+            >
+              {isJoiningGroup ? 'Joining...' : 'Join Group'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Create Challenge Modal */}
+      {showCreateChallengeModal && selectedGroupId && (
+        <div className="modal-overlay" onClick={() => setShowCreateChallengeModal(false)}>
+          <div className="modal challenge-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowCreateChallengeModal(false)}>✕</button>
+            
+            <h2>Create Challenge</h2>
+            <p>Set a challenge for {getSelectedGroup()?.name}</p>
+
+            <div className="form-group">
+              <label>Challenge Name</label>
+              <input
+                type="text"
+                placeholder="e.g., January Distance Challenge"
+                value={newChallengeName}
+                onChange={(e) => setNewChallengeName(e.target.value)}
+                maxLength={40}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Challenge Type</label>
+              <div className="challenge-type-options">
+                <button 
+                  className={`challenge-type-btn ${newChallengeType === 'collective' ? 'active' : ''}`}
+                  onClick={() => setNewChallengeType('collective')}
+                >
+                  <span>🎯</span>
+                  <span>Collective Goal</span>
+                  <small>Team reaches target together</small>
+                </button>
+                <button 
+                  className={`challenge-type-btn ${newChallengeType === 'distance_race' ? 'active' : ''}`}
+                  onClick={() => setNewChallengeType('distance_race')}
+                >
+                  <span>🏃</span>
+                  <span>Distance Race</span>
+                  <small>Most meters wins</small>
+                </button>
+                <button 
+                  className={`challenge-type-btn ${newChallengeType === 'time_trial' ? 'active' : ''}`}
+                  onClick={() => setNewChallengeType('time_trial')}
+                >
+                  <span>⏱️</span>
+                  <span>Time Trial</span>
+                  <small>Fastest time for distance</small>
+                </button>
+                <button 
+                  className={`challenge-type-btn ${newChallengeType === 'streak' ? 'active' : ''}`}
+                  onClick={() => setNewChallengeType('streak')}
+                >
+                  <span>🔥</span>
+                  <span>Streak Battle</span>
+                  <small>Longest streak wins</small>
+                </button>
+                <button 
+                  className={`challenge-type-btn ${newChallengeType === 'sessions' ? 'active' : ''}`}
+                  onClick={() => setNewChallengeType('sessions')}
+                >
+                  <span>📅</span>
+                  <span>Session Count</span>
+                  <small>Most sessions wins</small>
+                </button>
+              </div>
+            </div>
+
+            {(newChallengeType === 'collective' || newChallengeType === 'time_trial') && (
+              <div className="form-group">
+                <label>
+                  {newChallengeType === 'collective' ? 'Target Meters' : 'Distance (meters)'}
+                </label>
+                <input
+                  type="number"
+                  placeholder={newChallengeType === 'collective' ? 'e.g., 100000' : 'e.g., 500'}
+                  value={newChallengeTarget}
+                  onChange={(e) => setNewChallengeTarget(e.target.value)}
+                />
+                {newChallengeType === 'collective' && newChallengeTarget && (
+                  <small className="form-hint">
+                    That's {formatMeters(parseInt(newChallengeTarget, 10))} for the team
+                  </small>
+                )}
+              </div>
+            )}
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Start Date</label>
+                <input
+                  type="date"
+                  value={newChallengeStartDate}
+                  onChange={(e) => setNewChallengeStartDate(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>End Date</label>
+                <input
+                  type="date"
+                  value={newChallengeEndDate}
+                  onChange={(e) => setNewChallengeEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {groupError && <div className="form-error">{groupError}</div>}
+
+            <button 
+              className="primary-btn"
+              onClick={handleCreateChallenge}
+              disabled={!newChallengeName.trim() || !newChallengeStartDate || !newChallengeEndDate || isCreatingChallenge}
+            >
+              {isCreatingChallenge ? 'Creating...' : 'Create Challenge'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Challenge Detail Modal */}
+      {showChallengeDetail && (
+        <div className="modal-overlay" onClick={() => setShowChallengeDetail(null)}>
+          <div className="modal challenge-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowChallengeDetail(null)}>✕</button>
+            
+            {(() => {
+              const challenge = showChallengeDetail;
+              const status = getChallengeStatus(challenge);
+              const progress = getChallengeProgress(challenge);
+              const leaderboard = getChallengeLeaderboard(challenge);
+
+              return (
+                <>
+                  <div className="challenge-detail-header">
+                    <span className="challenge-type-icon-lg">
+                      {challenge.type === 'collective' && '🎯'}
+                      {challenge.type === 'time_trial' && '⏱️'}
+                      {challenge.type === 'distance_race' && '🏃'}
+                      {challenge.type === 'streak' && '🔥'}
+                      {challenge.type === 'sessions' && '📅'}
+                    </span>
+                    <div>
+                      <h2>{challenge.name}</h2>
+                      <span className={`challenge-status-badge ${status}`}>
+                        {status === 'active' && '🟢 Active'}
+                        {status === 'upcoming' && '🟡 Starts ' + new Date(challenge.startDate).toLocaleDateString()}
+                        {status === 'completed' && '✅ Completed'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="challenge-detail-dates">
+                    📅 {new Date(challenge.startDate).toLocaleDateString()} - {new Date(challenge.endDate).toLocaleDateString()}
+                  </div>
+
+                  {/* Collective Progress */}
+                  {challenge.type === 'collective' && progress && (
+                    <div className="challenge-collective-progress">
+                      <div className="collective-progress-visual">
+                        <div 
+                          className="collective-progress-fill"
+                          style={{ width: `${progress.percentage}%` }}
+                        />
+                      </div>
+                      <div className="collective-progress-stats">
+                        <div className="collective-current">
+                          <span className="big-number">{formatMeters(progress.current)}</span>
+                          <span>rowed</span>
+                        </div>
+                        <div className="collective-target">
+                          <span>of {formatMeters(progress.target)} goal</span>
+                          <span className="percentage">{progress.percentage.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Time Trial - Submit Button */}
+                  {challenge.type === 'time_trial' && status === 'active' && (
+                    <div className="time-trial-submit-section">
+                      <p>🏁 {challenge.targetDistance}m Time Trial</p>
+                      {challenge.participants?.[currentUser?.uid] && (
+                        <p className="your-best-time">
+                          Your best: <strong>{formatTime(challenge.participants[currentUser.uid].bestTime)}</strong>
+                          {challenge.participants[currentUser.uid].verified && ' ✓'}
+                        </p>
+                      )}
+                      <button 
+                        className="submit-time-btn"
+                        onClick={() => setShowTimeTrialModal(challenge)}
+                      >
+                        {challenge.participants?.[currentUser?.uid] ? 'Submit New Time' : 'Submit Time'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Leaderboard */}
+                  <div className="challenge-leaderboard">
+                    <h3>
+                      {challenge.type === 'time_trial' ? 'Best Times' : 'Leaderboard'}
+                    </h3>
+                    {leaderboard.length === 0 ? (
+                      <p className="no-entries">No entries yet. Be the first!</p>
+                    ) : (
+                      <div className="challenge-leaderboard-list">
+                        {leaderboard.map((entry, index) => (
+                          <div 
+                            key={entry.userId || entry.user?.id} 
+                            className={`challenge-lb-item ${entry.userId === currentUser?.uid || entry.user?.id === currentUser?.uid ? 'is-you' : ''}`}
+                          >
+                            <span className="challenge-lb-rank">
+                              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                            </span>
+                            <div className="challenge-lb-user">
+                              {entry.user?.photoURL ? (
+                                <img src={entry.user.photoURL} alt="" className="challenge-lb-avatar" />
+                              ) : (
+                                <div className="challenge-lb-avatar-placeholder">
+                                  {entry.user?.name?.charAt(0) || '?'}
+                                </div>
+                              )}
+                              <span>{entry.user?.name}</span>
+                            </div>
+                            <span className="challenge-lb-value">
+                              {challenge.type === 'time_trial' && formatTime(entry.time)}
+                              {challenge.type === 'time_trial' && entry.verified && ' ✓'}
+                              {(challenge.type === 'distance_race' || challenge.type === 'collective') && formatMeters(entry.totalMeters)}
+                              {challenge.type === 'streak' && `${entry.bestStreak} days`}
+                              {challenge.type === 'sessions' && `${entry.sessionCount} sessions`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Time Trial Submission Modal */}
+      {showTimeTrialModal && (
+        <div className="modal-overlay" onClick={() => setShowTimeTrialModal(null)}>
+          <div className="modal time-trial-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowTimeTrialModal(null)}>✕</button>
+            
+            <h2>Submit {showTimeTrialModal.targetDistance}m Time</h2>
+            <p>Enter your time for the {showTimeTrialModal.name}</p>
+
+            <div className="form-group">
+              <label>Your Time</label>
+              <input
+                type="text"
+                placeholder="e.g., 1:45.3 or 105.3"
+                value={timeTrialTime}
+                onChange={(e) => setTimeTrialTime(e.target.value)}
+                className="time-input"
+              />
+              <small className="form-hint">Format: M:SS.s or just seconds</small>
+            </div>
+
+            <div className="form-group">
+              <label>Photo (optional - for verification)</label>
+              <label className="photo-upload-btn">
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setTimeTrialImage(ev.target.result);
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                📷 {timeTrialImage ? 'Photo Added ✓' : 'Add Photo'}
+              </label>
+              {!timeTrialImage && (
+                <small className="form-hint">Times without photos are marked unverified</small>
+              )}
+            </div>
+
+            {groupError && <div className="form-error">{groupError}</div>}
+
+            <button 
+              className="primary-btn"
+              onClick={handleSubmitTimeTrial}
+              disabled={!timeTrialTime || isSubmittingTimeTrial}
+            >
+              {isSubmittingTimeTrial ? 'Submitting...' : 'Submit Time'}
+            </button>
           </div>
         </div>
       )}

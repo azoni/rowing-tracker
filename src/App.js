@@ -564,6 +564,8 @@ function App() {
   const [manualMeters, setManualMeters] = useState('');
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [displayName, setDisplayName] = useState('');
+  const [newUsername, setNewUsername] = useState('');
+  const [usernameStatus, setUsernameStatus] = useState(null); // null, 'checking', 'available', 'taken', 'invalid'
   const [recentMilestone, setRecentMilestone] = useState(null);
   const [activeTab, setActiveTab] = useState('feed');
   const [capturedImage, setCapturedImage] = useState(null);
@@ -632,6 +634,10 @@ function App() {
   const [timeTrialTime, setTimeTrialTime] = useState('');
   const [timeTrialImage, setTimeTrialImage] = useState(null);
   const [isSubmittingTimeTrial, setIsSubmittingTimeTrial] = useState(false);
+  const [showInviteUserModal, setShowInviteUserModal] = useState(false);
+  const [inviteUsername, setInviteUsername] = useState('');
+  const [inviteUserStatus, setInviteUserStatus] = useState(null); // null, 'searching', 'found', 'not_found', 'already_member'
+  const [foundUser, setFoundUser] = useState(null);
   
   const wrappedCardRef = useRef(null);
   
@@ -900,6 +906,29 @@ function App() {
     }
   }, [currentUser, users]);
 
+  // Auto-generate username for existing users who don't have one
+  useEffect(() => {
+    const autoGenerateUsername = async () => {
+      if (!currentUser || !userProfile || userProfile.username) return;
+      
+      // User exists but doesn't have a username - auto-generate one
+      try {
+        const baseUsername = generateUsernameFromName(userProfile.name || 'user');
+        const username = await findAvailableUsername(baseUsername);
+        
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+          username: username
+        });
+        
+        console.log('Auto-generated username:', username);
+      } catch (error) {
+        console.error('Error auto-generating username:', error);
+      }
+    };
+
+    autoGenerateUsername();
+  }, [currentUser, userProfile]);
+
   // Calculate total meters
   const getTotalMeters = useCallback(() => {
     return Object.values(users).reduce((sum, user) => sum + (user.totalMeters || 0), 0);
@@ -974,14 +1003,123 @@ function App() {
     }
   };
 
+  // Validate username format
+  const isValidUsername = (username) => {
+    // 3-20 chars, lowercase letters, numbers, underscores only
+    const regex = /^[a-z0-9_]{3,20}$/;
+    return regex.test(username);
+  };
+
+  // Generate username from display name
+  const generateUsernameFromName = (name) => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '_')           // spaces to underscores
+      .replace(/[^a-z0-9_]/g, '')     // remove special chars
+      .slice(0, 20);                   // max 20 chars
+  };
+
+  // Find available username (adds numbers if taken)
+  const findAvailableUsername = async (baseUsername) => {
+    let username = baseUsername;
+    if (username.length < 3) {
+      username = username.padEnd(3, '0');
+    }
+
+    // Check if base username is available
+    const usernameQuery = query(
+      collection(db, 'users'),
+      where('username', '==', username),
+      limit(1)
+    );
+    const snapshot = await getDocs(usernameQuery);
+    
+    if (snapshot.empty) {
+      return username;
+    }
+
+    // Try adding numbers
+    for (let i = 1; i <= 99; i++) {
+      const candidate = `${baseUsername.slice(0, 17)}_${i}`;
+      const checkQuery = query(
+        collection(db, 'users'),
+        where('username', '==', candidate),
+        limit(1)
+      );
+      const checkSnapshot = await getDocs(checkQuery);
+      if (checkSnapshot.empty) {
+        return candidate;
+      }
+    }
+
+    // Fallback: random suffix
+    return `${baseUsername.slice(0, 14)}_${Date.now().toString(36).slice(-5)}`;
+  };
+
+  // Check if username is available
+  const checkUsernameAvailable = async (username) => {
+    if (!username || !isValidUsername(username)) {
+      setUsernameStatus('invalid');
+      return false;
+    }
+
+    setUsernameStatus('checking');
+
+    try {
+      // Check if any user has this username
+      const usernameQuery = query(
+        collection(db, 'users'),
+        where('username', '==', username.toLowerCase()),
+        limit(1)
+      );
+      const snapshot = await getDocs(usernameQuery);
+
+      if (snapshot.empty) {
+        setUsernameStatus('available');
+        return true;
+      } else {
+        setUsernameStatus('taken');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking username:', error);
+      setUsernameStatus(null);
+      return false;
+    }
+  };
+
+  // Debounced username check
+  const handleUsernameChange = (value) => {
+    const cleaned = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    setNewUsername(cleaned);
+    
+    if (cleaned.length < 3) {
+      setUsernameStatus(cleaned.length > 0 ? 'invalid' : null);
+      return;
+    }
+
+    // Debounce the check
+    const timeoutId = setTimeout(() => {
+      checkUsernameAvailable(cleaned);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  };
+
   // Create user profile
   const handleCreateProfile = async () => {
     if (!displayName.trim() || !currentUser) return;
 
     try {
+      // Auto-generate username from display name
+      const baseUsername = generateUsernameFromName(displayName.trim());
+      const username = await findAvailableUsername(baseUsername);
+
       const userRef = doc(db, 'users', currentUser.uid);
       await setDoc(userRef, {
         name: displayName.trim(),
+        username: username,
         email: currentUser.email,
         photoURL: currentUser.photoURL,
         totalMeters: 0,
@@ -992,6 +1130,7 @@ function App() {
       setUserProfile({
         id: currentUser.uid,
         name: displayName.trim(),
+        username: username,
         totalMeters: 0,
         uploadCount: 0,
       });
@@ -1129,6 +1268,66 @@ function App() {
       }
     } catch (error) {
       console.error('Error leaving group:', error);
+    }
+  };
+
+  // Search for user by username
+  const searchUserByUsername = async (username) => {
+    if (!username || username.length < 3) {
+      setInviteUserStatus(null);
+      setFoundUser(null);
+      return;
+    }
+
+    setInviteUserStatus('searching');
+
+    try {
+      const usernameQuery = query(
+        collection(db, 'users'),
+        where('username', '==', username.toLowerCase()),
+        limit(1)
+      );
+      const snapshot = await getDocs(usernameQuery);
+
+      if (snapshot.empty) {
+        setInviteUserStatus('not_found');
+        setFoundUser(null);
+      } else {
+        const userData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+        
+        // Check if already a member
+        const group = getSelectedGroup();
+        if (group?.memberIds?.includes(userData.id)) {
+          setInviteUserStatus('already_member');
+          setFoundUser(userData);
+        } else {
+          setInviteUserStatus('found');
+          setFoundUser(userData);
+        }
+      }
+    } catch (error) {
+      console.error('Error searching user:', error);
+      setInviteUserStatus('not_found');
+      setFoundUser(null);
+    }
+  };
+
+  // Invite user to group
+  const handleInviteUser = async () => {
+    if (!foundUser || !selectedGroupId || inviteUserStatus !== 'found') return;
+
+    try {
+      await updateDoc(doc(db, 'groups', selectedGroupId), {
+        memberIds: arrayUnion(foundUser.id)
+      });
+
+      setInviteUsername('');
+      setFoundUser(null);
+      setInviteUserStatus(null);
+      setShowInviteUserModal(false);
+    } catch (error) {
+      console.error('Error inviting user:', error);
+      setGroupError('Failed to invite user. Please try again.');
     }
   };
 
@@ -3076,12 +3275,20 @@ function App() {
                   </div>
                   <div className="group-header-actions">
                     {isGroupAdmin(selectedGroupId) && (
-                      <button 
-                        className="group-add-challenge-btn"
-                        onClick={() => setShowCreateChallengeModal(true)}
-                      >
-                        ➕ Challenge
-                      </button>
+                      <>
+                        <button 
+                          className="group-invite-btn"
+                          onClick={() => setShowInviteUserModal(true)}
+                        >
+                          👤+
+                        </button>
+                        <button 
+                          className="group-add-challenge-btn"
+                          onClick={() => setShowCreateChallengeModal(true)}
+                        >
+                          ➕ Challenge
+                        </button>
+                      </>
                     )}
                     <button 
                       className="group-leave-btn"
@@ -3789,7 +3996,7 @@ function App() {
       {/* Setup Profile Modal */}
       {showSetupModal && (
         <div className="modal-overlay">
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal setup-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Welcome to Row Crew!</h2>
             <p>Set up your profile to start tracking</p>
 
@@ -3797,14 +4004,24 @@ function App() {
               <img src={currentUser.photoURL} alt="" className="setup-avatar" />
             )}
 
-            <input
-              type="text"
-              placeholder="Your display name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="name-input"
-              autoFocus
-            />
+            <div className="setup-form">
+              <div className="form-group">
+                <label>Display Name</label>
+                <input
+                  type="text"
+                  placeholder="How should we call you?"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="name-input"
+                  autoFocus
+                />
+                {displayName.trim() && (
+                  <small className="username-preview">
+                    Your username will be: @{generateUsernameFromName(displayName.trim()) || 'your_name'}
+                  </small>
+                )}
+              </div>
+            </div>
 
             <div className="modal-actions">
               <button className="cancel-button" onClick={handleSignOut}>
@@ -3993,6 +4210,10 @@ function App() {
                     <span>{userProfile.name}</span>
                   </div>
                   <div className="settings-info-row">
+                    <span>Username</span>
+                    <span className="settings-username">@{userProfile.username || 'not set'}</span>
+                  </div>
+                  <div className="settings-info-row">
                     <span>Email</span>
                     <span>{currentUser?.email}</span>
                   </div>
@@ -4004,6 +4225,55 @@ function App() {
                     <span>Sessions</span>
                     <span>{userProfile.uploadCount || 0}</span>
                   </div>
+                </div>
+
+                {/* Change Username */}
+                <div className="settings-section">
+                  <h3>Change Username</h3>
+                  <div className="username-change-form">
+                    <div className="username-input-wrapper">
+                      <span className="username-prefix">@</span>
+                      <input
+                        type="text"
+                        placeholder={userProfile.username || 'new_username'}
+                        value={newUsername}
+                        onChange={(e) => handleUsernameChange(e.target.value)}
+                        className="username-input"
+                        maxLength={20}
+                      />
+                      <span className="username-status">
+                        {usernameStatus === 'checking' && '⏳'}
+                        {usernameStatus === 'available' && '✓'}
+                        {usernameStatus === 'taken' && '✗'}
+                        {usernameStatus === 'invalid' && '⚠️'}
+                      </span>
+                    </div>
+                    <button 
+                      className="username-save-btn"
+                      onClick={async () => {
+                        if (usernameStatus !== 'available' || !newUsername) return;
+                        try {
+                          await updateDoc(doc(db, 'users', currentUser.uid), {
+                            username: newUsername.toLowerCase()
+                          });
+                          setNewUsername('');
+                          setUsernameStatus(null);
+                        } catch (error) {
+                          console.error('Error updating username:', error);
+                        }
+                      }}
+                      disabled={usernameStatus !== 'available'}
+                    >
+                      Save
+                    </button>
+                  </div>
+                  <small className="username-hint">
+                    {!usernameStatus && 'Enter a new username (3-20 chars, a-z, 0-9, _)'}
+                    {usernameStatus === 'checking' && 'Checking availability...'}
+                    {usernameStatus === 'available' && 'Username is available!'}
+                    {usernameStatus === 'taken' && 'Username is already taken'}
+                    {usernameStatus === 'invalid' && 'Invalid format'}
+                  </small>
                 </div>
 
                 {/* Session History Button */}
@@ -4297,6 +4567,7 @@ function App() {
                     )}
                     <div className="profile-modal-info">
                       <h2>{user.name}</h2>
+                      {user.username && <span className="profile-modal-username">@{user.username}</span>}
                       <span className="profile-modal-rank">{rank?.emoji} {rank?.title}</span>
                       {streak > 0 && <span className="profile-modal-streak">🔥 {streak} day streak</span>}
                     </div>
@@ -4514,6 +4785,90 @@ function App() {
             >
               {isJoiningGroup ? 'Joining...' : 'Join Group'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Invite User Modal */}
+      {showInviteUserModal && selectedGroupId && (
+        <div className="modal-overlay" onClick={() => { setShowInviteUserModal(false); setInviteUsername(''); setFoundUser(null); setInviteUserStatus(null); }}>
+          <div className="modal group-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => { setShowInviteUserModal(false); setInviteUsername(''); setFoundUser(null); setInviteUserStatus(null); }}>✕</button>
+            
+            <h2>Invite User</h2>
+            <p>Add someone to {getSelectedGroup()?.name}</p>
+
+            <div className="form-group">
+              <label>Username</label>
+              <div className="username-input-wrapper">
+                <span className="username-prefix">@</span>
+                <input
+                  type="text"
+                  placeholder="their_username"
+                  value={inviteUsername}
+                  onChange={(e) => {
+                    const val = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                    setInviteUsername(val);
+                    if (val.length >= 3) {
+                      searchUserByUsername(val);
+                    } else {
+                      setFoundUser(null);
+                      setInviteUserStatus(null);
+                    }
+                  }}
+                  className="username-input"
+                />
+              </div>
+            </div>
+
+            {/* Search Results */}
+            {inviteUserStatus === 'searching' && (
+              <div className="invite-search-status">Searching...</div>
+            )}
+            
+            {inviteUserStatus === 'not_found' && (
+              <div className="invite-search-status error">
+                No user found with that username
+              </div>
+            )}
+            
+            {inviteUserStatus === 'already_member' && foundUser && (
+              <div className="invite-user-found already-member">
+                <div className="invite-user-info">
+                  {foundUser.photoURL ? (
+                    <img src={foundUser.photoURL} alt="" className="invite-user-avatar" />
+                  ) : (
+                    <div className="invite-user-avatar-placeholder">{foundUser.name?.charAt(0)}</div>
+                  )}
+                  <div>
+                    <div className="invite-user-name">{foundUser.name}</div>
+                    <div className="invite-user-username">@{foundUser.username}</div>
+                  </div>
+                </div>
+                <span className="already-member-badge">Already a member</span>
+              </div>
+            )}
+            
+            {inviteUserStatus === 'found' && foundUser && (
+              <div className="invite-user-found">
+                <div className="invite-user-info">
+                  {foundUser.photoURL ? (
+                    <img src={foundUser.photoURL} alt="" className="invite-user-avatar" />
+                  ) : (
+                    <div className="invite-user-avatar-placeholder">{foundUser.name?.charAt(0)}</div>
+                  )}
+                  <div>
+                    <div className="invite-user-name">{foundUser.name}</div>
+                    <div className="invite-user-username">@{foundUser.username}</div>
+                  </div>
+                </div>
+                <button className="invite-add-btn" onClick={handleInviteUser}>
+                  Add
+                </button>
+              </div>
+            )}
+
+            {groupError && <div className="form-error">{groupError}</div>}
           </div>
         </div>
       )}

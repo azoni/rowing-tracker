@@ -636,8 +636,6 @@ function App() {
   const [isSubmittingTimeTrial, setIsSubmittingTimeTrial] = useState(false);
   const [showInviteUserModal, setShowInviteUserModal] = useState(false);
   const [inviteUsername, setInviteUsername] = useState('');
-  const [inviteUserStatus, setInviteUserStatus] = useState(null); // null, 'searching', 'found', 'not_found', 'already_member'
-  const [foundUser, setFoundUser] = useState(null);
   
   const wrappedCardRef = useRef(null);
   
@@ -1271,66 +1269,29 @@ function App() {
     }
   };
 
-  // Search for user by username
-  const searchUserByUsername = async (username) => {
-    if (!username || username.length < 3) {
-      setInviteUserStatus(null);
-      setFoundUser(null);
-      return;
+  // Search users by username or name (partial match)
+  const searchUsers = (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 1) {
+      return [];
     }
 
-    setInviteUserStatus('searching');
-
-    try {
-      const usernameQuery = query(
-        collection(db, 'users'),
-        where('username', '==', username.toLowerCase()),
-        limit(1)
-      );
-      const snapshot = await getDocs(usernameQuery);
-
-      if (snapshot.empty) {
-        setInviteUserStatus('not_found');
-        setFoundUser(null);
-      } else {
-        const userData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-        
-        // Check if already a member
-        const group = getSelectedGroup();
-        if (group?.memberIds?.includes(userData.id)) {
-          setInviteUserStatus('already_member');
-          setFoundUser(userData);
-        } else {
-          setInviteUserStatus('found');
-          setFoundUser(userData);
-        }
-      }
-    } catch (error) {
-      console.error('Error searching user:', error);
-      setInviteUserStatus('not_found');
-      setFoundUser(null);
-    }
+    const term = searchTerm.toLowerCase();
+    const group = getSelectedGroup();
+    
+    return Object.values(users)
+      .filter(user => {
+        const matchesName = user.name?.toLowerCase().includes(term);
+        const matchesUsername = user.username?.toLowerCase().includes(term);
+        return matchesName || matchesUsername;
+      })
+      .map(user => ({
+        ...user,
+        isAlreadyMember: group?.memberIds?.includes(user.id)
+      }))
+      .slice(0, 10); // Limit results
   };
 
   // Invite user to group
-  const handleInviteUser = async () => {
-    if (!foundUser || !selectedGroupId || inviteUserStatus !== 'found') return;
-
-    try {
-      await updateDoc(doc(db, 'groups', selectedGroupId), {
-        memberIds: arrayUnion(foundUser.id)
-      });
-
-      setInviteUsername('');
-      setFoundUser(null);
-      setInviteUserStatus(null);
-      setShowInviteUserModal(false);
-    } catch (error) {
-      console.error('Error inviting user:', error);
-      setGroupError('Failed to invite user. Please try again.');
-    }
-  };
-
   // Get selected group
   const getSelectedGroup = () => {
     return groups.find(g => g.id === selectedGroupId);
@@ -4791,82 +4752,73 @@ function App() {
 
       {/* Invite User Modal */}
       {showInviteUserModal && selectedGroupId && (
-        <div className="modal-overlay" onClick={() => { setShowInviteUserModal(false); setInviteUsername(''); setFoundUser(null); setInviteUserStatus(null); }}>
+        <div className="modal-overlay" onClick={() => { setShowInviteUserModal(false); setInviteUsername(''); }}>
           <div className="modal group-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => { setShowInviteUserModal(false); setInviteUsername(''); setFoundUser(null); setInviteUserStatus(null); }}>✕</button>
+            <button className="modal-close" onClick={() => { setShowInviteUserModal(false); setInviteUsername(''); }}>✕</button>
             
             <h2>Invite User</h2>
             <p>Add someone to {getSelectedGroup()?.name}</p>
 
             <div className="form-group">
-              <label>Username</label>
-              <div className="username-input-wrapper">
-                <span className="username-prefix">@</span>
-                <input
-                  type="text"
-                  placeholder="their_username"
-                  value={inviteUsername}
-                  onChange={(e) => {
-                    const val = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
-                    setInviteUsername(val);
-                    if (val.length >= 3) {
-                      searchUserByUsername(val);
-                    } else {
-                      setFoundUser(null);
-                      setInviteUserStatus(null);
-                    }
-                  }}
-                  className="username-input"
-                />
-              </div>
+              <label>Search by name or username</label>
+              <input
+                type="text"
+                placeholder="Start typing..."
+                value={inviteUsername}
+                onChange={(e) => setInviteUsername(e.target.value)}
+                className="search-input-full"
+                autoFocus
+              />
             </div>
 
             {/* Search Results */}
-            {inviteUserStatus === 'searching' && (
-              <div className="invite-search-status">Searching...</div>
-            )}
-            
-            {inviteUserStatus === 'not_found' && (
-              <div className="invite-search-status error">
-                No user found with that username
-              </div>
-            )}
-            
-            {inviteUserStatus === 'already_member' && foundUser && (
-              <div className="invite-user-found already-member">
-                <div className="invite-user-info">
-                  {foundUser.photoURL ? (
-                    <img src={foundUser.photoURL} alt="" className="invite-user-avatar" />
-                  ) : (
-                    <div className="invite-user-avatar-placeholder">{foundUser.name?.charAt(0)}</div>
-                  )}
-                  <div>
-                    <div className="invite-user-name">{foundUser.name}</div>
-                    <div className="invite-user-username">@{foundUser.username}</div>
+            <div className="invite-search-results">
+              {inviteUsername.length === 0 && (
+                <div className="invite-search-hint">Type to search for users</div>
+              )}
+              
+              {inviteUsername.length > 0 && searchUsers(inviteUsername).length === 0 && (
+                <div className="invite-search-status">No users found</div>
+              )}
+
+              {searchUsers(inviteUsername).map(user => (
+                <div 
+                  key={user.id}
+                  className={`invite-user-found ${user.isAlreadyMember ? 'already-member' : ''}`}
+                >
+                  <div className="invite-user-info">
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt="" className="invite-user-avatar" />
+                    ) : (
+                      <div className="invite-user-avatar-placeholder">{user.name?.charAt(0)}</div>
+                    )}
+                    <div>
+                      <div className="invite-user-name">{user.name}</div>
+                      {user.username && <div className="invite-user-username">@{user.username}</div>}
+                    </div>
                   </div>
-                </div>
-                <span className="already-member-badge">Already a member</span>
-              </div>
-            )}
-            
-            {inviteUserStatus === 'found' && foundUser && (
-              <div className="invite-user-found">
-                <div className="invite-user-info">
-                  {foundUser.photoURL ? (
-                    <img src={foundUser.photoURL} alt="" className="invite-user-avatar" />
+                  {user.isAlreadyMember ? (
+                    <span className="already-member-badge">Member</span>
                   ) : (
-                    <div className="invite-user-avatar-placeholder">{foundUser.name?.charAt(0)}</div>
+                    <button 
+                      className="invite-add-btn" 
+                      onClick={async () => {
+                        try {
+                          await updateDoc(doc(db, 'groups', selectedGroupId), {
+                            memberIds: arrayUnion(user.id)
+                          });
+                          setInviteUsername('');
+                        } catch (error) {
+                          console.error('Error inviting user:', error);
+                        }
+                      }}
+                    >
+                      Add
+                    </button>
                   )}
-                  <div>
-                    <div className="invite-user-name">{foundUser.name}</div>
-                    <div className="invite-user-username">@{foundUser.username}</div>
-                  </div>
                 </div>
-                <button className="invite-add-btn" onClick={handleInviteUser}>
-                  Add
-                </button>
-              </div>
-            )}
+              ))}
+            </div>
 
             {groupError && <div className="form-error">{groupError}</div>}
           </div>

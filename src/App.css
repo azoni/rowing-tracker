@@ -5743,3 +5743,206 @@ input[type="number"] {
 .invite-search-results .invite-user-found:last-child {
   margin-bottom: 0;
 }
+
+/* =============================================
+   WELCOME & CHANGELOG MODALS
+   ============================================= */
+
+/* Info Button */
+.info-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.info-btn:hover {
+  opacity: 1;
+}
+
+/* Welcome Modal */
+.welcome-modal {
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.welcome-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.welcome-logo {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.welcome-header h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+}
+
+.welcome-tagline {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.welcome-features {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.welcome-feature {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-dark);
+  border-radius: 12px;
+}
+
+.welcome-feature-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.welcome-feature h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.welcome-feature p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.welcome-cta {
+  text-align: center;
+}
+
+.welcome-signin-btn,
+.welcome-close-btn {
+  width: 100%;
+  padding: 1rem;
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 12px;
+  color: var(--bg-dark);
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.welcome-signin-btn:hover,
+.welcome-close-btn:hover {
+  transform: scale(1.02);
+}
+
+/* Changelog Modal */
+.changelog-modal {
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.changelog-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.changelog-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.changelog-header h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.35rem;
+}
+
+.changelog-version {
+  color: var(--accent-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.changelog-content {
+  margin-bottom: 1.5rem;
+}
+
+.changelog-release {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--bg-dark);
+  border-radius: 12px;
+}
+
+.changelog-release.latest {
+  border: 1px solid var(--accent-primary);
+  background: rgba(0, 212, 170, 0.05);
+}
+
+.changelog-release-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.changelog-release-version {
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.changelog-release-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.changelog-changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changelog-changes li {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.changelog-changes li:last-child {
+  border-bottom: none;
+}
+
+.changelog-close-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 10px;
+  color: var(--bg-dark);
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.changelog-close-btn:hover {
+  transform: scale(1.02);
+}

@@ -24,6 +24,9 @@ import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import './App.css';
 
+// App Version - update this when releasing new features
+const APP_VERSION = '4.0.0';
+
 // Constants
 const WORLD_CIRCUMFERENCE = 40075000;
 const MIN_METERS = 100;
@@ -636,6 +639,8 @@ function App() {
   const [isSubmittingTimeTrial, setIsSubmittingTimeTrial] = useState(false);
   const [showInviteUserModal, setShowInviteUserModal] = useState(false);
   const [inviteUsername, setInviteUsername] = useState('');
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showChangelogModal, setShowChangelogModal] = useState(false);
   
   const wrappedCardRef = useRef(null);
   
@@ -950,6 +955,26 @@ function App() {
 
     previousTotalRef.current = currentTotal;
   }, [getTotalMeters]);
+
+  // Check for first visit or new version
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('rowcrew_visited');
+    const lastSeenVersion = localStorage.getItem('rowcrew_version');
+
+    // First time visitor - show welcome
+    if (!hasVisited) {
+      setShowWelcomeModal(true);
+      localStorage.setItem('rowcrew_visited', 'true');
+      localStorage.setItem('rowcrew_version', APP_VERSION);
+      return;
+    }
+
+    // Returning user with new version - show changelog
+    if (lastSeenVersion !== APP_VERSION) {
+      setShowChangelogModal(true);
+      localStorage.setItem('rowcrew_version', APP_VERSION);
+    }
+  }, []);
 
   // Sign in with Google
   const handleSignIn = async () => {
@@ -2948,7 +2973,10 @@ function App() {
                 <button className="settings-btn" onClick={() => setShowSettingsModal(true)}>⚙️</button>
               </>
             ) : (
-              <button className="signin-header-btn" onClick={handleSignIn}>Sign In</button>
+              <>
+                <button className="info-btn" onClick={() => setShowWelcomeModal(true)} title="About Row Crew">ℹ️</button>
+                <button className="signin-header-btn" onClick={handleSignIn}>Sign In</button>
+              </>
             )}
           </div>
         </div>
@@ -5540,6 +5568,118 @@ function App() {
               <button className="install-prompt-dismiss" onClick={dismissInstallPrompt}>Got it!</button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Welcome Modal - First Time Visitors */}
+      {showWelcomeModal && (
+        <div className="modal-overlay" onClick={() => setShowWelcomeModal(false)}>
+          <div className="modal welcome-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowWelcomeModal(false)}>✕</button>
+            
+            <div className="welcome-header">
+              <span className="welcome-logo">🚣</span>
+              <h2>Welcome to Row Crew!</h2>
+              <p className="welcome-tagline">The social rowing tracker that makes every meter count</p>
+            </div>
+
+            <div className="welcome-features">
+              <div className="welcome-feature">
+                <span className="welcome-feature-icon">🌍</span>
+                <div>
+                  <h4>Row Around The World</h4>
+                  <p>Join our global community goal to row 40,075km together</p>
+                </div>
+              </div>
+              
+              <div className="welcome-feature">
+                <span className="welcome-feature-icon">📸</span>
+                <div>
+                  <h4>AI-Verified Rows</h4>
+                  <p>Snap a photo of your machine - our AI reads your meters automatically</p>
+                </div>
+              </div>
+              
+              <div className="welcome-feature">
+                <span className="welcome-feature-icon">👥</span>
+                <div>
+                  <h4>Private Groups</h4>
+                  <p>Create crews with friends, family, or gym buddies</p>
+                </div>
+              </div>
+              
+              <div className="welcome-feature">
+                <span className="welcome-feature-icon">🎯</span>
+                <div>
+                  <h4>Challenges</h4>
+                  <p>Compete in distance races, time trials, and team goals</p>
+                </div>
+              </div>
+              
+              <div className="welcome-feature">
+                <span className="welcome-feature-icon">🏆</span>
+                <div>
+                  <h4>Ranks & Achievements</h4>
+                  <p>Level up from Landlubber to Captain as you progress</p>
+                </div>
+              </div>
+              
+              <div className="welcome-feature">
+                <span className="welcome-feature-icon">🔥</span>
+                <div>
+                  <h4>Streaks & Stats</h4>
+                  <p>Track your consistency and see detailed analytics</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="welcome-cta">
+              {!currentUser ? (
+                <button className="welcome-signin-btn" onClick={() => { setShowWelcomeModal(false); handleSignIn(); }}>
+                  Sign In to Start Rowing
+                </button>
+              ) : (
+                <button className="welcome-close-btn" onClick={() => setShowWelcomeModal(false)}>
+                  Let's Go! 🚣
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Changelog Modal - New Version Updates */}
+      {showChangelogModal && (
+        <div className="modal-overlay" onClick={() => setShowChangelogModal(false)}>
+          <div className="modal changelog-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowChangelogModal(false)}>✕</button>
+            
+            <div className="changelog-header">
+              <span className="changelog-icon">🎉</span>
+              <h2>What's New!</h2>
+              <p className="changelog-version">Version {APP_VERSION}</p>
+            </div>
+
+            <div className="changelog-content">
+              {CHANGELOG.slice(0, 2).map((release, index) => (
+                <div key={release.version} className={`changelog-release ${index === 0 ? 'latest' : ''}`}>
+                  <div className="changelog-release-header">
+                    <span className="changelog-release-version">v{release.version}</span>
+                    <span className="changelog-release-date">{release.date}</span>
+                  </div>
+                  <ul className="changelog-changes">
+                    {release.changes.map((change, i) => (
+                      <li key={i}>{change}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <button className="changelog-close-btn" onClick={() => setShowChangelogModal(false)}>
+              Got it!
+            </button>
+          </div>
         </div>
       )}
 

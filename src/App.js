@@ -647,9 +647,9 @@ function App() {
   const [processingStatus, setProcessingStatus] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
-  const [detectedMeters, setDetectedMeters] = useState('');
-  const [detectedTime, setDetectedTime] = useState('');
-  const [detectedCalories, setDetectedCalories] = useState('');
+  const [, setDetectedMeters] = useState(''); // For future AI detection
+  const [, setDetectedTime] = useState(''); // For future AI detection
+  const [, setDetectedCalories] = useState(''); // For future AI detection
   const [editableMeters, setEditableMeters] = useState('');
   const [editableTime, setEditableTime] = useState('');
   const [editableCalories, setEditableCalories] = useState('');
@@ -667,8 +667,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [lastSessionMeters, setLastSessionMeters] = useState(0);
-  const [lastSessionTime, setLastSessionTime] = useState(null);
-  const [lastSessionCalories, setLastSessionCalories] = useState(null);
+  const [, setLastSessionTime] = useState(null); // For future share card enhancement
+  const [, setLastSessionCalories] = useState(null); // For future share card enhancement
   const [shareImageUrl, setShareImageUrl] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isCopying, setIsCopying] = useState(false);

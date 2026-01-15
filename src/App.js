@@ -25,7 +25,7 @@ import { httpsCallable } from 'firebase/functions';
 import './App.css';
 
 // App Version - update this when releasing new features
-const APP_VERSION = '4.0.0';
+const APP_VERSION = '4.1.0';
 
 // Constants
 const WORLD_CIRCUMFERENCE = 40075000;
@@ -296,6 +296,79 @@ const ACHIEVEMENTS = [
       target: 1 
     })
   },
+  
+  // Time achievements
+  { 
+    id: 'first_hour', name: 'First Hour', desc: 'Row for 1 hour total', emoji: '⏱️', 
+    check: (u) => (u.totalTime || 0) >= 3600,
+    getProgress: (u) => ({ current: Math.min(u.totalTime || 0, 3600), target: 3600 })
+  },
+  { 
+    id: 'ten_hours', name: 'Time Investor', desc: 'Row for 10 hours total', emoji: '⏳', 
+    check: (u) => (u.totalTime || 0) >= 36000,
+    getProgress: (u) => ({ current: Math.min(u.totalTime || 0, 36000), target: 36000 })
+  },
+  { 
+    id: 'fifty_hours', name: 'Time Lord', desc: 'Row for 50 hours total', emoji: '🕐', 
+    check: (u) => (u.totalTime || 0) >= 180000,
+    getProgress: (u) => ({ current: Math.min(u.totalTime || 0, 180000), target: 180000 })
+  },
+  { 
+    id: 'hundred_hours', name: 'Century Timer', desc: 'Row for 100 hours total', emoji: '💫', 
+    check: (u) => (u.totalTime || 0) >= 360000,
+    getProgress: (u) => ({ current: Math.min(u.totalTime || 0, 360000), target: 360000 })
+  },
+  { 
+    id: 'half_hour_session', name: 'Half Hour Hero', desc: 'Row 30+ minutes in one session', emoji: '🎯', 
+    check: (u, e) => e.some(x => (x.time || 0) >= 1800),
+    getProgress: (u, e) => {
+      const best = e.length > 0 ? Math.max(...e.map(x => x.time || 0)) : 0;
+      return { current: Math.min(best, 1800), target: 1800 };
+    }
+  },
+  { 
+    id: 'hour_session', name: 'Hour of Power', desc: 'Row 60+ minutes in one session', emoji: '💪', 
+    check: (u, e) => e.some(x => (x.time || 0) >= 3600),
+    getProgress: (u, e) => {
+      const best = e.length > 0 ? Math.max(...e.map(x => x.time || 0)) : 0;
+      return { current: Math.min(best, 3600), target: 3600 };
+    }
+  },
+  
+  // Calorie achievements
+  { 
+    id: 'first_1k_cal', name: 'Calorie Crusher', desc: 'Burn 1,000 calories total', emoji: '🔥', 
+    check: (u) => (u.totalCalories || 0) >= 1000,
+    getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 1000), target: 1000 })
+  },
+  { 
+    id: 'pizza_burner', name: 'Pizza Burner', desc: 'Burn 5,000 calories (≈ 2.5 pizzas!)', emoji: '🍕', 
+    check: (u) => (u.totalCalories || 0) >= 5000,
+    getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 5000), target: 5000 })
+  },
+  { 
+    id: 'ten_k_cal', name: 'Furnace', desc: 'Burn 10,000 calories total', emoji: '🌋', 
+    check: (u) => (u.totalCalories || 0) >= 10000,
+    getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 10000), target: 10000 })
+  },
+  { 
+    id: 'fifty_k_cal', name: 'Inferno', desc: 'Burn 50,000 calories total', emoji: '☄️', 
+    check: (u) => (u.totalCalories || 0) >= 50000,
+    getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 50000), target: 50000 })
+  },
+  { 
+    id: 'hundred_k_cal', name: 'Calorie Destroyer', desc: 'Burn 100,000 calories total', emoji: '💥', 
+    check: (u) => (u.totalCalories || 0) >= 100000,
+    getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 100000), target: 100000 })
+  },
+  { 
+    id: 'big_burn', name: 'Big Burn', desc: 'Burn 500+ calories in one session', emoji: '🥵', 
+    check: (u, e) => e.some(x => (x.calories || 0) >= 500),
+    getProgress: (u, e) => {
+      const best = e.length > 0 ? Math.max(...e.map(x => x.calories || 0)) : 0;
+      return { current: Math.min(best, 500), target: 500 };
+    }
+  },
 ];
 
 // Motivational quotes
@@ -332,6 +405,18 @@ const MILESTONES = [
 
 // Changelog entries
 const CHANGELOG = [
+  {
+    version: '4.1.0',
+    date: '2025-01-15',
+    changes: [
+      '⏱️ Track time & calories on every row',
+      '🔥 New leaderboards: Total Time & Calories',
+      '☄️ 3 new challenge types: Total Time, Calorie Burn, Team Calories',
+      '🏆 12 new achievements for time & calorie milestones',
+      '📊 Profile shows total time & calories burned',
+      '⚡ Pace calculation when time is logged',
+    ]
+  },
   {
     version: '4.0.0',
     date: '2025-01-08',
@@ -563,8 +648,14 @@ function App() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [detectedMeters, setDetectedMeters] = useState('');
+  const [detectedTime, setDetectedTime] = useState('');
+  const [detectedCalories, setDetectedCalories] = useState('');
   const [editableMeters, setEditableMeters] = useState('');
+  const [editableTime, setEditableTime] = useState('');
+  const [editableCalories, setEditableCalories] = useState('');
   const [manualMeters, setManualMeters] = useState('');
+  const [manualTime, setManualTime] = useState('');
+  const [manualCalories, setManualCalories] = useState('');
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [newUsername, setNewUsername] = useState('');
@@ -576,6 +667,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [lastSessionMeters, setLastSessionMeters] = useState(0);
+  const [lastSessionTime, setLastSessionTime] = useState(null);
+  const [lastSessionCalories, setLastSessionCalories] = useState(null);
   const [shareImageUrl, setShareImageUrl] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
@@ -1348,6 +1441,7 @@ function App() {
         name: newChallengeName.trim(),
         type: newChallengeType,
         targetMeters: newChallengeType === 'collective' ? targetValue : null,
+        targetCalories: newChallengeType === 'collective_calories' ? targetValue : null,
         targetDistance: newChallengeType === 'time_trial' ? targetValue : null,
         startDate: new Date(newChallengeStartDate).toISOString(),
         endDate: new Date(newChallengeEndDate).toISOString(),
@@ -1383,10 +1477,10 @@ function App() {
 
   // Calculate challenge progress for collective challenges
   const getChallengeProgress = (challenge) => {
-    if (challenge.type !== 'collective') return null;
+    if (challenge.type !== 'collective' && challenge.type !== 'collective_calories') return null;
 
     const group = groups.find(g => g.id === challenge.groupId);
-    if (!group) return { current: 0, target: challenge.targetMeters || 0 };
+    if (!group) return { current: 0, target: challenge.targetMeters || challenge.targetCalories || 0 };
 
     const start = new Date(challenge.startDate);
     const end = new Date(challenge.endDate);
@@ -1398,12 +1492,23 @@ function App() {
       new Date(e.date) <= end
     );
 
+    if (challenge.type === 'collective_calories') {
+      const currentCalories = challengeEntries.reduce((sum, e) => sum + (e.calories || 0), 0);
+      return {
+        current: currentCalories,
+        target: challenge.targetCalories || 0,
+        percentage: challenge.targetCalories ? Math.min(100, (currentCalories / challenge.targetCalories) * 100) : 0,
+        unit: 'cal'
+      };
+    }
+
     const currentMeters = challengeEntries.reduce((sum, e) => sum + e.meters, 0);
 
     return {
       current: currentMeters,
       target: challenge.targetMeters || 0,
-      percentage: challenge.targetMeters ? Math.min(100, (currentMeters / challenge.targetMeters) * 100) : 0
+      percentage: challenge.targetMeters ? Math.min(100, (currentMeters / challenge.targetMeters) * 100) : 0,
+      unit: 'm'
     };
   };
 
@@ -1431,7 +1536,7 @@ function App() {
       return attempts;
     }
 
-    // For distance-based challenges
+    // For other challenge types - calculate metrics
     const memberProgress = group.memberIds?.map(odometer => {
       const memberEntries = entries.filter(e => 
         e.userId === odometer &&
@@ -1440,6 +1545,8 @@ function App() {
       );
 
       const totalMeters = memberEntries.reduce((sum, e) => sum + e.meters, 0);
+      const totalTime = memberEntries.reduce((sum, e) => sum + (e.time || 0), 0);
+      const totalCalories = memberEntries.reduce((sum, e) => sum + (e.calories || 0), 0);
       const sessionCount = memberEntries.length;
 
       // Calculate streak during challenge period
@@ -1465,6 +1572,8 @@ function App() {
         odometer,
         user: users[odometer],
         totalMeters,
+        totalTime,
+        totalCalories,
         sessionCount,
         bestStreak,
       };
@@ -1477,6 +1586,10 @@ function App() {
       return memberProgress.sort((a, b) => b.bestStreak - a.bestStreak);
     } else if (challenge.type === 'sessions') {
       return memberProgress.sort((a, b) => b.sessionCount - a.sessionCount);
+    } else if (challenge.type === 'total_time') {
+      return memberProgress.filter(m => m.totalTime > 0).sort((a, b) => b.totalTime - a.totalTime);
+    } else if (challenge.type === 'calories' || challenge.type === 'collective_calories') {
+      return memberProgress.filter(m => m.totalCalories > 0).sort((a, b) => b.totalCalories - a.totalCalories);
     }
 
     return memberProgress;
@@ -1879,7 +1992,7 @@ function App() {
   };
 
   // Add entry to Firebase
-  const addEntry = async (meters, imageData) => {
+  const addEntry = async (meters, imageData, timeSeconds = null, calories = null) => {
     if (!currentUser || !userProfile) return false;
 
     try {
@@ -1964,6 +2077,8 @@ function App() {
       await setDoc(entryRef, {
         userId: currentUser.uid,
         meters: meters,
+        time: timeSeconds || null,
+        calories: calories || null,
         date: new Date().toISOString(),
         createdAt: serverTimestamp(),
         verificationStatus: verification.status,
@@ -1979,9 +2094,14 @@ function App() {
       const userRef = doc(db, 'users', currentUser.uid);
       const finalMeters = meters;
       const newTotalMeters = (userProfile.totalMeters || 0) + finalMeters;
+      const newTotalTime = (userProfile.totalTime || 0) + (timeSeconds || 0);
+      const newTotalCalories = (userProfile.totalCalories || 0) + (calories || 0);
+      
       await setDoc(userRef, {
         ...userProfile,
         totalMeters: newTotalMeters,
+        totalTime: newTotalTime,
+        totalCalories: newTotalCalories,
         uploadCount: (userProfile.uploadCount || 0) + 1,
         lastRowDate: new Date().toISOString(),
       }, { merge: true });
@@ -1991,6 +2111,8 @@ function App() {
       
       // Store for share card
       setLastSessionMeters(finalMeters);
+      setLastSessionTime(timeSeconds);
+      setLastSessionCalories(calories);
       
       // Fire confetti for all entries (verified gets full, unverified gets smaller)
       if (verification.status === 'verified' || verification.status === 'pending_review') {
@@ -2045,22 +2167,82 @@ function App() {
       return;
     }
 
+    // Parse optional time
+    const timeSeconds = parseTimeInput(manualTime);
+    
+    // Parse optional calories
+    const calories = manualCalories ? parseInt(manualCalories, 10) : null;
+
     setIsSubmittingManual(true);
     setValidationError('');
     
     // Add entry without image (will be marked as unverified)
-    const success = await addEntry(meters, null);
+    const success = await addEntry(meters, null, timeSeconds, calories);
     
     setIsSubmittingManual(false);
     
     if (success) {
       setManualMeters('');
+      setManualTime('');
+      setManualCalories('');
       setValidationError('');
       // Show share modal without image
       setShareImageUrl(null);
       setShowShareModal(true);
       setLinkCopied(false);
     }
+  };
+
+  // Parse time input (accepts MM:SS, MM:SS.s, HH:MM:SS, or just seconds)
+  const parseTimeInput = (timeStr) => {
+    if (!timeStr || !timeStr.trim()) return null;
+    
+    const trimmed = timeStr.trim();
+    
+    // If it's just a number, treat as seconds
+    if (/^\d+\.?\d*$/.test(trimmed)) {
+      return parseFloat(trimmed);
+    }
+    
+    // Handle MM:SS or MM:SS.s
+    const mmssMatch = trimmed.match(/^(\d{1,2}):(\d{2}(?:\.\d+)?)$/);
+    if (mmssMatch) {
+      const minutes = parseInt(mmssMatch[1], 10);
+      const seconds = parseFloat(mmssMatch[2]);
+      return minutes * 60 + seconds;
+    }
+    
+    // Handle HH:MM:SS
+    const hhmmssMatch = trimmed.match(/^(\d+):(\d{2}):(\d{2}(?:\.\d+)?)$/);
+    if (hhmmssMatch) {
+      const hours = parseInt(hhmmssMatch[1], 10);
+      const minutes = parseInt(hhmmssMatch[2], 10);
+      const seconds = parseFloat(hhmmssMatch[3]);
+      return hours * 3600 + minutes * 60 + seconds;
+    }
+    
+    return null;
+  };
+
+  // Format seconds to display time (MM:SS or HH:MM:SS)
+  const formatTimeDisplay = (seconds) => {
+    if (!seconds && seconds !== 0) return '--';
+    
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Calculate pace per 500m
+  const calculatePace = (meters, seconds) => {
+    if (!meters || !seconds) return null;
+    const paceSeconds = (seconds / meters) * 500;
+    return formatTime(paceSeconds);
   };
 
   // Confirm entry
@@ -2072,14 +2254,22 @@ function App() {
       return;
     }
 
+    // Parse optional time and calories
+    const timeSeconds = parseTimeInput(editableTime);
+    const calories = editableCalories ? parseInt(editableCalories, 10) : null;
+
     setIsProcessing(true);
-    const success = await addEntry(meters, capturedImage);
+    const success = await addEntry(meters, capturedImage, timeSeconds, calories);
     setIsProcessing(false);
     
     if (success) {
       setShowConfirmModal(false);
       setDetectedMeters('');
+      setDetectedTime('');
+      setDetectedCalories('');
       setEditableMeters('');
+      setEditableTime('');
+      setEditableCalories('');
       setValidationError('');
       setVerificationStatus(null);
       // Show share modal (use image data for share card)
@@ -2392,6 +2582,32 @@ function App() {
       }))
       .filter(u => u.achievementCount > 0)
       .sort((a, b) => b.achievementCount - a.achievementCount);
+  };
+
+  // Get total time leaderboard
+  const getTimeLeaderboard = () => {
+    const filteredUsers = getGroupFilteredUsers();
+    return Object.values(filteredUsers)
+      .map((user) => ({
+        ...user,
+        totalTime: user.totalTime || 0,
+        rank: getUserRank(user.totalMeters),
+      }))
+      .filter(u => u.totalTime > 0)
+      .sort((a, b) => b.totalTime - a.totalTime);
+  };
+
+  // Get total calories leaderboard
+  const getCaloriesLeaderboard = () => {
+    const filteredUsers = getGroupFilteredUsers();
+    return Object.values(filteredUsers)
+      .map((user) => ({
+        ...user,
+        totalCalories: user.totalCalories || 0,
+        rank: getUserRank(user.totalMeters),
+      }))
+      .filter(u => u.totalCalories > 0)
+      .sort((a, b) => b.totalCalories - a.totalCalories);
   };
 
   // Get user's achievement count
@@ -3172,22 +3388,54 @@ function App() {
 
               {/* Manual Entry */}
               <div className="manual-entry">
-                <div className="manual-entry-input">
-                  <input
-                    type="number"
-                    placeholder="Enter meters"
-                    value={manualMeters}
-                    onChange={(e) => setManualMeters(e.target.value)}
-                    disabled={isSubmittingManual || !userProfile}
-                    min={MIN_METERS}
-                    max={MAX_METERS}
-                  />
+                <div className="manual-entry-fields">
+                  <div className="manual-entry-row">
+                    <div className="manual-field manual-field-main">
+                      <label>Meters *</label>
+                      <input
+                        type="number"
+                        placeholder="2500"
+                        value={manualMeters}
+                        onChange={(e) => setManualMeters(e.target.value)}
+                        disabled={isSubmittingManual || !userProfile}
+                        min={MIN_METERS}
+                        max={MAX_METERS}
+                      />
+                    </div>
+                  </div>
+                  <div className="manual-entry-row">
+                    <div className="manual-field">
+                      <label>Time</label>
+                      <input
+                        type="text"
+                        placeholder="23:45"
+                        value={manualTime}
+                        onChange={(e) => setManualTime(e.target.value)}
+                        disabled={isSubmittingManual || !userProfile}
+                      />
+                    </div>
+                    <div className="manual-field">
+                      <label>Calories</label>
+                      <input
+                        type="number"
+                        placeholder="385"
+                        value={manualCalories}
+                        onChange={(e) => setManualCalories(e.target.value)}
+                        disabled={isSubmittingManual || !userProfile}
+                      />
+                    </div>
+                  </div>
+                  {manualMeters && manualTime && parseTimeInput(manualTime) && (
+                    <div className="manual-pace-display">
+                      ⚡ Pace: {calculatePace(parseInt(manualMeters, 10), parseTimeInput(manualTime))}/500m
+                    </div>
+                  )}
                   <button 
-                    className="manual-submit-btn"
+                    className="manual-submit-btn-full"
                     onClick={handleManualSubmit}
                     disabled={isSubmittingManual || !userProfile || !manualMeters}
                   >
-                    {isSubmittingManual ? 'Saving...' : 'Log'}
+                    {isSubmittingManual ? 'Saving...' : `Log ${manualMeters ? parseInt(manualMeters, 10).toLocaleString() + 'm' : 'Row'}`}
                   </button>
                 </div>
                 <p className="manual-entry-note">
@@ -3310,9 +3558,12 @@ function App() {
                             <div className="challenge-card-header">
                               <span className="challenge-type-icon">
                                 {challenge.type === 'collective' && '🎯'}
-                                {challenge.type === 'time_trial' && '⏱️'}
+                                {challenge.type === 'collective_calories' && '☄️'}
+                                {challenge.type === 'time_trial' && '🏁'}
                                 {challenge.type === 'distance_race' && '🏃'}
-                                {challenge.type === 'streak' && '🔥'}
+                                {challenge.type === 'total_time' && '⏱️'}
+                                {challenge.type === 'calories' && '🔥'}
+                                {challenge.type === 'streak' && '📈'}
                                 {challenge.type === 'sessions' && '📅'}
                               </span>
                               <span className="challenge-name">{challenge.name}</span>
@@ -3323,7 +3574,7 @@ function App() {
                               </span>
                             </div>
                             
-                            {challenge.type === 'collective' && progress && (
+                            {(challenge.type === 'collective' || challenge.type === 'collective_calories') && progress && (
                               <div className="challenge-progress">
                                 <div className="challenge-progress-bar">
                                   <div 
@@ -3332,7 +3583,10 @@ function App() {
                                   />
                                 </div>
                                 <div className="challenge-progress-text">
-                                  {formatMeters(progress.current)} / {formatMeters(progress.target)}
+                                  {challenge.type === 'collective_calories' 
+                                    ? `${progress.current.toLocaleString()} / ${progress.target.toLocaleString()} cal`
+                                    : `${formatMeters(progress.current)} / ${formatMeters(progress.target)}`
+                                  }
                                 </div>
                               </div>
                             )}
@@ -3345,6 +3599,13 @@ function App() {
                                     Your best: {formatTime(challenge.participants[currentUser.uid].bestTime)}
                                   </span>
                                 )}
+                              </div>
+                            )}
+
+                            {(challenge.type === 'total_time' || challenge.type === 'calories') && (
+                              <div className="challenge-type-info">
+                                {challenge.type === 'total_time' && 'Most total time rowed wins'}
+                                {challenge.type === 'calories' && 'Most calories burned wins'}
                               </div>
                             )}
 
@@ -3454,6 +3715,12 @@ function App() {
                               {item.type === 'row' && (
                                 <>
                                   rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span>
+                                  {item.time && (
+                                    <span className="feed-time-cal"> in {formatTimeDisplay(item.time)}</span>
+                                  )}
+                                  {item.calories && (
+                                    <span className="feed-time-cal"> • {item.calories} cal</span>
+                                  )}
                                   {item.verificationStatus === 'verified' && (
                                     <span className="verification-badge verified" title="Verified with photo">✓</span>
                                   )}
@@ -3517,7 +3784,7 @@ function App() {
 
         {activeTab === 'leaderboard' && (
           <section className="leaderboard-section">
-            <h2>Leaderboard</h2>
+            <h2>{selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Leaderboard` : 'Leaderboard'}</h2>
             
             {/* Leaderboard Tabs */}
             <div className="leaderboard-tabs">
@@ -3525,25 +3792,37 @@ function App() {
                 className={`lb-tab ${leaderboardTab === 'alltime' ? 'active' : ''}`}
                 onClick={() => setLeaderboardTab('alltime')}
               >
-                🏆 All Time
+                🏆 Meters
               </button>
               <button 
                 className={`lb-tab ${leaderboardTab === 'weekly' ? 'active' : ''}`}
                 onClick={() => setLeaderboardTab('weekly')}
               >
-                📅 This Week
+                📅 Weekly
+              </button>
+              <button 
+                className={`lb-tab ${leaderboardTab === 'time' ? 'active' : ''}`}
+                onClick={() => setLeaderboardTab('time')}
+              >
+                ⏱️ Time
+              </button>
+              <button 
+                className={`lb-tab ${leaderboardTab === 'calories' ? 'active' : ''}`}
+                onClick={() => setLeaderboardTab('calories')}
+              >
+                🔥 Calories
               </button>
               <button 
                 className={`lb-tab ${leaderboardTab === 'streak' ? 'active' : ''}`}
                 onClick={() => setLeaderboardTab('streak')}
               >
-                🔥 Streaks
+                📈 Streaks
               </button>
               <button 
                 className={`lb-tab ${leaderboardTab === 'achievements' ? 'active' : ''}`}
                 onClick={() => setLeaderboardTab('achievements')}
               >
-                🏅 Achievements
+                🏅 Awards
               </button>
             </div>
 
@@ -3637,6 +3916,102 @@ function App() {
                         <div className="user-meters">
                           <span className="meters-value">{formatMeters(user.weeklyMeters)}</span>
                           <span className="meters-label">this week</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Time Leaderboard */}
+            {leaderboardTab === 'time' && (
+              <>
+                {getTimeLeaderboard().length === 0 ? (
+                  <div className="empty-state">
+                    <p>No time logged yet!</p>
+                    <p>Add time to your rows to appear here.</p>
+                  </div>
+                ) : (
+                  <div className="leaderboard">
+                    {getTimeLeaderboard().map((user, index) => (
+                      <div 
+                        key={user.id} 
+                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
+                        onClick={() => setShowUserProfileModal(user)}
+                      >
+                        <div className="rank">
+                          {index === 0 ? '⏱️' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                        </div>
+                        <div className="user-avatar-wrapper">
+                          {user.photoURL ? (
+                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
+                          ) : (
+                            <div className="leaderboard-avatar-placeholder">
+                              {user.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                          )}
+                        </div>
+                        <div className="user-info">
+                          <span className="user-name">
+                            {user.name}
+                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
+                          </span>
+                          <span className="user-rank-label">
+                            {user.rank?.emoji} {user.rank?.title}
+                          </span>
+                        </div>
+                        <div className="user-meters">
+                          <span className="meters-value">{formatTimeDisplay(user.totalTime)}</span>
+                          <span className="meters-label">total time</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Calories Leaderboard */}
+            {leaderboardTab === 'calories' && (
+              <>
+                {getCaloriesLeaderboard().length === 0 ? (
+                  <div className="empty-state">
+                    <p>No calories logged yet!</p>
+                    <p>Add calories to your rows to appear here.</p>
+                  </div>
+                ) : (
+                  <div className="leaderboard">
+                    {getCaloriesLeaderboard().map((user, index) => (
+                      <div 
+                        key={user.id} 
+                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
+                        onClick={() => setShowUserProfileModal(user)}
+                      >
+                        <div className="rank">
+                          {index === 0 ? '🔥' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                        </div>
+                        <div className="user-avatar-wrapper">
+                          {user.photoURL ? (
+                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
+                          ) : (
+                            <div className="leaderboard-avatar-placeholder">
+                              {user.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                          )}
+                        </div>
+                        <div className="user-info">
+                          <span className="user-name">
+                            {user.name}
+                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
+                          </span>
+                          <span className="user-rank-label">
+                            {user.rank?.emoji} {user.rank?.title}
+                          </span>
+                        </div>
+                        <div className="user-meters">
+                          <span className="meters-value">{user.totalCalories.toLocaleString()}</span>
+                          <span className="meters-label">calories</span>
                         </div>
                       </div>
                     ))}
@@ -3866,12 +4241,23 @@ function App() {
                         <div className="session-history-date">
                           {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </div>
-                        <div className="session-history-meters">
-                          {entry.meters.toLocaleString()}m
+                        <div className="session-history-main">
+                          <div className="session-history-meters">
+                            {entry.meters.toLocaleString()}m
+                          </div>
+                          {(entry.time || entry.calories) && (
+                            <div className="session-history-extra">
+                              {entry.time && <span>{formatTimeDisplay(entry.time)}</span>}
+                              {entry.calories && <span>{entry.calories} cal</span>}
+                              {entry.time && entry.meters && (
+                                <span className="session-pace">{calculatePace(entry.meters, entry.time)}/500m</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className={`session-history-status ${entry.verificationStatus || 'unverified'}`}>
                           {entry.verificationStatus === 'verified' ? '✓' : 
-                           entry.verificationStatus === 'pending_review' ? '⏳' : '?'}
+                           entry.verificationStatus === 'pending_review' ? '⏳' : '✗'}
                         </div>
                       </div>
                     ))}
@@ -3944,18 +4330,52 @@ function App() {
               </div>
             )}
 
-            <div className="detected-meters-display">
-              <span className="detected-label">{detectedMeters ? 'Detected meters:' : 'Enter meters:'}</span>
-              <input
-                type="number"
-                value={editableMeters}
-                onChange={(e) => { setEditableMeters(e.target.value); setValidationError(''); }}
-                className="meters-input-large"
-                placeholder="0"
-                autoFocus
-                min={MIN_METERS}
-                max={MAX_METERS}
-              />
+            <div className="confirm-entry-form">
+              {/* Meters - Required */}
+              <div className="confirm-field confirm-field-main">
+                <label>Meters *</label>
+                <input
+                  type="number"
+                  value={editableMeters}
+                  onChange={(e) => { setEditableMeters(e.target.value); setValidationError(''); }}
+                  className="confirm-input-large"
+                  placeholder="0"
+                  autoFocus
+                  min={MIN_METERS}
+                  max={MAX_METERS}
+                />
+              </div>
+
+              {/* Time & Calories - Optional */}
+              <div className="confirm-field-row">
+                <div className="confirm-field">
+                  <label>Time <span className="optional-label">(optional)</span></label>
+                  <input
+                    type="text"
+                    value={editableTime}
+                    onChange={(e) => setEditableTime(e.target.value)}
+                    className="confirm-input"
+                    placeholder="23:45"
+                  />
+                </div>
+                <div className="confirm-field">
+                  <label>Calories <span className="optional-label">(optional)</span></label>
+                  <input
+                    type="number"
+                    value={editableCalories}
+                    onChange={(e) => setEditableCalories(e.target.value)}
+                    className="confirm-input"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              {/* Pace display if time entered */}
+              {editableMeters && editableTime && parseTimeInput(editableTime) && (
+                <div className="confirm-pace-display">
+                  <span>⚡ Pace: {calculatePace(parseInt(editableMeters, 10), parseTimeInput(editableTime))}/500m</span>
+                </div>
+              )}
             </div>
 
             {validationError && (
@@ -4582,6 +5002,26 @@ function App() {
                     </div>
                   </div>
 
+                  {/* Time & Calorie Stats */}
+                  {(user.totalTime > 0 || user.totalCalories > 0) && (
+                    <div className="profile-extra-stats">
+                      {user.totalTime > 0 && (
+                        <div className="profile-extra-stat">
+                          <span className="profile-extra-icon">⏱️</span>
+                          <span className="profile-extra-value">{formatTimeDisplay(user.totalTime)}</span>
+                          <span className="profile-extra-label">Total Time</span>
+                        </div>
+                      )}
+                      {user.totalCalories > 0 && (
+                        <div className="profile-extra-stat">
+                          <span className="profile-extra-icon">🔥</span>
+                          <span className="profile-extra-value">{user.totalCalories.toLocaleString()}</span>
+                          <span className="profile-extra-label">Calories</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Secondary Stats */}
                   <div className="profile-secondary-stats">
                     <div className="profile-stat-row">
@@ -4882,7 +5322,7 @@ function App() {
                 >
                   <span>🎯</span>
                   <span>Collective Goal</span>
-                  <small>Team reaches target together</small>
+                  <small>Team reaches target meters</small>
                 </button>
                 <button 
                   className={`challenge-type-btn ${newChallengeType === 'distance_race' ? 'active' : ''}`}
@@ -4893,10 +5333,34 @@ function App() {
                   <small>Most meters wins</small>
                 </button>
                 <button 
+                  className={`challenge-type-btn ${newChallengeType === 'total_time' ? 'active' : ''}`}
+                  onClick={() => setNewChallengeType('total_time')}
+                >
+                  <span>⏱️</span>
+                  <span>Total Time</span>
+                  <small>Most time rowed wins</small>
+                </button>
+                <button 
+                  className={`challenge-type-btn ${newChallengeType === 'calories' ? 'active' : ''}`}
+                  onClick={() => setNewChallengeType('calories')}
+                >
+                  <span>🔥</span>
+                  <span>Calorie Burn</span>
+                  <small>Most calories wins</small>
+                </button>
+                <button 
+                  className={`challenge-type-btn ${newChallengeType === 'collective_calories' ? 'active' : ''}`}
+                  onClick={() => setNewChallengeType('collective_calories')}
+                >
+                  <span>☄️</span>
+                  <span>Team Calories</span>
+                  <small>Team burns target cals</small>
+                </button>
+                <button 
                   className={`challenge-type-btn ${newChallengeType === 'time_trial' ? 'active' : ''}`}
                   onClick={() => setNewChallengeType('time_trial')}
                 >
-                  <span>⏱️</span>
+                  <span>🏁</span>
                   <span>Time Trial</span>
                   <small>Fastest time for distance</small>
                 </button>
@@ -4904,7 +5368,7 @@ function App() {
                   className={`challenge-type-btn ${newChallengeType === 'streak' ? 'active' : ''}`}
                   onClick={() => setNewChallengeType('streak')}
                 >
-                  <span>🔥</span>
+                  <span>📈</span>
                   <span>Streak Battle</span>
                   <small>Longest streak wins</small>
                 </button>
@@ -4933,6 +5397,23 @@ function App() {
                 {newChallengeType === 'collective' && newChallengeTarget && (
                   <small className="form-hint">
                     That's {formatMeters(parseInt(newChallengeTarget, 10))} for the team
+                  </small>
+                )}
+              </div>
+            )}
+
+            {newChallengeType === 'collective_calories' && (
+              <div className="form-group">
+                <label>Target Calories</label>
+                <input
+                  type="number"
+                  placeholder="e.g., 50000"
+                  value={newChallengeTarget}
+                  onChange={(e) => setNewChallengeTarget(e.target.value)}
+                />
+                {newChallengeTarget && (
+                  <small className="form-hint">
+                    That's {parseInt(newChallengeTarget, 10).toLocaleString()} calories for the team
                   </small>
                 )}
               </div>
@@ -4987,9 +5468,12 @@ function App() {
                   <div className="challenge-detail-header">
                     <span className="challenge-type-icon-lg">
                       {challenge.type === 'collective' && '🎯'}
-                      {challenge.type === 'time_trial' && '⏱️'}
+                      {challenge.type === 'collective_calories' && '☄️'}
+                      {challenge.type === 'time_trial' && '🏁'}
                       {challenge.type === 'distance_race' && '🏃'}
-                      {challenge.type === 'streak' && '🔥'}
+                      {challenge.type === 'total_time' && '⏱️'}
+                      {challenge.type === 'calories' && '🔥'}
+                      {challenge.type === 'streak' && '📈'}
                       {challenge.type === 'sessions' && '📅'}
                     </span>
                     <div>
@@ -5006,8 +5490,8 @@ function App() {
                     📅 {new Date(challenge.startDate).toLocaleDateString()} - {new Date(challenge.endDate).toLocaleDateString()}
                   </div>
 
-                  {/* Collective Progress */}
-                  {challenge.type === 'collective' && progress && (
+                  {/* Collective Progress (meters or calories) */}
+                  {(challenge.type === 'collective' || challenge.type === 'collective_calories') && progress && (
                     <div className="challenge-collective-progress">
                       <div className="collective-progress-visual">
                         <div 
@@ -5017,11 +5501,19 @@ function App() {
                       </div>
                       <div className="collective-progress-stats">
                         <div className="collective-current">
-                          <span className="big-number">{formatMeters(progress.current)}</span>
-                          <span>rowed</span>
+                          <span className="big-number">
+                            {challenge.type === 'collective_calories' 
+                              ? progress.current.toLocaleString()
+                              : formatMeters(progress.current)
+                            }
+                          </span>
+                          <span>{challenge.type === 'collective_calories' ? 'calories burned' : 'rowed'}</span>
                         </div>
                         <div className="collective-target">
-                          <span>of {formatMeters(progress.target)} goal</span>
+                          <span>of {challenge.type === 'collective_calories' 
+                            ? progress.target.toLocaleString() + ' cal'
+                            : formatMeters(progress.target)
+                          } goal</span>
                           <span className="percentage">{progress.percentage.toFixed(1)}%</span>
                         </div>
                       </div>
@@ -5078,6 +5570,8 @@ function App() {
                               {challenge.type === 'time_trial' && formatTime(entry.time)}
                               {challenge.type === 'time_trial' && entry.verified && ' ✓'}
                               {(challenge.type === 'distance_race' || challenge.type === 'collective') && formatMeters(entry.totalMeters)}
+                              {challenge.type === 'total_time' && formatTimeDisplay(entry.totalTime)}
+                              {(challenge.type === 'calories' || challenge.type === 'collective_calories') && `${entry.totalCalories.toLocaleString()} cal`}
                               {challenge.type === 'streak' && `${entry.bestStreak} days`}
                               {challenge.type === 'sessions' && `${entry.sessionCount} sessions`}
                             </span>

@@ -4894,10 +4894,15 @@ input[type="number"] {
   border-radius: 12px;
   padding: 1rem;
   display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.group-header-top {
+  display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1rem;
 }
 
 .group-header-info h3 {
@@ -4908,12 +4913,19 @@ input[type="number"] {
 .group-description {
   font-size: 0.85rem;
   color: var(--text-secondary);
-  margin: 0 0 0.5rem 0;
+  margin: 0;
+}
+
+.group-header-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .group-meta {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   font-size: 0.8rem;
   color: var(--text-muted);
 }
@@ -4927,42 +4939,61 @@ input[type="number"] {
 
 .group-header-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  flex-shrink: 0;
 }
 
-.group-add-challenge-btn {
+.group-action-btn {
   padding: 0.5rem 0.75rem;
-  background: var(--accent-primary);
-  border: none;
-  border-radius: 8px;
-  color: var(--bg-dark);
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.group-add-challenge-btn:hover {
-  transform: scale(1.05);
-}
-
-.group-leave-btn {
-  padding: 0.5rem 0.75rem;
-  background: transparent;
+  background: var(--bg-dark);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 0.8rem;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
-.group-leave-btn:hover {
+.group-action-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.group-action-btn.primary {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--bg-dark);
+  font-weight: 600;
+}
+
+.group-action-btn.primary:hover {
+  transform: scale(1.02);
+}
+
+.group-action-btn.danger:hover {
   border-color: #ef4444;
   color: #ef4444;
+}
+
+/* Mobile: Group header responsiveness */
+@media (max-width: 480px) {
+  .group-header-card {
+    padding: 0.875rem;
+  }
+  
+  .group-header-actions {
+    width: 100%;
+  }
+  
+  .group-action-btn {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
+    padding: 0.625rem 0.5rem;
+  }
 }
 
 /* Challenges Section */

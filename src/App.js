@@ -3500,43 +3500,48 @@ function App() {
               <div className="group-info-section">
                 {/* Group Header */}
                 <div className="group-header-card">
-                  <div className="group-header-info">
-                    <h3>{getSelectedGroup()?.name}</h3>
-                    {getSelectedGroup()?.description && (
-                      <p className="group-description">{getSelectedGroup().description}</p>
-                    )}
+                  <div className="group-header-top">
+                    <div className="group-header-info">
+                      <h3>{getSelectedGroup()?.name}</h3>
+                      {getSelectedGroup()?.description && (
+                        <p className="group-description">{getSelectedGroup().description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="group-header-bottom">
                     <div className="group-meta">
                       <span>👥 {getSelectedGroup()?.memberIds?.length || 0} members</span>
                       <span className="group-code">Code: {getSelectedGroup()?.inviteCode}</span>
                     </div>
-                  </div>
-                  <div className="group-header-actions">
-                    {isGroupAdmin(selectedGroupId) && (
-                      <>
-                        <button 
-                          className="group-invite-btn"
-                          onClick={() => setShowInviteUserModal(true)}
-                        >
-                          👤+
-                        </button>
-                        <button 
-                          className="group-add-challenge-btn"
-                          onClick={() => setShowCreateChallengeModal(true)}
-                        >
-                          ➕ Challenge
-                        </button>
-                      </>
-                    )}
-                    <button 
-                      className="group-leave-btn"
-                      onClick={() => {
-                        if (window.confirm('Are you sure you want to leave this group?')) {
-                          handleLeaveGroup(selectedGroupId);
-                        }
-                      }}
-                    >
-                      Leave
-                    </button>
+                    <div className="group-header-actions">
+                      {isGroupAdmin(selectedGroupId) && (
+                        <>
+                          <button 
+                            className="group-action-btn"
+                            onClick={() => setShowInviteUserModal(true)}
+                            title="Invite User"
+                          >
+                            👤+ Invite
+                          </button>
+                          <button 
+                            className="group-action-btn primary"
+                            onClick={() => setShowCreateChallengeModal(true)}
+                          >
+                            ➕ Challenge
+                          </button>
+                        </>
+                      )}
+                      <button 
+                        className="group-action-btn danger"
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to leave this group?')) {
+                            handleLeaveGroup(selectedGroupId);
+                          }
+                        }}
+                      >
+                        Leave
+                      </button>
+                    </div>
                   </div>
                 </div>
 

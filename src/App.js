@@ -40,7 +40,10 @@ import {
   getMachineName,
   QUOTES,
   MILESTONES,
-  CHANGELOG
+  CHANGELOG,
+  THEMES,
+  DEFAULT_THEME,
+  THEME_LIST
 } from './constants';
 
 // Import utilities
@@ -158,6 +161,11 @@ function App() {
   const [inviteUsername, setInviteUsername] = useState('');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showChangelogModal, setShowChangelogModal] = useState(false);
+  
+  // Theme state
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    return localStorage.getItem('rowcrew_theme') || DEFAULT_THEME;
+  });
   
   const wrappedCardRef = useRef(null);
   
@@ -288,29 +296,36 @@ function App() {
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      
-      if (user) {
-        // Check if user has a profile
-        const profileRef = doc(db, 'users', user.uid);
-        const profileSnap = await getDoc(profileRef);
+      try {
+        setCurrentUser(user);
         
-        if (profileSnap.exists()) {
-          const profileData = profileSnap.data();
-          setUserProfile({ id: user.uid, ...profileData });
-          setIsAdmin(profileData.isAdmin === true);
+        if (user) {
+          // Check if user has a profile
+          const profileRef = doc(db, 'users', user.uid);
+          const profileSnap = await getDoc(profileRef);
+          
+          if (profileSnap.exists()) {
+            const profileData = profileSnap.data();
+            setUserProfile({ id: user.uid, ...profileData });
+            setIsAdmin(profileData.isAdmin === true);
+          } else {
+            // New user - show setup modal
+            setDisplayName(user.displayName || '');
+            setShowSetupModal(true);
+            setIsAdmin(false);
+          }
         } else {
-          // New user - show setup modal
-          setDisplayName(user.displayName || '');
-          setShowSetupModal(true);
+          setUserProfile(null);
           setIsAdmin(false);
         }
-      } else {
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        // Still allow app to load even if profile fetch fails
         setUserProfile(null);
         setIsAdmin(false);
+      } finally {
+        setAuthLoading(false);
       }
-      
-      setAuthLoading(false);
     });
 
     return () => unsubscribe();
@@ -320,9 +335,16 @@ function App() {
   useEffect(() => {
     setIsLoading(true);
 
+    // Timeout fallback - if data doesn't load in 10 seconds, stop loading spinner
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+      console.warn('Data loading timeout - Firebase may be unreachable');
+    }, 10000);
+
     const unsubUsers = onSnapshot(
       collection(db, 'users'),
       (snapshot) => {
+        clearTimeout(timeoutId);
         const usersData = {};
         snapshot.forEach((docSnap) => {
           usersData[docSnap.id] = { id: docSnap.id, ...docSnap.data() };
@@ -331,6 +353,7 @@ function App() {
         setIsLoading(false);
       },
       (error) => {
+        clearTimeout(timeoutId);
         console.error('Error fetching users:', error);
         setIsLoading(false);
       }
@@ -352,6 +375,7 @@ function App() {
     );
 
     return () => {
+      clearTimeout(timeoutId);
       unsubUsers();
       unsubEntries();
     };
@@ -492,6 +516,37 @@ function App() {
       localStorage.setItem('rowcrew_version', APP_VERSION);
     }
   }, []);
+
+  // Apply theme to document
+  useEffect(() => {
+    const theme = THEMES[currentTheme];
+    if (!theme) return;
+    
+    const root = document.documentElement;
+    root.setAttribute('data-theme', currentTheme);
+    
+    // Apply CSS variables
+    root.style.setProperty('--bg-dark', theme.colors.bgDark);
+    root.style.setProperty('--bg-card', theme.colors.bgCard);
+    root.style.setProperty('--bg-card-hover', theme.colors.bgCardHover);
+    root.style.setProperty('--accent-primary', theme.colors.accentPrimary);
+    root.style.setProperty('--accent-secondary', theme.colors.accentSecondary);
+    root.style.setProperty('--accent-gold', theme.colors.accentGold);
+    root.style.setProperty('--text-primary', theme.colors.textPrimary);
+    root.style.setProperty('--text-secondary', theme.colors.textSecondary);
+    root.style.setProperty('--text-muted', theme.colors.textMuted);
+    root.style.setProperty('--border-color', theme.colors.borderColor);
+    root.style.setProperty('--success', theme.colors.success);
+    root.style.setProperty('--shadow-glow', theme.colors.shadowGlow);
+    root.style.setProperty('--gradient-start', theme.colors.gradientStart);
+    root.style.setProperty('--gradient-end', theme.colors.gradientEnd);
+    root.style.setProperty('--header-glow', theme.colors.headerGlow);
+    root.style.setProperty('--progress-gradient', theme.colors.progressGradient);
+    root.style.setProperty('--progress-glow', theme.colors.progressGlow);
+    
+    // Save preference
+    localStorage.setItem('rowcrew_theme', currentTheme);
+  }, [currentTheme]);
 
   // Sign in with Google
   const handleSignIn = async () => {
@@ -4218,6 +4273,26 @@ function App() {
           <div className="modal settings-modal" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setShowSettingsModal(false)}>✕</button>
             <h2>Settings</h2>
+            
+            {/* Theme Selector */}
+            <div className="settings-section">
+              <h3>🎨 Theme</h3>
+              <div className="theme-selector">
+                {THEME_LIST.map((theme) => (
+                  <button
+                    key={theme.id}
+                    className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
+                    onClick={() => setCurrentTheme(theme.id)}
+                    data-theme-preview={theme.id}
+                  >
+                    <span className="theme-emoji">{theme.emoji}</span>
+                    <span className="theme-name">{theme.name}</span>
+                    {currentTheme === theme.id && <span className="theme-check">✓</span>}
+                  </button>
+                ))}
+              </div>
+              <p className="settings-section-desc">{THEMES[currentTheme]?.description}</p>
+            </div>
             
             {userProfile && (
               <>

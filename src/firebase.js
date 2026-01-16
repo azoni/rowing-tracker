@@ -9,12 +9,13 @@ import { getFunctions } from 'firebase/functions';
 // TODO: Replace this config with your own from Firebase Console
 // Go to: console.firebase.google.com -> Your Project -> Project Settings -> Your Apps -> Web App
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCygqkD4bqj4pN1A-_pa9PKJtg8vxTCZDc",
+  authDomain: "rowing-tracker-c1e5e.firebaseapp.com",
+  projectId: "rowing-tracker-c1e5e",
+  storageBucket: "rowing-tracker-c1e5e.firebasestorage.app",
+  messagingSenderId: "531303742676",
+  appId: "1:531303742676:web:dc2ccfa3a69b37f09e8f41",
+  measurementId: "G-VHPQQ902S3"
 };
 
 // Initialize Firebase

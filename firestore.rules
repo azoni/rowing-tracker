@@ -1,0 +1,45 @@
+// Firestore Security Rules
+// Copy these rules to Firebase Console -> Firestore Database -> Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone can read (for leaderboard - allows guests)
+      allow read: if true;
+      
+      // Users can only create/update their own profile
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+                    // Prevent users from making themselves admin
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']));
+      
+      // No one can delete users (admin only via console)
+      allow delete: if false;
+    }
+    
+    // Entries collection
+    match /entries/{entryId} {
+      // Anyone can read all entries (allows guests)
+      allow read: if true;
+      
+      // Users can only create entries for themselves with valid data
+      allow create: if request.auth != null 
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.meters >= 100
+                    && request.resource.data.meters <= 50000;
+      
+      // Only allow updates from Cloud Functions (admin SDK) or admins
+      // Regular users cannot update entries
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // Admin review queue (readable/writable only via Cloud Functions)
+    match /reviewQueue/{docId} {
+      allow read, write: if false;
+    }
+  }
+}

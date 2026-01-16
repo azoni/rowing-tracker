@@ -1,5 +1,5 @@
 // App Version - update this when releasing new features
-export const APP_VERSION = '4.1.0';
+export const APP_VERSION = '4.2.0';
 
 // Constants
 export const WORLD_CIRCUMFERENCE = 40075000;

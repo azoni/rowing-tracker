@@ -1,6 +1,18 @@
 // Changelog entries
 export const CHANGELOG = [
   {
+    version: '4.2.0',
+    date: '2025-01-16',
+    changes: [
+      '🎨 4 new themes! Pick your vibe in Settings',
+      '🏛️ Boathouse Classic - navy & gold collegiate style',
+      '🌅 Morning Lake - calm light mode for sunrise rows',
+      '🏋️ Athletic Performance - bold orange sports energy',
+      '⚓ Ocean Crew - rich maritime club aesthetic',
+      '🚣 New rowing-themed app icon',
+    ]
+  },
+  {
     version: '4.1.0',
     date: '2025-01-15',
     changes: [

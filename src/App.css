@@ -6621,3 +6621,128 @@ input[type="number"] {
     padding: 0.5rem;
   }
 }
+
+/* Manual Entry Machine Selection */
+.manual-field-full {
+  width: 100%;
+}
+
+.manual-field-full label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.manual-machine-using {
+  font-size: 0.75rem;
+  font-weight: normal;
+  color: var(--accent-primary);
+  background: rgba(0, 212, 170, 0.1);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.manual-machine-select {
+  width: 100%;
+  padding: 0.65rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+}
+
+.manual-machine-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.manual-custom-machine {
+  width: 100%;
+  padding: 0.65rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  margin-top: 0.5rem;
+  box-sizing: border-box;
+}
+
+.manual-custom-machine:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.manual-machine-change {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manual-machine-change:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+/* Last Used Machine in Settings */
+.rower-last-used {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-dark);
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.rower-last-used-info {
+  color: var(--text-secondary);
+}
+
+.rower-last-used-info strong {
+  color: var(--text-primary);
+}
+
+.rower-make-default-btn {
+  padding: 0.4rem 0.75rem;
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 6px;
+  color: var(--bg-dark);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rower-make-default-btn:hover {
+  transform: scale(1.02);
+}
+
+@media (max-width: 480px) {
+  .rower-last-used {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  
+  .rower-make-default-btn {
+    width: 100%;
+    padding: 0.5rem;
+  }
+}

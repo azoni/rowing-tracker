@@ -371,6 +371,53 @@ const ACHIEVEMENTS = [
   },
 ];
 
+// Common rowing machine types for AI training
+const ROWING_MACHINES = [
+  { id: 'concept2_pm5', name: 'Concept2 PM5', popular: true, aliases: ['c2 pm5', 'concept 2 pm5', 'c2pm5', 'pm5'] },
+  { id: 'concept2_pm4', name: 'Concept2 PM4', popular: true, aliases: ['c2 pm4', 'concept 2 pm4', 'c2pm4', 'pm4'] },
+  { id: 'concept2_pm3', name: 'Concept2 PM3', popular: false, aliases: ['c2 pm3', 'concept 2 pm3', 'c2pm3', 'pm3'] },
+  { id: 'hydrow', name: 'Hydrow', popular: true, aliases: ['hydro'] },
+  { id: 'nordictrack', name: 'NordicTrack', popular: true, aliases: ['nordic track', 'nordic'] },
+  { id: 'waterrower', name: 'WaterRower', popular: true, aliases: ['water rower', 'water'] },
+  { id: 'echelon', name: 'Echelon Row', popular: false, aliases: ['echelon'] },
+  { id: 'proform', name: 'ProForm', popular: false, aliases: ['pro form'] },
+  { id: 'sunny', name: 'Sunny Health', popular: false, aliases: ['sunny health & fitness', 'sunny fitness'] },
+  { id: 'life_fitness', name: 'Life Fitness', popular: false, aliases: ['lifefitness'] },
+  { id: 'technogym', name: 'Technogym', popular: false, aliases: ['techno gym'] },
+  { id: 'gym_generic', name: 'Gym Machine', popular: true, aliases: ['gym', 'generic', 'gym rower'] },
+  { id: 'other', name: 'Other / Custom', popular: false, aliases: [] },
+];
+
+// Normalize and match machine name to known machines
+const normalizeMachineName = (input) => {
+  if (!input) return null;
+  const normalized = input.toLowerCase().trim().replace(/\s+/g, ' ');
+  
+  // First try exact ID match
+  const exactMatch = ROWING_MACHINES.find(m => m.id === normalized);
+  if (exactMatch) return exactMatch.id;
+  
+  // Try name match
+  const nameMatch = ROWING_MACHINES.find(m => m.name.toLowerCase() === normalized);
+  if (nameMatch) return nameMatch.id;
+  
+  // Try alias match
+  const aliasMatch = ROWING_MACHINES.find(m => 
+    m.aliases?.some(a => a.toLowerCase() === normalized || normalized.includes(a.toLowerCase()))
+  );
+  if (aliasMatch) return aliasMatch.id;
+  
+  // Return as custom if no match
+  return null;
+};
+
+// Get machine display name
+const getMachineName = (machineId, customName) => {
+  if (machineId === 'other' && customName) return customName;
+  const machine = ROWING_MACHINES.find(m => m.id === machineId);
+  return machine?.name || customName || 'Unknown';
+};
+
 // Motivational quotes
 const QUOTES = [
   { text: "The only bad workout is the one that didn't happen.", author: "Unknown" },
@@ -410,10 +457,10 @@ const CHANGELOG = [
     date: '2025-01-15',
     changes: [
       '⏱️ Track time & calories on every row',
+      '🤖 AI learns from your corrections to improve',
       '🔥 New leaderboards: Total Time & Calories',
       '☄️ 3 new challenge types: Total Time, Calorie Burn, Team Calories',
       '🏆 12 new achievements for time & calorie milestones',
-      '📊 Profile shows total time & calories burned',
       '⚡ Pace calculation when time is logged',
     ]
   },
@@ -647,9 +694,9 @@ function App() {
   const [processingStatus, setProcessingStatus] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
-  const [, setDetectedMeters] = useState(''); // For future AI detection
-  const [, setDetectedTime] = useState(''); // For future AI detection
-  const [, setDetectedCalories] = useState(''); // For future AI detection
+  const [detectedMeters, setDetectedMeters] = useState('');
+  const [detectedTime, setDetectedTime] = useState('');
+  const [detectedCalories, setDetectedCalories] = useState('');
   const [editableMeters, setEditableMeters] = useState('');
   const [editableTime, setEditableTime] = useState('');
   const [editableCalories, setEditableCalories] = useState('');
@@ -697,13 +744,18 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showUserProfileModal, setShowUserProfileModal] = useState(null);
   const [showRankProgressModal, setShowRankProgressModal] = useState(false);
-  const [leaderboardTab, setLeaderboardTab] = useState('alltime'); // alltime, weekly, streak, achievements
+  const [leaderboardTab, setLeaderboardTab] = useState('alltime'); // alltime, weekly, streak, achievements, time, calories
   const [showSessionHistory, setShowSessionHistory] = useState(false);
   const [showWrapped, setShowWrapped] = useState(false);
   const [wrappedSlide, setWrappedSlide] = useState(0);
   const [wrappedDismissed, setWrappedDismissed] = useState(() => {
     return localStorage.getItem('wrappedDismissed2025') === 'true';
   });
+  
+  // AI Training
+  const [aiMachineType, setAiMachineType] = useState('');
+  const [customMachineName, setCustomMachineName] = useState('');
+  const [showAiFeedbackToast, setShowAiFeedbackToast] = useState(false);
   
   // Groups & Challenges
   const [groups, setGroups] = useState([]);
@@ -1937,6 +1989,8 @@ function App() {
       
       let claudeResult = null;
       let detectedMeterValue = null;
+      let detectedTimeValue = null;
+      let detectedCalorieValue = null;
       
       // Try Claude verification first
       setProcessingStatus('AI analyzing image...');
@@ -1957,6 +2011,14 @@ function App() {
           detectedMeterValue = claudeResult.extractedMeters;
           setProcessingStatus('AI detected meters (low confidence)');
         }
+        
+        // Also grab time and calories if AI detected them
+        if (claudeResult.extractedTime) {
+          detectedTimeValue = claudeResult.extractedTime;
+        }
+        if (claudeResult.extractedCalories) {
+          detectedCalorieValue = claudeResult.extractedCalories;
+        }
       } catch (verifyError) {
         console.error('Claude verification error:', verifyError);
         setProcessingStatus('AI unavailable, using OCR...');
@@ -1974,6 +2036,7 @@ function App() {
         claudeResult 
       });
       
+      // Set detected values
       if (detectedMeterValue) {
         setDetectedMeters(detectedMeterValue.toString());
         setEditableMeters(detectedMeterValue.toString());
@@ -1981,6 +2044,30 @@ function App() {
         setDetectedMeters('');
         setEditableMeters('');
       }
+      
+      // Set detected time (format as MM:SS if it's in seconds)
+      if (detectedTimeValue) {
+        const mins = Math.floor(detectedTimeValue / 60);
+        const secs = Math.floor(detectedTimeValue % 60);
+        const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+        setDetectedTime(timeStr);
+        setEditableTime(timeStr);
+      } else {
+        setDetectedTime('');
+        setEditableTime('');
+      }
+      
+      // Set detected calories
+      if (detectedCalorieValue) {
+        setDetectedCalories(detectedCalorieValue.toString());
+        setEditableCalories(detectedCalorieValue.toString());
+      } else {
+        setDetectedCalories('');
+        setEditableCalories('');
+      }
+      
+      // Reset machine type selection
+      setAiMachineType('');
       
       setShowConfirmModal(true);
     };
@@ -2259,6 +2346,78 @@ function App() {
     const calories = editableCalories ? parseInt(editableCalories, 10) : null;
 
     setIsProcessing(true);
+    
+    // Determine machine type to use
+    const effectiveMachineType = aiMachineType || userProfile?.defaultMachine || 'unknown';
+    const effectiveCustomName = customMachineName || 
+      (effectiveMachineType === 'other' ? userProfile?.customMachineName : null);
+    
+    // Save AI feedback for training
+    if (capturedImage?.claudeResult) {
+      const aiResult = capturedImage.claudeResult;
+      
+      // Check what changed
+      const metersDiffer = aiResult.extractedMeters && Math.abs(meters - aiResult.extractedMeters) > 10;
+      const aiDetectedTime = aiResult.extractedTime || null;
+      const aiDetectedCalories = aiResult.extractedCalories || null;
+      const timeDiffer = aiDetectedTime && timeSeconds && Math.abs(timeSeconds - aiDetectedTime) > 5;
+      const caloriesDiffer = aiDetectedCalories && calories && Math.abs(calories - aiDetectedCalories) > 5;
+      
+      // Track when user provides data AI missed
+      const userProvidedMissingTime = !aiDetectedTime && timeSeconds;
+      const userProvidedMissingCalories = !aiDetectedCalories && calories;
+      
+      // Determine if we should save feedback
+      const hasCorrections = metersDiffer || timeDiffer || caloriesDiffer;
+      const hasNewData = userProvidedMissingTime || userProvidedMissingCalories;
+      const hasMachineInfo = effectiveMachineType && effectiveMachineType !== 'unknown';
+      
+      // Always save if we have useful data
+      if (hasCorrections || hasNewData || hasMachineInfo || aiResult.confidence < 70) {
+        try {
+          await saveAiFeedback({
+            aiExtracted: {
+              meters: aiResult.extractedMeters || null,
+              time: aiDetectedTime,
+              calories: aiDetectedCalories,
+              confidence: aiResult.confidence,
+              displayType: aiResult.displayType,
+              isRowingMachine: aiResult.isRowingMachineDisplay,
+            },
+            userConfirmed: {
+              meters,
+              time: timeSeconds,
+              calories,
+            },
+            corrections: {
+              meters: metersDiffer,
+              time: timeDiffer,
+              calories: caloriesDiffer,
+              providedMissingTime: userProvidedMissingTime,
+              providedMissingCalories: userProvidedMissingCalories,
+            },
+            machine: {
+              type: effectiveMachineType,
+              customName: effectiveCustomName,
+              displayName: getMachineName(effectiveMachineType, effectiveCustomName),
+              // Normalize to help with grouping similar machines
+              normalizedId: normalizeMachineName(effectiveCustomName) || effectiveMachineType,
+            },
+            imageHash: aiResult.imageHash,
+          });
+          
+          // Show thank you toast if user made any correction
+          if (hasCorrections) {
+            setShowAiFeedbackToast(true);
+            setTimeout(() => setShowAiFeedbackToast(false), 3000);
+          }
+        } catch (error) {
+          console.error('Error saving AI feedback:', error);
+          // Don't block the entry submission
+        }
+      }
+    }
+    
     const success = await addEntry(meters, capturedImage, timeSeconds, calories);
     setIsProcessing(false);
     
@@ -2270,6 +2429,8 @@ function App() {
       setEditableMeters('');
       setEditableTime('');
       setEditableCalories('');
+      setAiMachineType('');
+      setCustomMachineName('');
       setValidationError('');
       setVerificationStatus(null);
       // Show share modal (use image data for share card)
@@ -2277,6 +2438,18 @@ function App() {
       setShowShareModal(true);
       setLinkCopied(false);
     }
+  };
+
+  // Save AI feedback for training
+  const saveAiFeedback = async (feedback) => {
+    if (!currentUser) return;
+    
+    const feedbackId = `feedback_${Date.now()}_${currentUser.uid}`;
+    await setDoc(doc(db, 'ai_feedback', feedbackId), {
+      ...feedback,
+      userId: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
   };
 
   // Admin: Load pending reviews
@@ -4299,7 +4472,7 @@ function App() {
 
       {/* Confirm Modal */}
       {showConfirmModal && (
-        <div className="modal-overlay" onClick={() => { setShowConfirmModal(false); setValidationError(''); }}>
+        <div className="modal-overlay" onClick={() => { setShowConfirmModal(false); setValidationError(''); setAiMachineType(''); }}>
           <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Confirm Your Row</h2>
             
@@ -4309,41 +4482,38 @@ function App() {
               </div>
             )}
 
-            {/* Show AI detection result */}
+            {/* AI Status Summary */}
             {capturedImage?.claudeResult && (
-              <div className={`ai-detection-result ${capturedImage.claudeResult.confidence >= 60 ? 'high-confidence' : 'low-confidence'}`}>
-                {capturedImage.claudeResult.extractedMeters ? (
-                  <>
-                    <span className="ai-icon">🤖</span>
-                    <span>AI detected: <strong>{capturedImage.claudeResult.extractedMeters.toLocaleString()}m</strong></span>
-                    {capturedImage.claudeResult.displayType && capturedImage.claudeResult.displayType !== 'Unknown' && (
-                      <span className="ai-machine"> ({capturedImage.claudeResult.displayType})</span>
-                    )}
-                    {capturedImage.claudeResult.confidence >= 60 && <span className="ai-check">✓</span>}
-                  </>
-                ) : capturedImage.claudeResult.isRowingMachineDisplay === false ? (
-                  <>
-                    <span className="ai-icon">⚠️</span>
-                    <span>Image doesn't appear to be a rowing machine display</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="ai-icon">❓</span>
-                    <span>AI couldn't read meters - please enter manually</span>
-                  </>
-                )}
+              <div className={`ai-status-bar ${capturedImage.claudeResult.confidence >= 60 ? 'high-confidence' : 'low-confidence'}`}>
+                <span className="ai-status-icon">🤖</span>
+                <span className="ai-status-text">
+                  {capturedImage.claudeResult.extractedMeters ? (
+                    <>AI read your display {capturedImage.claudeResult.confidence >= 60 ? '✓' : '(uncertain)'}</>
+                  ) : capturedImage.claudeResult.isRowingMachineDisplay === false ? (
+                    <>Doesn't look like a rowing display</>
+                  ) : (
+                    <>Couldn't read display - enter manually</>
+                  )}
+                </span>
               </div>
             )}
 
             <div className="confirm-entry-form">
               {/* Meters - Required */}
               <div className="confirm-field confirm-field-main">
-                <label>Meters *</label>
+                <label className="confirm-label-with-ai">
+                  <span>Meters *</span>
+                  {detectedMeters && (
+                    <span className={`ai-field-indicator ${editableMeters !== detectedMeters ? 'edited' : ''}`}>
+                      {editableMeters !== detectedMeters ? '✏️ edited' : '🤖 AI'}
+                    </span>
+                  )}
+                </label>
                 <input
                   type="number"
                   value={editableMeters}
                   onChange={(e) => { setEditableMeters(e.target.value); setValidationError(''); }}
-                  className="confirm-input-large"
+                  className={`confirm-input-large ${detectedMeters && editableMeters !== detectedMeters ? 'user-edited' : ''}`}
                   placeholder="0"
                   autoFocus
                   min={MIN_METERS}
@@ -4354,22 +4524,40 @@ function App() {
               {/* Time & Calories - Optional */}
               <div className="confirm-field-row">
                 <div className="confirm-field">
-                  <label>Time <span className="optional-label">(optional)</span></label>
+                  <label className="confirm-label-with-ai">
+                    <span>Time</span>
+                    {detectedTime ? (
+                      <span className={`ai-field-indicator ${editableTime !== detectedTime ? 'edited' : ''}`}>
+                        {editableTime !== detectedTime ? '✏️' : '🤖'}
+                      </span>
+                    ) : (
+                      <span className="optional-label">(optional)</span>
+                    )}
+                  </label>
                   <input
                     type="text"
                     value={editableTime}
                     onChange={(e) => setEditableTime(e.target.value)}
-                    className="confirm-input"
+                    className={`confirm-input ${detectedTime && editableTime !== detectedTime ? 'user-edited' : ''}`}
                     placeholder="23:45"
                   />
                 </div>
                 <div className="confirm-field">
-                  <label>Calories <span className="optional-label">(optional)</span></label>
+                  <label className="confirm-label-with-ai">
+                    <span>Calories</span>
+                    {detectedCalories ? (
+                      <span className={`ai-field-indicator ${editableCalories !== detectedCalories ? 'edited' : ''}`}>
+                        {editableCalories !== detectedCalories ? '✏️' : '🤖'}
+                      </span>
+                    ) : (
+                      <span className="optional-label">(optional)</span>
+                    )}
+                  </label>
                   <input
                     type="number"
                     value={editableCalories}
                     onChange={(e) => setEditableCalories(e.target.value)}
-                    className="confirm-input"
+                    className={`confirm-input ${detectedCalories && editableCalories !== detectedCalories ? 'user-edited' : ''}`}
                     placeholder="0"
                   />
                 </div>
@@ -4379,6 +4567,74 @@ function App() {
               {editableMeters && editableTime && parseTimeInput(editableTime) && (
                 <div className="confirm-pace-display">
                   <span>⚡ Pace: {calculatePace(parseInt(editableMeters, 10), parseTimeInput(editableTime))}/500m</span>
+                </div>
+              )}
+
+              {/* Machine Type Section */}
+              {capturedImage?.claudeResult && (
+                <div className="confirm-machine-section">
+                  <div className="confirm-machine-header">
+                    <span className="confirm-machine-label">🚣 Machine</span>
+                    {userProfile?.defaultMachine && !aiMachineType && (
+                      <span className="confirm-machine-default">
+                        Using: {getMachineName(userProfile.defaultMachine, userProfile.customMachineName)}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Show selector if: no default set, AI confidence low, user corrected values, or user wants to change */}
+                  {(!userProfile?.defaultMachine || 
+                    capturedImage.claudeResult.confidence < 60 || 
+                    (detectedMeters && editableMeters !== detectedMeters) ||
+                    aiMachineType) ? (
+                    <div className="confirm-machine-select-wrapper">
+                      <select 
+                        className="machine-type-select"
+                        value={aiMachineType || userProfile?.defaultMachine || ''}
+                        onChange={(e) => {
+                          setAiMachineType(e.target.value);
+                          setCustomMachineName('');
+                        }}
+                      >
+                        <option value="">Select machine...</option>
+                        <optgroup label="Popular">
+                          {ROWING_MACHINES.filter(m => m.popular && m.id !== 'other').map(machine => (
+                            <option key={machine.id} value={machine.id}>{machine.name}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Other">
+                          {ROWING_MACHINES.filter(m => !m.popular).map(machine => (
+                            <option key={machine.id} value={machine.id}>{machine.name}</option>
+                          ))}
+                        </optgroup>
+                      </select>
+                      
+                      {/* Custom machine input */}
+                      {(aiMachineType === 'other' || (!aiMachineType && userProfile?.defaultMachine === 'other')) && (
+                        <input
+                          type="text"
+                          className="custom-machine-inline"
+                          placeholder="Machine name..."
+                          value={customMachineName || userProfile?.customMachineName || ''}
+                          onChange={(e) => setCustomMachineName(e.target.value)}
+                          maxLength={50}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <button 
+                      className="confirm-machine-change-btn"
+                      onClick={() => setAiMachineType(userProfile?.defaultMachine || 'change')}
+                    >
+                      Change machine
+                    </button>
+                  )}
+                  
+                  {!userProfile?.defaultMachine && (
+                    <small className="confirm-machine-hint">
+                      💡 Set a default in Settings to skip this next time
+                    </small>
+                  )}
                 </div>
               )}
             </div>
@@ -4392,7 +4648,7 @@ function App() {
             <p className="confirm-user">Logging as <strong>{userProfile?.name}</strong></p>
 
             <div className="modal-actions">
-              <button className="cancel-button" onClick={() => { setShowConfirmModal(false); setCapturedImage(null); setValidationError(''); }}>
+              <button className="cancel-button" onClick={() => { setShowConfirmModal(false); setCapturedImage(null); setValidationError(''); setAiMachineType(''); setCustomMachineName(''); }}>
                 Cancel
               </button>
               <button
@@ -4404,6 +4660,14 @@ function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* AI Feedback Toast */}
+      {showAiFeedbackToast && (
+        <div className="ai-feedback-toast">
+          <span>🤖</span>
+          <span>Thanks! Your correction helps our AI improve</span>
         </div>
       )}
 
@@ -4688,6 +4952,99 @@ function App() {
                     {usernameStatus === 'taken' && 'Username is already taken'}
                     {usernameStatus === 'invalid' && 'Invalid format'}
                   </small>
+                </div>
+
+                {/* Default Rowing Machine */}
+                <div className="settings-section">
+                  <h3>🚣 My Rower</h3>
+                  <p className="settings-section-desc">Set your default machine to help our AI learn</p>
+                  <div className="rower-select-wrapper">
+                    <select
+                      className="rower-select"
+                      value={userProfile.defaultMachine || ''}
+                      onChange={async (e) => {
+                        const newMachine = e.target.value;
+                        try {
+                          await updateDoc(doc(db, 'users', currentUser.uid), {
+                            defaultMachine: newMachine,
+                            customMachineName: newMachine === 'other' ? userProfile.customMachineName : null
+                          });
+                        } catch (error) {
+                          console.error('Error updating default machine:', error);
+                        }
+                      }}
+                    >
+                      <option value="">Select your machine...</option>
+                      <optgroup label="Popular">
+                        {ROWING_MACHINES.filter(m => m.popular && m.id !== 'other').map(machine => (
+                          <option key={machine.id} value={machine.id}>{machine.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Other Machines">
+                        {ROWING_MACHINES.filter(m => !m.popular && m.id !== 'other').map(machine => (
+                          <option key={machine.id} value={machine.id}>{machine.name}</option>
+                        ))}
+                      </optgroup>
+                      <option value="other">Other / Custom...</option>
+                    </select>
+                  </div>
+                  
+                  {/* Custom machine name input */}
+                  {userProfile.defaultMachine === 'other' && (
+                    <div className="custom-machine-input">
+                      <input
+                        type="text"
+                        placeholder="Enter your machine name..."
+                        value={userProfile.customMachineName || ''}
+                        onChange={async (e) => {
+                          const inputValue = e.target.value;
+                          try {
+                            await updateDoc(doc(db, 'users', currentUser.uid), {
+                              customMachineName: inputValue
+                            });
+                          } catch (error) {
+                            console.error('Error updating custom machine name:', error);
+                          }
+                        }}
+                        maxLength={50}
+                      />
+                      {/* Smart suggestion if input matches a known machine */}
+                      {userProfile.customMachineName && (() => {
+                        const matchedId = normalizeMachineName(userProfile.customMachineName);
+                        if (matchedId && matchedId !== 'other') {
+                          const matchedMachine = ROWING_MACHINES.find(m => m.id === matchedId);
+                          return (
+                            <div className="machine-suggestion">
+                              <span>Did you mean <strong>{matchedMachine?.name}</strong>?</span>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    await updateDoc(doc(db, 'users', currentUser.uid), {
+                                      defaultMachine: matchedId,
+                                      customMachineName: null
+                                    });
+                                  } catch (error) {
+                                    console.error('Error updating machine:', error);
+                                  }
+                                }}
+                              >
+                                Use {matchedMachine?.name}
+                              </button>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                      <small>e.g., "Planet Fitness Rower", "Hotel Gym LifeSpan"</small>
+                    </div>
+                  )}
+                  
+                  {userProfile.defaultMachine && (
+                    <div className="rower-current">
+                      ✓ Using: <strong>{getMachineName(userProfile.defaultMachine, userProfile.customMachineName)}</strong>
+                    </div>
+                  )}
                 </div>
 
                 {/* Session History Button */}
@@ -4984,6 +5341,11 @@ function App() {
                       {user.username && <span className="profile-modal-username">@{user.username}</span>}
                       <span className="profile-modal-rank">{rank?.emoji} {rank?.title}</span>
                       {streak > 0 && <span className="profile-modal-streak">🔥 {streak} day streak</span>}
+                      {user.defaultMachine && (
+                        <span className="profile-modal-machine">
+                          🚣 {getMachineName(user.defaultMachine, user.customMachineName)}
+                        </span>
+                      )}
                     </div>
                   </div>
 

@@ -136,6 +136,7 @@ function App() {
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(null); // null = global view
   const [challenges, setChallenges] = useState([]);
+  const [activities, setActivities] = useState([]); // Group/challenge activities for feed
   const [showGroupSelector, setShowGroupSelector] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showJoinGroupModal, setShowJoinGroupModal] = useState(false);
@@ -159,6 +160,7 @@ function App() {
   const [isSubmittingTimeTrial, setIsSubmittingTimeTrial] = useState(false);
   const [showInviteUserModal, setShowInviteUserModal] = useState(false);
   const [inviteUsername, setInviteUsername] = useState('');
+  const [showManageMembersModal, setShowManageMembersModal] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showChangelogModal, setShowChangelogModal] = useState(false);
   
@@ -442,6 +444,31 @@ function App() {
 
     return () => unsubChallenges();
   }, [selectedGroupId]);
+
+  // Load activities for feed (group/challenge events)
+  useEffect(() => {
+    const activitiesQuery = query(
+      collection(db, 'activities'),
+      orderBy('createdAt', 'desc'),
+      limit(100)
+    );
+
+    const unsubActivities = onSnapshot(
+      activitiesQuery,
+      (snapshot) => {
+        const activitiesData = [];
+        snapshot.forEach((docSnap) => {
+          activitiesData.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        setActivities(activitiesData);
+      },
+      (error) => {
+        console.error('Error fetching activities:', error);
+      }
+    );
+
+    return () => unsubActivities();
+  }, []);
 
   // Update user profile when it changes in Firebase
   useEffect(() => {
@@ -755,6 +782,23 @@ function App() {
     return code;
   };
 
+  // Log activity to feed (groups, challenges, etc.)
+  const logActivity = async (type, data) => {
+    if (!currentUser) return;
+    
+    try {
+      const activityId = `activity_${Date.now()}_${currentUser.uid.slice(0, 6)}`;
+      await setDoc(doc(db, 'activities', activityId), {
+        type,
+        userId: currentUser.uid,
+        createdAt: serverTimestamp(),
+        ...data
+      });
+    } catch (error) {
+      console.error('Error logging activity:', error);
+    }
+  };
+
   // Create a new group
   const handleCreateGroup = async () => {
     if (!newGroupName.trim() || !currentUser) return;
@@ -765,15 +809,22 @@ function App() {
     try {
       const groupId = `group_${Date.now()}_${currentUser.uid.slice(0, 6)}`;
       const inviteCode = generateInviteCode();
+      const groupName = newGroupName.trim();
 
       await setDoc(doc(db, 'groups', groupId), {
-        name: newGroupName.trim(),
+        name: groupName,
         description: newGroupDescription.trim(),
         inviteCode,
         createdBy: currentUser.uid,
         adminIds: [currentUser.uid],
         memberIds: [currentUser.uid],
         createdAt: serverTimestamp(),
+      });
+
+      // Log activity
+      await logActivity('group_created', {
+        groupId,
+        groupName
       });
 
       setNewGroupName('');
@@ -823,6 +874,12 @@ function App() {
         memberIds: arrayUnion(currentUser.uid)
       });
 
+      // Log activity
+      await logActivity('group_joined', {
+        groupId: groupDoc.id,
+        groupName: groupData.name
+      });
+
       setJoinGroupCode('');
       setShowJoinGroupModal(false);
       setSelectedGroupId(groupDoc.id);
@@ -863,6 +920,82 @@ function App() {
       }
     } catch (error) {
       console.error('Error leaving group:', error);
+    }
+  };
+
+  // Remove a member from group (admin only)
+  const handleRemoveMember = async (groupId, memberId) => {
+    if (!currentUser || !groupId || !memberId) return;
+    if (!isGroupAdmin(groupId)) return;
+
+    try {
+      const group = groups.find(g => g.id === groupId);
+      if (!group) return;
+
+      // Can't remove yourself using this function
+      if (memberId === currentUser.uid) {
+        alert('Use "Leave Group" to remove yourself.');
+        return;
+      }
+
+      // Remove member from group
+      await updateDoc(doc(db, 'groups', groupId), {
+        memberIds: arrayRemove(memberId),
+        adminIds: arrayRemove(memberId)
+      });
+    } catch (error) {
+      console.error('Error removing member:', error);
+    }
+  };
+
+  // Transfer admin role to another member
+  const handleTransferAdmin = async (groupId, newAdminId) => {
+    if (!currentUser || !groupId || !newAdminId) return;
+    if (!isGroupAdmin(groupId)) return;
+
+    try {
+      const group = groups.find(g => g.id === groupId);
+      if (!group) return;
+
+      // Add new admin
+      await updateDoc(doc(db, 'groups', groupId), {
+        adminIds: arrayUnion(newAdminId)
+      });
+
+      // Log activity
+      const newAdmin = users[newAdminId];
+      await logActivity('admin_transferred', {
+        groupId,
+        groupName: group.name,
+        newAdminId,
+        newAdminName: newAdmin?.name || 'Unknown'
+      });
+    } catch (error) {
+      console.error('Error transferring admin:', error);
+    }
+  };
+
+  // Remove admin role from a member (keep them as member)
+  const handleRemoveAdmin = async (groupId, adminId) => {
+    if (!currentUser || !groupId || !adminId) return;
+    if (!isGroupAdmin(groupId)) return;
+
+    try {
+      const group = groups.find(g => g.id === groupId);
+      if (!group) return;
+
+      // Must have at least one admin
+      if (group.adminIds?.length <= 1) {
+        alert('Group must have at least one admin.');
+        return;
+      }
+
+      // Remove admin role
+      await updateDoc(doc(db, 'groups', groupId), {
+        adminIds: arrayRemove(adminId)
+      });
+    } catch (error) {
+      console.error('Error removing admin:', error);
     }
   };
 
@@ -914,10 +1047,12 @@ function App() {
     try {
       const challengeId = `challenge_${Date.now()}`;
       const targetValue = parseInt(newChallengeTarget, 10) || 0;
+      const challengeName = newChallengeName.trim();
+      const group = groups.find(g => g.id === selectedGroupId);
 
       await setDoc(doc(db, 'challenges', challengeId), {
         groupId: selectedGroupId,
-        name: newChallengeName.trim(),
+        name: challengeName,
         type: newChallengeType,
         targetMeters: newChallengeType === 'collective' ? targetValue : null,
         targetCalories: newChallengeType === 'collective_calories' ? targetValue : null,
@@ -927,6 +1062,15 @@ function App() {
         createdBy: currentUser.uid,
         createdAt: serverTimestamp(),
         participants: {},
+      });
+
+      // Log activity
+      await logActivity('challenge_created', {
+        challengeId,
+        challengeName,
+        challengeType: newChallengeType,
+        groupId: selectedGroupId,
+        groupName: group?.name || 'Unknown Group'
       });
 
       setNewChallengeName('');
@@ -2382,6 +2526,33 @@ function App() {
       }
     });
 
+    // Add group/challenge activities
+    activities.forEach(activity => {
+      const activityUser = users[activity.userId];
+      if (!activityUser) return;
+      
+      // For group-specific views, only show activities for the selected group
+      if (selectedGroupId && activity.groupId && activity.groupId !== selectedGroupId) {
+        return;
+      }
+      
+      const activityDate = activity.createdAt?.toDate ? activity.createdAt.toDate() : new Date(activity.createdAt);
+      
+      feedItems.push({
+        id: activity.id,
+        type: activity.type,
+        userId: activity.userId,
+        user: activityUser,
+        groupId: activity.groupId,
+        groupName: activity.groupName,
+        challengeId: activity.challengeId,
+        challengeName: activity.challengeName,
+        challengeType: activity.challengeType,
+        date: activityDate.toISOString(),
+        sortDate: activityDate,
+      });
+    });
+
     // Sort by date descending
     feedItems.sort((a, b) => b.sortDate - a.sortDate);
 
@@ -2389,7 +2560,9 @@ function App() {
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase();
       feedItems = feedItems.filter(item => 
-        item.user?.name?.toLowerCase().includes(q)
+        item.user?.name?.toLowerCase().includes(q) ||
+        item.groupName?.toLowerCase().includes(q) ||
+        item.challengeName?.toLowerCase().includes(q)
       );
     }
 
@@ -3111,6 +3284,13 @@ function App() {
                         <>
                           <button 
                             className="group-action-btn"
+                            onClick={() => setShowManageMembersModal(true)}
+                            title="Manage Members"
+                          >
+                            ⚙️ Manage
+                          </button>
+                          <button 
+                            className="group-action-btn"
                             onClick={() => setShowInviteUserModal(true)}
                             title="Invite User"
                           >
@@ -3343,6 +3523,22 @@ function App() {
                               {item.type === 'join' && (
                                 <span className="feed-join">
                                   joined Row Crew! 🎉
+                                </span>
+                              )}
+                              {item.type === 'group_created' && (
+                                <span className="feed-group">
+                                  created group <span className="feed-group-name">🚣 {item.groupName}</span>
+                                </span>
+                              )}
+                              {item.type === 'group_joined' && (
+                                <span className="feed-group">
+                                  joined <span className="feed-group-name">👥 {item.groupName}</span>
+                                </span>
+                              )}
+                              {item.type === 'challenge_created' && (
+                                <span className="feed-challenge">
+                                  started challenge <span className="feed-challenge-name">🎯 {item.challengeName}</span>
+                                  {item.groupName && <span className="feed-in-group"> in {item.groupName}</span>}
                                 </span>
                               )}
                             </div>
@@ -5122,6 +5318,98 @@ function App() {
             </div>
 
             {groupError && <div className="form-error">{groupError}</div>}
+          </div>
+        </div>
+      )}
+
+      {/* Manage Members Modal */}
+      {showManageMembersModal && selectedGroupId && isGroupAdmin(selectedGroupId) && (
+        <div className="modal-overlay" onClick={() => setShowManageMembersModal(false)}>
+          <div className="modal manage-members-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowManageMembersModal(false)}>✕</button>
+            
+            <h2>Manage Members</h2>
+            <p>{getSelectedGroup()?.name}</p>
+
+            <div className="members-list">
+              {getSelectedGroup()?.memberIds?.map(memberId => {
+                const member = users[memberId];
+                if (!member) return null;
+                
+                const isAdmin = getSelectedGroup()?.adminIds?.includes(memberId);
+                const isCurrentUser = memberId === currentUser?.uid;
+                
+                return (
+                  <div key={memberId} className="member-row">
+                    <div className="member-info">
+                      {member.photoURL ? (
+                        <img src={member.photoURL} alt="" className="member-avatar" />
+                      ) : (
+                        <div className="member-avatar-placeholder">{member.name?.charAt(0)}</div>
+                      )}
+                      <div className="member-details">
+                        <div className="member-name">
+                          {member.name}
+                          {isCurrentUser && <span className="member-you">(you)</span>}
+                        </div>
+                        {member.username && <div className="member-username">@{member.username}</div>}
+                      </div>
+                    </div>
+                    <div className="member-actions">
+                      {isAdmin ? (
+                        <>
+                          <span className="admin-badge">Admin</span>
+                          {!isCurrentUser && getSelectedGroup()?.adminIds?.length > 1 && (
+                            <button 
+                              className="member-action-btn"
+                              onClick={() => {
+                                if (window.confirm(`Remove admin role from ${member.name}?`)) {
+                                  handleRemoveAdmin(selectedGroupId, memberId);
+                                }
+                              }}
+                              title="Remove admin role"
+                            >
+                              Remove Admin
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <button 
+                            className="member-action-btn promote"
+                            onClick={() => {
+                              if (window.confirm(`Make ${member.name} an admin?`)) {
+                                handleTransferAdmin(selectedGroupId, memberId);
+                              }
+                            }}
+                            title="Make admin"
+                          >
+                            Make Admin
+                          </button>
+                          <button 
+                            className="member-action-btn remove"
+                            onClick={() => {
+                              if (window.confirm(`Remove ${member.name} from the group?`)) {
+                                handleRemoveMember(selectedGroupId, memberId);
+                              }
+                            }}
+                            title="Remove from group"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="modal-footer">
+              <button className="modal-close-btn" onClick={() => setShowManageMembersModal(false)}>
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

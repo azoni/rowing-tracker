@@ -899,16 +899,28 @@ function App() {
       const group = groups.find(g => g.id === groupId);
       if (!group) return;
 
-      // Check if user is the only admin
-      if (group.adminIds?.length === 1 && group.adminIds[0] === currentUser.uid) {
-        if (group.memberIds?.length > 1) {
-          alert('You must assign another admin before leaving, or remove all other members first.');
-          return;
-        }
-        // User is last member, delete the group
+      const isLastMember = group.memberIds?.length <= 1;
+      const isOnlyAdmin = group.adminIds?.length === 1 && group.adminIds[0] === currentUser.uid;
+      const hasOtherMembers = group.memberIds?.length > 1;
+
+      if (isLastMember) {
+        // Last member leaving - delete the group
         await deleteDoc(doc(db, 'groups', groupId));
+      } else if (isOnlyAdmin && hasOtherMembers) {
+        // Only admin leaving but others exist - transfer admin to next member
+        const nextAdmin = group.memberIds.find(id => id !== currentUser.uid);
+        
+        await updateDoc(doc(db, 'groups', groupId), {
+          memberIds: arrayRemove(currentUser.uid),
+          adminIds: arrayRemove(currentUser.uid)
+        });
+        
+        // Add new admin
+        await updateDoc(doc(db, 'groups', groupId), {
+          adminIds: arrayUnion(nextAdmin)
+        });
       } else {
-        // Remove user from group
+        // Regular member or one of multiple admins - just leave
         await updateDoc(doc(db, 'groups', groupId), {
           memberIds: arrayRemove(currentUser.uid),
           adminIds: arrayRemove(currentUser.uid)

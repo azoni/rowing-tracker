@@ -2,11 +2,12 @@
 export const CHANGELOG = [
   {
     version: '4.3.0',
-    date: '2025-01-23',
+    date: '2025-01-17',
     changes: [
-      '💬 Comments on activity feed posts',
+      '🔔 Notifications when someone comments on your activity',
+      '↩️ Reply to comments with @mentions',
+      '💬 Cleaner, more compact comment design',
       '👏 React to posts with emoji (💪🔥👏🎉⚡)',
-      '🗑️ Delete your own comments',
     ]
   },
   {

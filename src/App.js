@@ -140,7 +140,11 @@ function App() {
   const [reactions, setReactions] = useState([]); // Reactions on feed items
   const [comments, setComments] = useState([]); // Comments on feed items
   const [expandedComments, setExpandedComments] = useState({}); // Track which items have comments expanded
+  const [showReactionPicker, setShowReactionPicker] = useState(null); // Which item's picker is open
   const [newComment, setNewComment] = useState({}); // Comment input per item
+  const [replyingTo, setReplyingTo] = useState({}); // Track which comment we're replying to per item
+  const [notifications, setNotifications] = useState([]); // User notifications
+  const [showNotifications, setShowNotifications] = useState(false); // Notification dropdown
   const [showGroupSelector, setShowGroupSelector] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showJoinGroupModal, setShowJoinGroupModal] = useState(false);
@@ -523,6 +527,37 @@ function App() {
 
     return () => unsubComments();
   }, []);
+
+  // Load notifications for current user
+  useEffect(() => {
+    if (!currentUser) {
+      setNotifications([]);
+      return;
+    }
+
+    const notificationsQuery = query(
+      collection(db, 'notifications'),
+      where('recipientId', '==', currentUser.uid),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
+
+    const unsubNotifications = onSnapshot(
+      notificationsQuery,
+      (snapshot) => {
+        const notificationsData = [];
+        snapshot.forEach((docSnap) => {
+          notificationsData.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        setNotifications(notificationsData);
+      },
+      (error) => {
+        console.error('Error fetching notifications:', error);
+      }
+    );
+
+    return () => unsubNotifications();
+  }, [currentUser]);
 
   // Update user profile when it changes in Firebase
   useEffect(() => {
@@ -921,24 +956,101 @@ function App() {
   };
 
   // Add a comment to a feed item
-  const addComment = async (itemId) => {
+  const addComment = async (itemId, feedItemOwnerId) => {
     if (!currentUser || !newComment[itemId]?.trim()) return;
 
     try {
       const commentId = `comment_${Date.now()}_${currentUser.uid.slice(0, 6)}`;
-      await setDoc(doc(db, 'comments', commentId), {
+      const commentText = newComment[itemId].trim();
+      const replyTo = replyingTo[itemId];
+      
+      // Build comment data
+      const commentData = {
         targetId: itemId,
         userId: currentUser.uid,
-        text: newComment[itemId].trim(),
+        text: commentText,
         createdAt: serverTimestamp()
-      });
+      };
       
-      // Clear input
+      // If replying to another comment, add reply info
+      if (replyTo) {
+        commentData.replyToId = replyTo.commentId;
+        commentData.replyToUserId = replyTo.userId;
+        commentData.replyToName = replyTo.userName;
+      }
+      
+      await setDoc(doc(db, 'comments', commentId), commentData);
+      
+      // Create notification for reply
+      if (replyTo && replyTo.userId !== currentUser.uid) {
+        const notifId = `notif_${Date.now()}_${currentUser.uid.slice(0, 6)}`;
+        await setDoc(doc(db, 'notifications', notifId), {
+          type: 'reply',
+          recipientId: replyTo.userId,
+          fromUserId: currentUser.uid,
+          fromUserName: userProfile?.name || 'Someone',
+          targetId: itemId,
+          commentId: commentId,
+          commentText: commentText.slice(0, 50),
+          read: false,
+          createdAt: serverTimestamp()
+        });
+      }
+      // Create notification for comment on feed item (if not replying and not own post)
+      else if (!replyTo && feedItemOwnerId && feedItemOwnerId !== currentUser.uid) {
+        const notifId = `notif_${Date.now()}_${currentUser.uid.slice(0, 6)}`;
+        await setDoc(doc(db, 'notifications', notifId), {
+          type: 'comment',
+          recipientId: feedItemOwnerId,
+          fromUserId: currentUser.uid,
+          fromUserName: userProfile?.name || 'Someone',
+          targetId: itemId,
+          commentId: commentId,
+          commentText: commentText.slice(0, 50),
+          read: false,
+          createdAt: serverTimestamp()
+        });
+      }
+      
+      // Clear input and reply state
       setNewComment(prev => ({ ...prev, [itemId]: '' }));
+      setReplyingTo(prev => ({ ...prev, [itemId]: null }));
     } catch (error) {
       console.error('Error adding comment:', error);
     }
   };
+
+  // Mark notification as read
+  const markNotificationRead = async (notificationId) => {
+    if (!currentUser) return;
+    
+    try {
+      await updateDoc(doc(db, 'notifications', notificationId), {
+        read: true
+      });
+    } catch (error) {
+      console.error('Error marking notification read:', error);
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllNotificationsRead = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const unreadNotifs = notifications.filter(n => !n.read);
+      await Promise.all(
+        unreadNotifs.map(n => 
+          updateDoc(doc(db, 'notifications', n.id), { read: true })
+        )
+      );
+    } catch (error) {
+      console.error('Error marking all notifications read:', error);
+    }
+  };
+
+  // Get unread notification count
+  const unreadNotificationCount = notifications.filter(n => !n.read).length;
 
   // Delete a comment (only own comments)
   const deleteComment = async (commentId, commentUserId) => {
@@ -3049,6 +3161,65 @@ function App() {
                     🛡️
                   </button>
                 )}
+                
+                {/* Notification bell */}
+                <div className="notification-wrapper">
+                  <button 
+                    className={`notification-btn ${showNotifications ? 'active' : ''}`}
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    title="Notifications"
+                  >
+                    🔔
+                    {unreadNotificationCount > 0 && (
+                      <span className="notification-badge">{unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}</span>
+                    )}
+                  </button>
+                  
+                  {showNotifications && (
+                    <>
+                      <div className="notification-backdrop" onClick={() => setShowNotifications(false)} />
+                      <div className="notification-dropdown">
+                        <div className="notification-header">
+                          <span>Notifications</span>
+                          {unreadNotificationCount > 0 && (
+                            <button onClick={markAllNotificationsRead}>Mark all read</button>
+                          )}
+                        </div>
+                        <div className="notification-list">
+                          {notifications.length === 0 ? (
+                            <div className="notification-empty">No notifications yet</div>
+                          ) : (
+                            notifications.slice(0, 20).map(notif => {
+                              const notifDate = notif.createdAt?.toDate ? notif.createdAt.toDate() : new Date(notif.createdAt);
+                              return (
+                                <div 
+                                  key={notif.id} 
+                                  className={`notification-item ${!notif.read ? 'unread' : ''}`}
+                                  onClick={() => {
+                                    markNotificationRead(notif.id);
+                                    setExpandedComments(prev => ({ ...prev, [notif.targetId]: true }));
+                                    setActiveTab('feed');
+                                    setShowNotifications(false);
+                                  }}
+                                >
+                                  <div className="notification-content">
+                                    <span className="notification-from">{notif.fromUserName}</span>
+                                    <span className="notification-action">
+                                      {notif.type === 'reply' ? ' replied: ' : ' commented: '}
+                                    </span>
+                                    <span className="notification-text">"{notif.commentText}"</span>
+                                  </div>
+                                  <div className="notification-time">{formatTimeAgo(notifDate)}</div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                
                 {userProfile.photoURL && (
                   <img src={userProfile.photoURL} alt="" className="user-avatar" onClick={() => setShowSettingsModal(true)} />
                 )}
@@ -3721,100 +3892,132 @@ function App() {
                             </div>
                           )}
                         
-                          {/* Reactions & Comments */}
+                          {/* Reactions & Comments - Compact Design */}
                         {currentUser && (
-                          <div className="feed-interactions">
-                            {/* Reaction buttons */}
-                            <div className="feed-reactions">
-                              {REACTION_EMOJIS.map(emoji => {
-                                const count = getReactionCounts(item.id)[emoji] || 0;
-                                const hasReacted = hasUserReacted(item.id, emoji);
-                                return (
-                                  <button
-                                    key={emoji}
-                                    className={`reaction-btn ${hasReacted ? 'active' : ''} ${count > 0 ? 'has-count' : ''}`}
-                                    onClick={(e) => { e.stopPropagation(); toggleReaction(item.id, emoji); }}
-                                    title={`${emoji} ${count > 0 ? `(${count})` : ''}`}
-                                  >
-                                    {emoji}{count > 0 && <span className="reaction-count">{count}</span>}
-                                  </button>
-                                );
-                              })}
+                          <div className="feed-interactions-compact">
+                            {/* Used reactions + add button */}
+                            <div className="reactions-row">
+                              {/* Show reactions that have counts */}
+                              {REACTION_EMOJIS.filter(emoji => getReactionCounts(item.id)[emoji] > 0).map(emoji => (
+                                <button
+                                  key={emoji}
+                                  className={`reaction-pill ${hasUserReacted(item.id, emoji) ? 'active' : ''}`}
+                                  onClick={(e) => { e.stopPropagation(); toggleReaction(item.id, emoji); }}
+                                >
+                                  {emoji} {getReactionCounts(item.id)[emoji]}
+                                </button>
+                              ))}
+                              
+                              {/* Add reaction button */}
+                              <div className="reaction-picker-wrapper">
+                                <button
+                                  className="add-reaction-btn"
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setShowReactionPicker(showReactionPicker === item.id ? null : item.id);
+                                  }}
+                                >
+                                  +
+                                </button>
+                                {showReactionPicker === item.id && (
+                                  <>
+                                    <div className="reaction-picker-backdrop" onClick={(e) => { e.stopPropagation(); setShowReactionPicker(null); }} />
+                                    <div className="reaction-picker" onClick={(e) => e.stopPropagation()}>
+                                      {REACTION_EMOJIS.map(emoji => (
+                                        <button
+                                          key={emoji}
+                                          className={`picker-emoji ${hasUserReacted(item.id, emoji) ? 'active' : ''}`}
+                                          onClick={() => {
+                                            toggleReaction(item.id, emoji);
+                                            setShowReactionPicker(null);
+                                          }}
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                              
+                              {/* Comment toggle */}
                               <button
-                                className={`comment-toggle-btn ${expandedComments[item.id] ? 'active' : ''}`}
+                                className={`comment-link ${expandedComments[item.id] ? 'active' : ''}`}
                                 onClick={(e) => { 
                                   e.stopPropagation(); 
                                   setExpandedComments(prev => ({ ...prev, [item.id]: !prev[item.id] }));
                                 }}
                               >
-                                💬{getItemComments(item.id).length > 0 && (
-                                  <span className="comment-count">{getItemComments(item.id).length}</span>
-                                )}
+                                💬 {getItemComments(item.id).length || ''}
                               </button>
                             </div>
                             
-                            {/* Comments section */}
+                            {/* Compact comments section */}
                             {expandedComments[item.id] && (
-                              <div className="feed-comments" onClick={(e) => e.stopPropagation()}>
-                                {/* Existing comments */}
+                              <div className="comments-compact" onClick={(e) => e.stopPropagation()}>
                                 {getItemComments(item.id).map(comment => {
                                   const commentUser = users[comment.userId];
-                                  const commentDate = comment.createdAt?.toDate ? comment.createdAt.toDate() : new Date(comment.createdAt);
                                   return (
-                                    <div key={comment.id} className="comment-item">
-                                      <div className="comment-avatar">
-                                        {commentUser?.photoURL ? (
-                                          <img src={commentUser.photoURL} alt="" />
-                                        ) : (
-                                          <div className="comment-avatar-placeholder">
-                                            {commentUser?.name?.charAt(0)?.toUpperCase() || '?'}
-                                          </div>
+                                    <div key={comment.id} className="comment-row">
+                                      <span className="comment-author-inline">{commentUser?.name?.split(' ')[0] || 'User'}</span>
+                                      <span className="comment-text-inline">
+                                        {comment.replyToName && (
+                                          <span className="reply-mention">@{comment.replyToName.split(' ')[0]} </span>
                                         )}
-                                      </div>
-                                      <div className="comment-content">
-                                        <div className="comment-header">
-                                          <span className="comment-author">{commentUser?.name || 'Unknown'}</span>
-                                          <span className="comment-time">{formatTimeAgo(commentDate)}</span>
-                                          {comment.userId === currentUser?.uid && (
-                                            <button 
-                                              className="comment-delete"
-                                              onClick={() => {
-                                                if (window.confirm('Delete this comment?')) {
-                                                  deleteComment(comment.id, comment.userId);
-                                                }
-                                              }}
-                                            >
-                                              ✕
-                                            </button>
-                                          )}
-                                        </div>
-                                        <div className="comment-text">{comment.text}</div>
-                                      </div>
+                                        {comment.text}
+                                      </span>
+                                      <button 
+                                        className="comment-reply-inline"
+                                        onClick={() => setReplyingTo(prev => ({ 
+                                          ...prev, 
+                                          [item.id]: { 
+                                            commentId: comment.id, 
+                                            userId: comment.userId, 
+                                            userName: commentUser?.name || 'User' 
+                                          }
+                                        }))}
+                                        title="Reply"
+                                      >
+                                        ↩
+                                      </button>
+                                      {comment.userId === currentUser?.uid && (
+                                        <button 
+                                          className="comment-delete-inline"
+                                          onClick={() => deleteComment(comment.id, comment.userId)}
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
                                     </div>
                                   );
                                 })}
                                 
-                                {/* New comment input */}
-                                <div className="comment-input-wrapper">
+                                {/* Reply indicator */}
+                                {replyingTo[item.id] && (
+                                  <div className="replying-to-indicator">
+                                    <span>Replying to @{replyingTo[item.id].userName?.split(' ')[0]}</span>
+                                    <button onClick={() => setReplyingTo(prev => ({ ...prev, [item.id]: null }))}>✕</button>
+                                  </div>
+                                )}
+                                
+                                <div className="comment-add-row">
                                   <input
                                     type="text"
-                                    className="comment-input"
-                                    placeholder="Add a comment..."
+                                    placeholder={replyingTo[item.id] ? `Reply to ${replyingTo[item.id].userName?.split(' ')[0]}...` : "Add a comment..."}
                                     value={newComment[item.id] || ''}
                                     onChange={(e) => setNewComment(prev => ({ ...prev, [item.id]: e.target.value }))}
                                     onKeyPress={(e) => {
                                       if (e.key === 'Enter' && newComment[item.id]?.trim()) {
-                                        addComment(item.id);
+                                        addComment(item.id, item.userId);
                                       }
                                     }}
                                     maxLength={200}
                                   />
                                   <button 
-                                    className="comment-submit"
-                                    onClick={() => addComment(item.id)}
+                                    onClick={() => addComment(item.id, item.userId)}
                                     disabled={!newComment[item.id]?.trim()}
                                   >
-                                    Post
+                                    ↵
                                   </button>
                                 </div>
                               </div>

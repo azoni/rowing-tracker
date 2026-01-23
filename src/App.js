@@ -137,6 +137,10 @@ function App() {
   const [selectedGroupId, setSelectedGroupId] = useState(null); // null = global view
   const [challenges, setChallenges] = useState([]);
   const [activities, setActivities] = useState([]); // Group/challenge activities for feed
+  const [reactions, setReactions] = useState([]); // Reactions on feed items
+  const [comments, setComments] = useState([]); // Comments on feed items
+  const [expandedComments, setExpandedComments] = useState({}); // Track which items have comments expanded
+  const [newComment, setNewComment] = useState({}); // Comment input per item
   const [showGroupSelector, setShowGroupSelector] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showJoinGroupModal, setShowJoinGroupModal] = useState(false);
@@ -470,6 +474,56 @@ function App() {
     return () => unsubActivities();
   }, []);
 
+  // Load reactions for feed items
+  useEffect(() => {
+    const reactionsQuery = query(
+      collection(db, 'reactions'),
+      orderBy('createdAt', 'desc'),
+      limit(500)
+    );
+
+    const unsubReactions = onSnapshot(
+      reactionsQuery,
+      (snapshot) => {
+        const reactionsData = [];
+        snapshot.forEach((docSnap) => {
+          reactionsData.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        setReactions(reactionsData);
+      },
+      (error) => {
+        console.error('Error fetching reactions:', error);
+      }
+    );
+
+    return () => unsubReactions();
+  }, []);
+
+  // Load comments for feed items
+  useEffect(() => {
+    const commentsQuery = query(
+      collection(db, 'comments'),
+      orderBy('createdAt', 'desc'),
+      limit(500)
+    );
+
+    const unsubComments = onSnapshot(
+      commentsQuery,
+      (snapshot) => {
+        const commentsData = [];
+        snapshot.forEach((docSnap) => {
+          commentsData.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        setComments(commentsData);
+      },
+      (error) => {
+        console.error('Error fetching comments:', error);
+      }
+    );
+
+    return () => unsubComments();
+  }, []);
+
   // Update user profile when it changes in Firebase
   useEffect(() => {
     if (currentUser && users[currentUser.uid]) {
@@ -796,6 +850,104 @@ function App() {
       });
     } catch (error) {
       console.error('Error logging activity:', error);
+    }
+  };
+
+  // Available reaction emojis
+  const REACTION_EMOJIS = ['💪', '🔥', '👏', '🎉', '⚡'];
+
+  // Get reactions for a specific feed item
+  const getItemReactions = (itemId) => {
+    return reactions.filter(r => r.targetId === itemId);
+  };
+
+  // Get grouped reaction counts for an item
+  const getReactionCounts = (itemId) => {
+    const itemReactions = getItemReactions(itemId);
+    const counts = {};
+    itemReactions.forEach(r => {
+      counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+    });
+    return counts;
+  };
+
+  // Check if current user has reacted with a specific emoji
+  const hasUserReacted = (itemId, emoji) => {
+    return reactions.some(r => 
+      r.targetId === itemId && 
+      r.userId === currentUser?.uid && 
+      r.emoji === emoji
+    );
+  };
+
+  // Toggle a reaction on a feed item
+  const toggleReaction = async (itemId, emoji) => {
+    if (!currentUser) return;
+
+    try {
+      const existingReaction = reactions.find(r => 
+        r.targetId === itemId && 
+        r.userId === currentUser.uid && 
+        r.emoji === emoji
+      );
+
+      if (existingReaction) {
+        // Remove reaction
+        await deleteDoc(doc(db, 'reactions', existingReaction.id));
+      } else {
+        // Add reaction
+        const reactionId = `reaction_${Date.now()}_${currentUser.uid.slice(0, 6)}`;
+        await setDoc(doc(db, 'reactions', reactionId), {
+          targetId: itemId,
+          userId: currentUser.uid,
+          emoji,
+          createdAt: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling reaction:', error);
+    }
+  };
+
+  // Get comments for a specific feed item
+  const getItemComments = (itemId) => {
+    return comments
+      .filter(c => c.targetId === itemId)
+      .sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        return dateA - dateB; // Oldest first
+      });
+  };
+
+  // Add a comment to a feed item
+  const addComment = async (itemId) => {
+    if (!currentUser || !newComment[itemId]?.trim()) return;
+
+    try {
+      const commentId = `comment_${Date.now()}_${currentUser.uid.slice(0, 6)}`;
+      await setDoc(doc(db, 'comments', commentId), {
+        targetId: itemId,
+        userId: currentUser.uid,
+        text: newComment[itemId].trim(),
+        createdAt: serverTimestamp()
+      });
+      
+      // Clear input
+      setNewComment(prev => ({ ...prev, [itemId]: '' }));
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
+
+  // Delete a comment (only own comments)
+  const deleteComment = async (commentId, commentUserId) => {
+    if (!currentUser || currentUser.uid !== commentUserId) return;
+
+    try {
+      await deleteDoc(doc(db, 'comments', commentId));
+    } catch (error) {
+      console.error('Error deleting comment:', error);
     }
   };
 
@@ -3568,9 +3720,110 @@ function App() {
                               <img src={item.imageUrl} alt="Row evidence" />
                             </div>
                           )}
-                        </div>
-                      );
-                    })}
+                        
+                          {/* Reactions & Comments */}
+                        {currentUser && (
+                          <div className="feed-interactions">
+                            {/* Reaction buttons */}
+                            <div className="feed-reactions">
+                              {REACTION_EMOJIS.map(emoji => {
+                                const count = getReactionCounts(item.id)[emoji] || 0;
+                                const hasReacted = hasUserReacted(item.id, emoji);
+                                return (
+                                  <button
+                                    key={emoji}
+                                    className={`reaction-btn ${hasReacted ? 'active' : ''} ${count > 0 ? 'has-count' : ''}`}
+                                    onClick={(e) => { e.stopPropagation(); toggleReaction(item.id, emoji); }}
+                                    title={`${emoji} ${count > 0 ? `(${count})` : ''}`}
+                                  >
+                                    {emoji}{count > 0 && <span className="reaction-count">{count}</span>}
+                                  </button>
+                                );
+                              })}
+                              <button
+                                className={`comment-toggle-btn ${expandedComments[item.id] ? 'active' : ''}`}
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setExpandedComments(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                                }}
+                              >
+                                💬{getItemComments(item.id).length > 0 && (
+                                  <span className="comment-count">{getItemComments(item.id).length}</span>
+                                )}
+                              </button>
+                            </div>
+                            
+                            {/* Comments section */}
+                            {expandedComments[item.id] && (
+                              <div className="feed-comments" onClick={(e) => e.stopPropagation()}>
+                                {/* Existing comments */}
+                                {getItemComments(item.id).map(comment => {
+                                  const commentUser = users[comment.userId];
+                                  const commentDate = comment.createdAt?.toDate ? comment.createdAt.toDate() : new Date(comment.createdAt);
+                                  return (
+                                    <div key={comment.id} className="comment-item">
+                                      <div className="comment-avatar">
+                                        {commentUser?.photoURL ? (
+                                          <img src={commentUser.photoURL} alt="" />
+                                        ) : (
+                                          <div className="comment-avatar-placeholder">
+                                            {commentUser?.name?.charAt(0)?.toUpperCase() || '?'}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="comment-content">
+                                        <div className="comment-header">
+                                          <span className="comment-author">{commentUser?.name || 'Unknown'}</span>
+                                          <span className="comment-time">{formatTimeAgo(commentDate)}</span>
+                                          {comment.userId === currentUser?.uid && (
+                                            <button 
+                                              className="comment-delete"
+                                              onClick={() => {
+                                                if (window.confirm('Delete this comment?')) {
+                                                  deleteComment(comment.id, comment.userId);
+                                                }
+                                              }}
+                                            >
+                                              ✕
+                                            </button>
+                                          )}
+                                        </div>
+                                        <div className="comment-text">{comment.text}</div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                
+                                {/* New comment input */}
+                                <div className="comment-input-wrapper">
+                                  <input
+                                    type="text"
+                                    className="comment-input"
+                                    placeholder="Add a comment..."
+                                    value={newComment[item.id] || ''}
+                                    onChange={(e) => setNewComment(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter' && newComment[item.id]?.trim()) {
+                                        addComment(item.id);
+                                      }
+                                    }}
+                                    maxLength={200}
+                                  />
+                                  <button 
+                                    className="comment-submit"
+                                    onClick={() => addComment(item.id)}
+                                    disabled={!newComment[item.id]?.trim()}
+                                  >
+                                    Post
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   </div>
                   
                   {/* Load More Button */}

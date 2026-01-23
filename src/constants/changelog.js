@@ -1,6 +1,15 @@
 // Changelog entries
 export const CHANGELOG = [
   {
+    version: '4.3.0',
+    date: '2025-01-23',
+    changes: [
+      '💬 Comments on activity feed posts',
+      '👏 React to posts with emoji (💪🔥👏🎉⚡)',
+      '🗑️ Delete your own comments',
+    ]
+  },
+  {
     version: '4.2.0',
     date: '2025-01-16',
     changes: [
@@ -9,6 +18,8 @@ export const CHANGELOG = [
       '🌅 Morning Lake - calm light mode for sunrise rows',
       '🏋️ Athletic Performance - bold orange sports energy',
       '⚓ Ocean Crew - rich maritime club aesthetic',
+      '📣 Activity feed: group & challenge events',
+      '👑 Group admins: manage members & transfer roles',
       '🚣 New rowing-themed app icon',
     ]
   },

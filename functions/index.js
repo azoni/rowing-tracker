@@ -9,6 +9,26 @@ if (admin.apps.length === 0) {
 
 const db = admin.firestore();
 
+// Fire-and-forget activity logger (uses https module for Firebase Functions compatibility)
+function logActivity({ type, title, description, reasoning, model, tokens, cost, metadata }) {
+  const secret = functions.config().agent?.webhook_secret;
+  if (!secret) return;
+  const payload = JSON.stringify({
+    type, title, description: description || '', reasoning: reasoning || '',
+    source: 'rowcrew', model, tokens, cost, metadata: metadata || {}, secret,
+  });
+  const https = require('https');
+  const req = https.request({
+    hostname: 'azoni.ai',
+    path: '/.netlify/functions/log-agent-activity',
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+  });
+  req.on('error', (e) => console.error('[activity-log] Failed:', e.message));
+  req.write(payload);
+  req.end();
+}
+
 // Constants
 const VERIFICATION_THRESHOLDS = {
   CONFIDENCE_HIGH: 85,
@@ -73,6 +93,8 @@ Respond in this EXACT JSON format only:
 
 Respond ONLY with JSON.`;
 
+  const selectedModel = 'claude-sonnet-4-20250514';
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -82,7 +104,7 @@ Respond ONLY with JSON.`;
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: selectedModel,
         max_tokens: 500,
         messages: [
           {
@@ -115,10 +137,42 @@ Respond ONLY with JSON.`;
     const data = await response.json();
     const responseText = data.content[0].text;
     
+    // Extract usage for activity logging
+    const usage = data.usage || {};
+    // Claude Sonnet 4: $3.00/$15.00 per 1M tokens
+    const inputCost = (usage.input_tokens || 0) / 1e6 * 3.00;
+    const outputCost = (usage.output_tokens || 0) / 1e6 * 15.00;
+    const totalCost = inputCost + outputCost;
+
     // Parse JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const result = JSON.parse(jsonMatch[0]);
+
+      // Log to activity feed
+      logActivity({
+        type: 'row_verified',
+        title: isExtractionMode
+          ? `Extracted: ${result.extractedMeters || '?'}m`
+          : `Verified: ${claimedMeters}m ${result.matchesClaimed ? '✓' : '✗'}`,
+        description: `${result.displayType || 'Unknown display'}, ${result.overallConfidence}% confidence, ${selectedModel}`,
+        reasoning: result.reasoning || '',
+        model: selectedModel,
+        tokens: {
+          prompt: usage.input_tokens || 0,
+          completion: usage.output_tokens || 0,
+          total: (usage.input_tokens || 0) + (usage.output_tokens || 0),
+        },
+        cost: totalCost,
+        metadata: {
+          extractedMeters: result.extractedMeters,
+          claimedMeters: claimedMeters || null,
+          confidence: result.overallConfidence,
+          displayType: result.displayType,
+          matched: result.matchesClaimed ?? null,
+        },
+      });
+
       return { success: true, ...result };
     }
     

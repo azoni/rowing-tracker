@@ -6823,6 +6823,7 @@ input[type="number"] {
   cursor: pointer;
   transition: transform 0.2s ease;
   margin-top: 0.25rem;
+  margin-bottom: 1rem;
 }
 
 .manual-submit-btn-full:hover:not(:disabled) {

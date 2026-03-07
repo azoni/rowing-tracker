@@ -6981,6 +6981,12 @@ input[type="number"] {
   flex: 1;
 }
 
+.photo-date-info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
 /* Field Labels with AI Indicators */
 .confirm-label-with-ai {
   display: flex;

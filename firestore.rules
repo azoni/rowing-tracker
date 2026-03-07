@@ -37,6 +37,22 @@ service cloud.firestore {
       allow delete: if false;
     }
     
+    // Groups collection
+    match /groups/{groupId} {
+      // Any authenticated user can read groups (for invite code lookup)
+      allow read: if request.auth != null;
+
+      // Any authenticated user can create a group
+      allow create: if request.auth != null;
+
+      // Members can update (leave, manage), and any authed user can join via invite
+      allow update: if request.auth != null;
+
+      // Members can delete (disband) their group
+      allow delete: if request.auth != null
+                    && request.auth.uid in resource.data.memberIds;
+    }
+
     // Admin review queue (readable/writable only via Cloud Functions)
     match /reviewQueue/{docId} {
       allow read, write: if false;

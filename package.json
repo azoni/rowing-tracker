@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "canvas-confetti": "^1.9.2",
+    "exifr": "^7.1.3",
     "firebase": "^10.7.1",
     "firebase-functions": "^7.0.5",
     "html2canvas": "^1.4.1",

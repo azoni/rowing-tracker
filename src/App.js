@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Tesseract from 'tesseract.js';
 import html2canvas from 'html2canvas';
 import confetti from 'canvas-confetti';
+import exifr from 'exifr';
 import { db, auth, googleProvider, functions } from './firebase';
 import { 
   collection, 
@@ -1816,6 +1817,17 @@ function App() {
     setProcessingStatus('Reading image...');
     setValidationError('');
 
+    // Extract photo date from EXIF metadata
+    let photoDate = null;
+    try {
+      const exif = await exifr.parse(file, ['DateTimeOriginal']);
+      if (exif?.DateTimeOriginal) {
+        photoDate = new Date(exif.DateTimeOriginal);
+      }
+    } catch (exifError) {
+      console.error('EXIF parse error:', exifError);
+    }
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       const imageData = e.target.result;
@@ -1867,10 +1879,11 @@ function App() {
       setIsProcessing(false);
       
       // Store Claude result for later use
-      setCapturedImage({ 
-        data: imageData, 
+      setCapturedImage({
+        data: imageData,
         base64: imageBase64,
-        claudeResult 
+        claudeResult,
+        photoDate 
       });
       
       // Set detected values
@@ -2006,7 +2019,7 @@ function App() {
         meters: meters,
         time: timeSeconds || null,
         calories: calories || null,
-        date: new Date().toISOString(),
+        date: (imageData?.photoDate || new Date()).toISOString(),
         createdAt: serverTimestamp(),
         verificationStatus: verification.status,
         verificationDetails: {
@@ -4622,6 +4635,12 @@ function App() {
                     <>Couldn't read display - enter manually</>
                   )}
                 </span>
+              </div>
+            )}
+
+            {capturedImage?.photoDate && (
+              <div className="photo-date-info">
+                <span>📅 Photo taken: {capturedImage.photoDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
               </div>
             )}
 

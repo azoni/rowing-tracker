@@ -180,6 +180,7 @@ function App() {
   const wrappedCardRef = useRef(null);
   
   const fileInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   const previousTotalRef = useRef(0);
   const canvasRef = useRef(null);
   const shareCardRef = useRef(null);
@@ -1912,6 +1913,9 @@ function App() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    if (galleryInputRef.current) {
+      galleryInputRef.current.value = '';
+    }
   };
 
   // Add entry to Firebase
@@ -3393,18 +3397,32 @@ function App() {
               <h2>Log Your Row</h2>
               <p>Take a photo of your rowing machine display</p>
 
-              <label className="upload-button">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleImageUpload}
-                  disabled={isProcessing || !userProfile}
-                />
-                <span className="upload-icon">📷</span>
-                <span>{isProcessing ? processingStatus : 'Take Photo'}</span>
-              </label>
+              <div className="upload-buttons-row">
+                <label className="upload-button">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageUpload}
+                    disabled={isProcessing || !userProfile}
+                  />
+                  <span className="upload-icon">📷</span>
+                  <span>{isProcessing ? processingStatus : 'Take Photo'}</span>
+                </label>
+
+                <label className="upload-button">
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isProcessing || !userProfile}
+                  />
+                  <span className="upload-icon">🖼️</span>
+                  <span>{isProcessing ? processingStatus : 'Upload Photo'}</span>
+                </label>
+              </div>
 
               {isProcessing && (
                 <div className="processing-indicator">

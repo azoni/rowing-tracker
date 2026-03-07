@@ -2258,6 +2258,23 @@ function App() {
     }
   };
 
+  // Delete own entry
+  const [deletingEntryId, setDeletingEntryId] = useState(null);
+
+  const handleDeleteEntry = async (entryId, meters) => {
+    if (!window.confirm(`Delete this ${meters.toLocaleString()}m entry? This cannot be undone.`)) return;
+
+    setDeletingEntryId(entryId);
+    try {
+      const deleteEntryFn = httpsCallable(functions, 'deleteEntry');
+      await deleteEntryFn({ entryId });
+    } catch (error) {
+      console.error('Delete entry error:', error);
+      alert('Failed to delete entry. Please try again.');
+    }
+    setDeletingEntryId(null);
+  };
+
   // Save AI feedback for training
   const saveAiFeedback = async (feedback) => {
     if (!currentUser) return;
@@ -4536,9 +4553,17 @@ function App() {
                           )}
                         </div>
                         <div className={`session-history-status ${entry.verificationStatus || 'unverified'}`}>
-                          {entry.verificationStatus === 'verified' ? '✓' : 
+                          {entry.verificationStatus === 'verified' ? '✓' :
                            entry.verificationStatus === 'pending_review' ? '⏳' : '✗'}
                         </div>
+                        <button
+                          className="session-delete-btn"
+                          onClick={() => handleDeleteEntry(entry.id, entry.meters)}
+                          disabled={deletingEntryId === entry.id}
+                          title="Delete entry"
+                        >
+                          {deletingEntryId === entry.id ? '...' : '🗑️'}
+                        </button>
                       </div>
                     ))}
                   {entries.filter(e => e.userId === currentUser.uid).length === 0 && (
@@ -6282,6 +6307,14 @@ function App() {
                           {session.verificationStatus === 'pending_review' && <span className="session-pending">⏳</span>}
                           {(session.verificationStatus === 'unverified' || !session.verificationStatus) && <span className="session-unverified">✗</span>}
                         </div>
+                        <button
+                          className="session-delete-btn"
+                          onClick={() => handleDeleteEntry(session.id, session.meters)}
+                          disabled={deletingEntryId === session.id}
+                          title="Delete entry"
+                        >
+                          {deletingEntryId === session.id ? '...' : '🗑️'}
+                        </button>
                       </div>
                     );
                   })}

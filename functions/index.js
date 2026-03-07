@@ -345,6 +345,44 @@ exports.reviewEntry = functions.https.onCall(async (data, context) => {
 });
 
 /**
+ * Delete own entry
+ */
+exports.deleteEntry = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in');
+  }
+
+  const { entryId } = data;
+
+  if (!entryId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Entry ID required');
+  }
+
+  const entryRef = db.collection('entries').doc(entryId);
+  const entryDoc = await entryRef.get();
+
+  if (!entryDoc.exists) {
+    throw new functions.https.HttpsError('not-found', 'Entry not found');
+  }
+
+  const entry = entryDoc.data();
+
+  if (entry.userId !== context.auth.uid) {
+    throw new functions.https.HttpsError('permission-denied', 'You can only delete your own entries');
+  }
+
+  // Revert user stats
+  await db.collection('users').doc(entry.userId).update({
+    totalMeters: admin.firestore.FieldValue.increment(-entry.meters),
+    uploadCount: admin.firestore.FieldValue.increment(-1),
+  });
+
+  await entryRef.delete();
+
+  return { success: true };
+});
+
+/**
  * Get verification stats
  */
 exports.getVerificationStats = functions.https.onCall(async (data, context) => {

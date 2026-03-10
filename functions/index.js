@@ -12,21 +12,48 @@ const db = admin.firestore();
 // Fire-and-forget activity logger (uses https module for Firebase Functions compatibility)
 function logActivity({ type, title, description, reasoning, model, tokens, cost, metadata }) {
   const secret = functions.config().agent?.webhook_secret;
-  if (!secret) return;
-  const payload = JSON.stringify({
-    type, title, description: description || '', reasoning: reasoning || '',
-    source: 'rowcrew', model, tokens, cost, metadata: metadata || {}, secret,
-  });
+  const mcpKey = functions.config().mcp?.admin_key;
   const https = require('https');
-  const req = https.request({
-    hostname: 'azoni.ai',
-    path: '/.netlify/functions/log-agent-activity',
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
-  });
-  req.on('error', (e) => console.error('[activity-log] Failed:', e.message));
-  req.write(payload);
-  req.end();
+
+  // Legacy azoni.ai webhook
+  if (secret) {
+    const payload = JSON.stringify({
+      type, title, description: description || '', reasoning: reasoning || '',
+      source: 'rowcrew', model, tokens, cost, metadata: metadata || {}, secret,
+    });
+    const req = https.request({
+      hostname: 'azoni.ai',
+      path: '/.netlify/functions/log-agent-activity',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+    });
+    req.on('error', (e) => console.error('[activity-log] Legacy failed:', e.message));
+    req.write(payload);
+    req.end();
+  }
+
+  // MCP ecosystem activity map
+  if (mcpKey) {
+    const mcpPayload = JSON.stringify({
+      type: type || 'row_verified',
+      title: title || 'Row activity',
+      source: 'rowcrew',
+      description: description || '',
+    });
+    const mcpReq = https.request({
+      hostname: 'azoni-mcp.onrender.com',
+      path: '/activity/log',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${mcpKey}`,
+        'Content-Length': Buffer.byteLength(mcpPayload),
+      },
+    });
+    mcpReq.on('error', (e) => console.error('[activity-log] MCP failed:', e.message));
+    mcpReq.write(mcpPayload);
+    mcpReq.end();
+  }
 }
 
 // Constants

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Tesseract from 'tesseract.js';
 import html2canvas from 'html2canvas';
 import confetti from 'canvas-confetti';
@@ -41,6 +41,8 @@ import {
   getMachineName,
   QUOTES,
   MILESTONES,
+  getMilestoneIndex,
+  getNearestCheckpoints,
   CHANGELOG,
   THEMES,
   DEFAULT_THEME,
@@ -100,7 +102,9 @@ function App() {
   const [showPRModal, setShowPRModal] = useState(null);
   const [dailyQuote, setDailyQuote] = useState(null);
   const [feedSearchQuery, setFeedSearchQuery] = useState('');
+  const [feedTypeFilter, setFeedTypeFilter] = useState('all');
   const [showAchievementModal, setShowAchievementModal] = useState(null);
+  const [showJourneyModal, setShowJourneyModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -109,6 +113,8 @@ function App() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [feedPage, setFeedPage] = useState(1);
   const FEED_PAGE_SIZE = 15;
+  const [achievementsPage, setAchievementsPage] = useState(0);
+  const ACHIEVEMENTS_PAGE_SIZE = 8;
   const [, setVerificationStatus] = useState(null);
   const [showPhotoModal, setShowPhotoModal] = useState(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -132,6 +138,8 @@ function App() {
   const [aiMachineType, setAiMachineType] = useState('');
   const [customMachineName, setCustomMachineName] = useState('');
   const [showAiFeedbackToast, setShowAiFeedbackToast] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(0);
   
   // Groups & Challenges
   const [groups, setGroups] = useState([]);
@@ -186,6 +194,15 @@ function App() {
   const canvasRef = useRef(null);
   const shareCardRef = useRef(null);
   const profilePicInputRef = useRef(null);
+
+  // Toast notification helper
+  const showToast = useCallback((message, type = 'error', duration = 4000) => {
+    const id = ++toastIdRef.current;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, duration);
+  }, []);
 
   // Secret test mode: Press "chinh" to trigger busted modal
   useEffect(() => {
@@ -351,6 +368,7 @@ function App() {
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
       console.warn('Data loading timeout - Firebase may be unreachable');
+      showToast('Slow connection. Some data may not have loaded.', 'info', 6000);
     }, 10000);
 
     const unsubUsers = onSnapshot(
@@ -391,7 +409,7 @@ function App() {
       unsubUsers();
       unsubEntries();
     };
-  }, []);
+  }, [showToast]);
 
   // Load groups for current user
   useEffect(() => {
@@ -655,6 +673,8 @@ function App() {
     root.style.setProperty('--text-muted', theme.colors.textMuted);
     root.style.setProperty('--border-color', theme.colors.borderColor);
     root.style.setProperty('--success', theme.colors.success);
+    root.style.setProperty('--error', theme.colors.error || '#ef4444');
+    root.style.setProperty('--warning', theme.colors.warning || '#ffc107');
     root.style.setProperty('--shadow-glow', theme.colors.shadowGlow);
     root.style.setProperty('--gradient-start', theme.colors.gradientStart);
     root.style.setProperty('--gradient-end', theme.colors.gradientEnd);
@@ -702,7 +722,7 @@ function App() {
           errorMessage = `Sign-in failed: ${error.message || error.code || 'Unknown error'}`;
       }
       
-      alert(errorMessage);
+      showToast(errorMessage);
     }
   };
 
@@ -859,7 +879,7 @@ function App() {
         return;
       }
       
-      alert('Failed to create profile. Please try again.');
+      showToast('Failed to create profile. Please try again.');
     }
   };
 
@@ -893,29 +913,34 @@ function App() {
   // Available reaction emojis
   const REACTION_EMOJIS = ['💪', '🔥', '👏', '🎉', '⚡'];
 
-  // Get reactions for a specific feed item
-  const getItemReactions = (itemId) => {
-    return reactions.filter(r => r.targetId === itemId);
-  };
-
-  // Get grouped reaction counts for an item
-  const getReactionCounts = (itemId) => {
-    const itemReactions = getItemReactions(itemId);
-    const counts = {};
-    itemReactions.forEach(r => {
-      counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+  // Memoized reaction counts by item
+  const reactionCountsByItem = useMemo(() => {
+    const map = {};
+    reactions.forEach(r => {
+      if (!map[r.targetId]) map[r.targetId] = {};
+      map[r.targetId][r.emoji] = (map[r.targetId][r.emoji] || 0) + 1;
     });
-    return counts;
-  };
+    return map;
+  }, [reactions]);
 
-  // Check if current user has reacted with a specific emoji
-  const hasUserReacted = (itemId, emoji) => {
-    return reactions.some(r => 
-      r.targetId === itemId && 
-      r.userId === currentUser?.uid && 
-      r.emoji === emoji
-    );
-  };
+  // Memoized user reactions lookup
+  const userReactionsByItem = useMemo(() => {
+    if (!currentUser) return {};
+    const map = {};
+    reactions.forEach(r => {
+      if (r.userId === currentUser.uid) {
+        if (!map[r.targetId]) map[r.targetId] = new Set();
+        map[r.targetId].add(r.emoji);
+      }
+    });
+    return map;
+  }, [reactions, currentUser]);
+
+  const getReactionCounts = useCallback((itemId) => reactionCountsByItem[itemId] || {}, [reactionCountsByItem]);
+
+  const hasUserReacted = useCallback((itemId, emoji) => {
+    return userReactionsByItem[itemId]?.has(emoji) || false;
+  }, [userReactionsByItem]);
 
   // Toggle a reaction on a feed item
   const toggleReaction = async (itemId, emoji) => {
@@ -943,19 +968,26 @@ function App() {
       }
     } catch (error) {
       console.error('Error toggling reaction:', error);
+      showToast('Couldn\'t save reaction. Try again.');
     }
   };
 
-  // Get comments for a specific feed item
-  const getItemComments = (itemId) => {
-    return comments
-      .filter(c => c.targetId === itemId)
-      .sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-        return dateA - dateB; // Oldest first
-      });
-  };
+  // Memoized comments grouped by item
+  const commentsByItem = useMemo(() => {
+    const map = {};
+    comments.forEach(c => {
+      if (!map[c.targetId]) map[c.targetId] = [];
+      map[c.targetId].push(c);
+    });
+    Object.values(map).forEach(arr => arr.sort((a, b) => {
+      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+      return dateA - dateB;
+    }));
+    return map;
+  }, [comments]);
+
+  const getItemComments = useCallback((itemId) => commentsByItem[itemId] || [], [commentsByItem]);
 
   // Add a comment to a feed item
   const addComment = async (itemId, feedItemOwnerId) => {
@@ -1019,6 +1051,7 @@ function App() {
       setReplyingTo(prev => ({ ...prev, [itemId]: null }));
     } catch (error) {
       console.error('Error adding comment:', error);
+      showToast('Comment failed to send. Try again.');
     }
   };
 
@@ -1062,6 +1095,7 @@ function App() {
       await deleteDoc(doc(db, 'comments', commentId));
     } catch (error) {
       console.error('Error deleting comment:', error);
+      showToast('Couldn\'t delete comment. Try again.');
     }
   };
 
@@ -1099,6 +1133,7 @@ function App() {
       setSelectedGroupId(groupId);
     } catch (error) {
       console.error('Error creating group:', error);
+      showToast('Couldn\'t create group. Try again.');
       setGroupError('Failed to create group. Please try again.');
     }
 
@@ -1151,6 +1186,7 @@ function App() {
       setSelectedGroupId(groupDoc.id);
     } catch (error) {
       console.error('Error joining group:', error);
+      showToast('Couldn\'t join group. Try again.');
       setGroupError('Failed to join group. Please try again.');
     }
 
@@ -1198,6 +1234,7 @@ function App() {
       }
     } catch (error) {
       console.error('Error leaving group:', error);
+      showToast('Couldn\'t leave group. Try again.');
     }
   };
 
@@ -1212,7 +1249,7 @@ function App() {
 
       // Can't remove yourself using this function
       if (memberId === currentUser.uid) {
-        alert('Use "Leave Group" to remove yourself.');
+        showToast('Use "Leave Group" to remove yourself.', 'info');
         return;
       }
 
@@ -1223,6 +1260,7 @@ function App() {
       });
     } catch (error) {
       console.error('Error removing member:', error);
+      showToast('Couldn\'t remove member. Try again.');
     }
   };
 
@@ -1250,6 +1288,7 @@ function App() {
       });
     } catch (error) {
       console.error('Error transferring admin:', error);
+      showToast('Admin transfer failed. Try again.');
     }
   };
 
@@ -1264,7 +1303,7 @@ function App() {
 
       // Must have at least one admin
       if (group.adminIds?.length <= 1) {
-        alert('Group must have at least one admin.');
+        showToast('Group must have at least one admin.', 'info');
         return;
       }
 
@@ -1274,6 +1313,7 @@ function App() {
       });
     } catch (error) {
       console.error('Error removing admin:', error);
+      showToast('Couldn\'t update admin role. Try again.');
     }
   };
 
@@ -1359,6 +1399,7 @@ function App() {
       setShowCreateChallengeModal(false);
     } catch (error) {
       console.error('Error creating challenge:', error);
+      showToast('Couldn\'t create challenge. Try again.');
       setGroupError('Failed to create challenge. Please try again.');
     }
 
@@ -1532,6 +1573,7 @@ function App() {
       setShowTimeTrialModal(null);
     } catch (error) {
       console.error('Error submitting time trial:', error);
+      showToast('Couldn\'t submit time trial. Try again.');
       setGroupError('Failed to submit. Please try again.');
     }
 
@@ -1631,7 +1673,7 @@ function App() {
     } catch (error) {
       console.error('Error uploading profile picture:', error);
       setIsUploadingPhoto(false);
-      alert('Failed to upload photo. Please try again.');
+      showToast('Photo upload failed. Try again.');
     }
     
     if (profilePicInputRef.current) {
@@ -2020,6 +2062,7 @@ function App() {
         time: timeSeconds || null,
         calories: calories || null,
         date: (imageData?.photoDate || new Date()).toISOString(),
+        localHour: new Date().getHours(),
         createdAt: serverTimestamp(),
         verificationStatus: verification.status,
         verificationDetails: {
@@ -2091,6 +2134,7 @@ function App() {
       return true;
     } catch (error) {
       console.error('Error adding entry:', error);
+      showToast('Failed to save entry. Try again.');
       
       // Check if it's a permission error (someone being sneaky)
       if (error.code === 'permission-denied' || 
@@ -2283,7 +2327,7 @@ function App() {
       await deleteEntryFn({ entryId });
     } catch (error) {
       console.error('Delete entry error:', error);
-      alert('Failed to delete entry. Please try again.');
+      showToast('Failed to delete entry. Try again.');
     }
     setDeletingEntryId(null);
   };
@@ -2337,7 +2381,7 @@ function App() {
       setReviewNote('');
     } catch (error) {
       console.error('Error reviewing entry:', error);
-      alert('Failed to process review');
+      showToast('Failed to process review.');
     }
   };
 
@@ -2456,42 +2500,37 @@ function App() {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
-  // Calculate streak
-  const calculateStreak = (userId) => {
-    const userEntries = entries
-      .filter((e) => e.userId === userId)
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  // Memoized streak cache - computes all user streaks in one pass
+  const streakCache = useMemo(() => {
+    const toKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const cache = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = toKey(today);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = toKey(yesterday);
 
-    if (userEntries.length === 0) return 0;
+    Object.keys(users).forEach(userId => {
+      const dates = new Set(
+        entries.filter(e => e.userId === userId).map(e => toKey(new Date(e.date)))
+      );
+      if (dates.size === 0 || (!dates.has(todayStr) && !dates.has(yesterdayStr))) {
+        cache[userId] = 0;
+        return;
+      }
+      let streak = 0;
+      let checkDate = new Date(dates.has(todayStr) ? today : yesterday);
+      while (dates.has(toKey(checkDate))) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+      cache[userId] = streak;
+    });
+    return cache;
+  }, [entries, users]);
 
-    let streak = 0;
-    let currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
-
-    const entryDates = new Set(
-      userEntries.map((e) => {
-        const d = new Date(e.date);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime();
-      })
-    );
-
-    const today = currentDate.getTime();
-    const yesterday = today - 86400000;
-
-    if (!entryDates.has(today) && !entryDates.has(yesterday)) {
-      return 0;
-    }
-
-    let checkDate = entryDates.has(today) ? today : yesterday;
-
-    while (entryDates.has(checkDate)) {
-      streak++;
-      checkDate -= 86400000;
-    }
-
-    return streak;
-  };
+  const calculateStreak = useCallback((userId) => streakCache[userId] || 0, [streakCache]);
 
   // Calculate weekly average
   const calculateWeeklyAverage = (userId) => {
@@ -2518,38 +2557,94 @@ function App() {
     return { current: prevMilestone, next: nextMilestone, total };
   };
 
-  // Get leaderboard
-  const getLeaderboard = () => {
-    const filteredUsers = getGroupFilteredUsers();
+  // Memoized achievement counts
+  const achievementCountCache = useMemo(() => {
+    const cache = {};
+    Object.keys(users).forEach(userId => {
+      const user = users[userId];
+      if (!user) { cache[userId] = 0; return; }
+      const userEntries = entries.filter(e => e.userId === userId);
+      const streak = streakCache[userId] || 0;
+      cache[userId] = ACHIEVEMENTS.filter(a => a.check(user, userEntries, streak)).length;
+    });
+    return cache;
+  }, [users, entries, streakCache]);
+
+  // Memoized group-filtered data
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filteredUsers = useMemo(() => getGroupFilteredUsers(), [users, selectedGroupId, groups]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filteredEntries = useMemo(() => getGroupFilteredEntries(), [entries, selectedGroupId, groups]);
+
+  // Memoized longest streak cache
+  const longestStreakCache = useMemo(() => {
+    const toKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const cache = {};
+    Object.keys(users).forEach(userId => {
+      const userEntries = entries
+        .filter(e => e.userId === userId)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      if (userEntries.length === 0) { cache[userId] = 0; return; }
+
+      const uniqueDays = [];
+      const seen = new Set();
+      for (const entry of userEntries) {
+        const d = new Date(entry.date);
+        const key = toKey(d);
+        if (!seen.has(key)) { seen.add(key); uniqueDays.push(d); }
+      }
+      if (uniqueDays.length === 0) { cache[userId] = 0; return; }
+
+      let longest = 1, current = 1;
+      for (let i = 1; i < uniqueDays.length; i++) {
+        const prev = new Date(uniqueDays[i - 1]);
+        prev.setHours(0, 0, 0, 0);
+        const nextDay = new Date(prev);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const curr = new Date(uniqueDays[i]);
+        curr.setHours(0, 0, 0, 0);
+        if (curr.getTime() === nextDay.getTime()) {
+          current++;
+          longest = Math.max(longest, current);
+        } else if (curr.getTime() > nextDay.getTime()) {
+          current = 1;
+        }
+      }
+      cache[userId] = longest;
+    });
+    return cache;
+  }, [entries, users]);
+
+  const calculateLongestStreak = useCallback((userId) => longestStreakCache[userId] || 0, [longestStreakCache]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const getLeaderboard = useMemo(() => {
     return Object.values(filteredUsers)
       .map((user) => ({
         ...user,
-        streak: calculateStreak(user.id),
+        streak: streakCache[user.id] || 0,
         weeklyAvg: calculateWeeklyAverage(user.id),
         avgPerUpload: user.uploadCount > 0 ? Math.round(user.totalMeters / user.uploadCount) : 0,
         rank: getUserRank(user.totalMeters),
-        achievementCount: getUserAchievementCount(user.id),
+        achievementCount: achievementCountCache[user.id] || 0,
       }))
       .sort((a, b) => b.totalMeters - a.totalMeters);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredUsers, streakCache, achievementCountCache, entries]);
 
-  // Get weekly leaderboard (this week's meters only)
-  const getWeeklyLeaderboard = () => {
-    const filteredUsers = getGroupFilteredUsers();
-    const filteredEntries = getGroupFilteredEntries();
+  const getWeeklyLeaderboard = useMemo(() => {
     const now = new Date();
     const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+    startOfWeek.setDate(now.getDate() - now.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
-    
+
     const weeklyTotals = {};
     filteredEntries.forEach(entry => {
-      const entryDate = new Date(entry.date);
-      if (entryDate >= startOfWeek) {
+      if (new Date(entry.date) >= startOfWeek) {
         weeklyTotals[entry.userId] = (weeklyTotals[entry.userId] || 0) + entry.meters;
       }
     });
-    
+
     return Object.values(filteredUsers)
       .map((user) => ({
         ...user,
@@ -2558,99 +2653,32 @@ function App() {
       }))
       .filter(u => u.weeklyMeters > 0)
       .sort((a, b) => b.weeklyMeters - a.weeklyMeters);
-  };
+  }, [filteredUsers, filteredEntries]);
 
-  // Get streak leaderboard
-  const getStreakLeaderboard = () => {
-    const filteredUsers = getGroupFilteredUsers();
+
+  const getStreakLeaderboard = useMemo(() => {
     return Object.values(filteredUsers)
       .map((user) => ({
         ...user,
-        streak: calculateStreak(user.id),
-        longestStreak: calculateLongestStreak(user.id),
+        streak: streakCache[user.id] || 0,
+        longestStreak: longestStreakCache[user.id] || 0,
         rank: getUserRank(user.totalMeters),
       }))
       .filter(u => u.streak > 0 || u.longestStreak > 0)
       .sort((a, b) => b.streak - a.streak || b.longestStreak - a.longestStreak);
-  };
+  }, [filteredUsers, streakCache, longestStreakCache]);
 
-  // Get achievements leaderboard
-  const getAchievementsLeaderboard = () => {
-    const filteredUsers = getGroupFilteredUsers();
+  const getAchievementsLeaderboard = useMemo(() => {
     return Object.values(filteredUsers)
       .map((user) => ({
         ...user,
-        achievementCount: getUserAchievementCount(user.id),
+        achievementCount: achievementCountCache[user.id] || 0,
         rank: getUserRank(user.totalMeters),
       }))
       .filter(u => u.achievementCount > 0)
       .sort((a, b) => b.achievementCount - a.achievementCount);
-  };
+  }, [filteredUsers, achievementCountCache]);
 
-  // Get total time leaderboard
-  const getTimeLeaderboard = () => {
-    const filteredUsers = getGroupFilteredUsers();
-    return Object.values(filteredUsers)
-      .map((user) => ({
-        ...user,
-        totalTime: user.totalTime || 0,
-        rank: getUserRank(user.totalMeters),
-      }))
-      .filter(u => u.totalTime > 0)
-      .sort((a, b) => b.totalTime - a.totalTime);
-  };
-
-  // Get total calories leaderboard
-  const getCaloriesLeaderboard = () => {
-    const filteredUsers = getGroupFilteredUsers();
-    return Object.values(filteredUsers)
-      .map((user) => ({
-        ...user,
-        totalCalories: user.totalCalories || 0,
-        rank: getUserRank(user.totalMeters),
-      }))
-      .filter(u => u.totalCalories > 0)
-      .sort((a, b) => b.totalCalories - a.totalCalories);
-  };
-
-  // Get user's achievement count
-  const getUserAchievementCount = (userId) => {
-    const user = users[userId];
-    if (!user) return 0;
-    const userEntries = entries.filter(e => e.userId === userId);
-    const streak = calculateStreak(userId);
-    return ACHIEVEMENTS.filter(a => a.check(user, userEntries, streak)).length;
-  };
-
-  // Calculate longest streak ever for a user
-  const calculateLongestStreak = (userId) => {
-    const userEntries = entries
-      .filter(e => e.userId === userId)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-    
-    if (userEntries.length === 0) return 0;
-    
-    let longestStreak = 1;
-    let currentStreak = 1;
-    
-    for (let i = 1; i < userEntries.length; i++) {
-      const prevDate = new Date(userEntries[i-1].date);
-      const currDate = new Date(userEntries[i].date);
-      prevDate.setHours(0, 0, 0, 0);
-      currDate.setHours(0, 0, 0, 0);
-      
-      const dayDiff = (currDate - prevDate) / (1000 * 60 * 60 * 24);
-      
-      if (dayDiff === 1) {
-        currentStreak++;
-        longestStreak = Math.max(longestStreak, currentStreak);
-      } else if (dayDiff > 1) {
-        currentStreak = 1;
-      }
-    }
-    
-    return longestStreak;
-  };
 
   // Get user's session history
   const getUserSessionHistory = (userId) => {
@@ -2775,12 +2803,8 @@ function App() {
     return newMeters > currentPR && currentPR > 0;
   };
 
-  // Get activity feed (last 20 entries across all users, with optional filter)
-  const getActivityFeed = (filterQuery = '', page = 1) => {
-    const filteredUsers = getGroupFilteredUsers();
-    const filteredEntries = getGroupFilteredEntries();
-    
-    // Get row entries
+  // Memoized feed base - builds and sorts all feed items once
+  const activityFeedBase = useMemo(() => {
     let feedItems = filteredEntries.map(entry => ({
       ...entry,
       type: 'row',
@@ -2788,26 +2812,37 @@ function App() {
       sortDate: new Date(entry.date),
     })).filter(entry => entry.user);
 
-    // Add achievement unlocks from filtered users
     Object.values(filteredUsers).forEach(user => {
       if (user.unlockedAchievements) {
+        // Group achievements by day for each user
+        const byDay = {};
         Object.entries(user.unlockedAchievements).forEach(([achievementId, dateStr]) => {
           const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
           if (achievement) {
-            feedItems.push({
-              id: `achievement-${user.id}-${achievementId}`,
-              type: 'achievement',
-              userId: user.id,
-              user,
-              achievement,
-              date: dateStr,
-              sortDate: new Date(dateStr),
-            });
+            const d = new Date(dateStr);
+            const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            if (!byDay[dayKey]) byDay[dayKey] = { achievements: [], date: dateStr, sortDate: d };
+            byDay[dayKey].achievements.push(achievement);
+            // Use the latest timestamp for sorting
+            if (d > byDay[dayKey].sortDate) {
+              byDay[dayKey].date = dateStr;
+              byDay[dayKey].sortDate = d;
+            }
           }
         });
+        Object.entries(byDay).forEach(([dayKey, group]) => {
+          feedItems.push({
+            id: `achievement-${user.id}-${dayKey}`,
+            type: 'achievement',
+            userId: user.id,
+            user,
+            achievements: group.achievements,
+            achievement: group.achievements[0], // backwards compat
+            date: group.date,
+            sortDate: group.sortDate,
+          });
+        });
       }
-      
-      // Add rank promotions
       if (user.rankHistory) {
         user.rankHistory.forEach((rankEvent, index) => {
           feedItems.push({
@@ -2821,8 +2856,6 @@ function App() {
           });
         });
       }
-
-      // Add new user join events
       if (user.createdAt) {
         const joinDate = user.createdAt.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
         feedItems.push({
@@ -2836,18 +2869,11 @@ function App() {
       }
     });
 
-    // Add group/challenge activities
     activities.forEach(activity => {
       const activityUser = users[activity.userId];
       if (!activityUser) return;
-      
-      // For group-specific views, only show activities for the selected group
-      if (selectedGroupId && activity.groupId && activity.groupId !== selectedGroupId) {
-        return;
-      }
-      
+      if (selectedGroupId && activity.groupId && activity.groupId !== selectedGroupId) return;
       const activityDate = activity.createdAt?.toDate ? activity.createdAt.toDate() : new Date(activity.createdAt);
-      
       feedItems.push({
         id: activity.id,
         type: activity.type,
@@ -2863,30 +2889,34 @@ function App() {
       });
     });
 
-    // Sort by date descending
     feedItems.sort((a, b) => b.sortDate - a.sortDate);
+    return feedItems;
+  }, [filteredEntries, filteredUsers, activities, users, selectedGroupId]);
 
-    // Filter by search query
+  // Lightweight filter/paginate on the memoized base
+  const getActivityFeed = useCallback((filterQuery = '', page = 1, typeFilter = 'all') => {
+    let feedItems = activityFeedBase;
+
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase();
-      feedItems = feedItems.filter(item => 
+      feedItems = feedItems.filter(item =>
         item.user?.name?.toLowerCase().includes(q) ||
         item.groupName?.toLowerCase().includes(q) ||
         item.challengeName?.toLowerCase().includes(q)
       );
     }
 
-    // Return paginated results
-    const startIndex = 0;
+    if (typeFilter && typeFilter !== 'all') {
+      feedItems = feedItems.filter(item => item.type === typeFilter);
+    }
+
     const endIndex = page * FEED_PAGE_SIZE;
-    const hasMore = feedItems.length > endIndex;
-    
     return {
-      items: feedItems.slice(startIndex, endIndex),
-      hasMore,
+      items: feedItems.slice(0, endIndex),
+      hasMore: feedItems.length > endIndex,
       total: feedItems.length,
     };
-  };
+  }, [activityFeedBase]);
 
   // Calculate 2025 Wrapped stats
   const getWrappedStats = (userId) => {
@@ -2952,9 +2982,12 @@ function App() {
     let currentStreak = 1;
     for (let i = 1; i < uniqueDays.length; i++) {
       const prev = new Date(uniqueDays[i - 1]);
+      prev.setHours(0, 0, 0, 0);
+      const nextDay = new Date(prev);
+      nextDay.setDate(nextDay.getDate() + 1);
       const curr = new Date(uniqueDays[i]);
-      const diff = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
-      if (diff === 1) {
+      curr.setHours(0, 0, 0, 0);
+      if (curr.getTime() === nextDay.getTime()) {
         currentStreak++;
         bestStreak = Math.max(bestStreak, currentStreak);
       } else {
@@ -3158,6 +3191,7 @@ function App() {
         <div className="loading-screen">
           <div className="spinner" />
           <p>Loading Row Crew...</p>
+          <p className="loading-subtitle">Connecting to the crew...</p>
         </div>
       </div>
     );
@@ -3254,10 +3288,13 @@ function App() {
                   )}
                 </div>
                 
-                {userProfile.photoURL && (
+                {userProfile.photoURL ? (
                   <img src={userProfile.photoURL} alt="" className="user-avatar" onClick={() => setShowSettingsModal(true)} />
+                ) : (
+                  <div className="user-avatar user-avatar-placeholder" onClick={() => setShowSettingsModal(true)}>
+                    {userProfile.name?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
                 )}
-                <button className="settings-btn" onClick={() => setShowSettingsModal(true)}>⚙️</button>
               </>
             ) : (
               <>
@@ -3271,28 +3308,44 @@ function App() {
       </header>
 
       {/* World Progress */}
-      <section className="world-progress">
+      <section className="world-progress clickable" onClick={() => setShowJourneyModal(true)}>
         <div className="world-stats">
           <div className="world-total">
             <span className="world-number">{formatMeters(totalMeters)}</span>
             <span className="world-label">meters rowed</span>
           </div>
-          <div className="world-percentage">
-            <span className="percentage-number">{worldProgress.toFixed(2)}%</span>
-            <span className="percentage-label">around the world</span>
+          <div className="milestone-count">
+            <span className="milestone-count-number">{getMilestoneIndex(totalMeters)}/{MILESTONES.length}</span>
+            <span className="milestone-count-label">milestones</span>
           </div>
         </div>
-        <div className="progress-bar-container">
-          <div className="progress-bar" style={{ width: `${Math.min(worldProgress, 100)}%` }} />
-        </div>
-        {milestoneProgress.next && (
-          <p className="next-milestone">
-            Next: {milestoneProgress.next.label} — {formatMeters(milestoneProgress.next.meters - totalMeters)} to go!
-          </p>
+        {milestoneProgress.next ? (() => {
+          const prevMeters = milestoneProgress.current?.meters || 0;
+          const segmentProgress = ((totalMeters - prevMeters) / (milestoneProgress.next.meters - prevMeters)) * 100;
+          return (
+            <>
+              <div className="progress-bar-container">
+                <div className="progress-bar" style={{ width: `${Math.min(segmentProgress, 100)}%` }} />
+              </div>
+              <p className="next-milestone">
+                {milestoneProgress.next.emoji} Next: {milestoneProgress.next.label} — {formatMeters(milestoneProgress.next.meters - totalMeters)} to go!
+              </p>
+            </>
+          );
+        })() : (
+          <div className="progress-bar-container">
+            <div className="progress-bar" style={{ width: '100%' }} />
+          </div>
         )}
         {milestoneProgress.current && (
-          <p className="current-achievement">{milestoneProgress.current.comparison}</p>
+          <p className="current-achievement">{milestoneProgress.current.emoji} {milestoneProgress.current.comparison}</p>
         )}
+        <div className="world-bar-row">
+          <div className="world-bar-container">
+            <div className="world-bar" style={{ width: `${Math.min(worldProgress, 100)}%` }} />
+          </div>
+          <span className="world-bar-label">🌍 {worldProgress.toFixed(2)}%</span>
+        </div>
       </section>
 
       {/* Tabs */}
@@ -3309,7 +3362,7 @@ function App() {
           🏆 Board
         </button>
         <button className={`tab ${activeTab === 'more' ? 'active' : ''}`} onClick={() => setActiveTab('more')}>
-          🏅 More
+          📊 Stats
         </button>
       </nav>
 
@@ -3387,39 +3440,6 @@ function App() {
               <div className="daily-quote">
                 <p className="quote-text">"{dailyQuote.text}"</p>
                 <p className="quote-author">— {dailyQuote.author}</p>
-              </div>
-            )}
-
-            {/* User Rank & Weekly Stats */}
-            {userProfile && (
-              <div className="user-status-card">
-                <div 
-                  className="user-rank-display clickable"
-                  onClick={() => setShowRankProgressModal(true)}
-                >
-                  <span className="rank-emoji">{getUserRank(userProfile.totalMeters).emoji}</span>
-                  <div className="rank-info">
-                    <span className="rank-title">{getUserRank(userProfile.totalMeters).title}</span>
-                    {getNextRank(userProfile.totalMeters) && (
-                      <span className="rank-next">
-                        {formatMeters(getNextRank(userProfile.totalMeters).minMeters - userProfile.totalMeters)}m to {getNextRank(userProfile.totalMeters).title}
-                      </span>
-                    )}
-                  </div>
-                  <span className="rank-tap-hint">Tap for all ranks →</span>
-                </div>
-                <div className="weekly-stats-mini">
-                  <div className="weekly-stat">
-                    <span className="weekly-stat-value">{formatMeters(getWeeklyStats(currentUser?.uid).meters)}</span>
-                    <span className="weekly-stat-label">this week</span>
-                  </div>
-                  <div className="weekly-stat">
-                    <span className={`weekly-stat-change ${getWeeklyStats(currentUser?.uid).isUp ? 'up' : 'down'}`}>
-                      {getWeeklyStats(currentUser?.uid).isUp ? '↑' : '↓'} {Math.abs(getWeeklyStats(currentUser?.uid).percentChange)}%
-                    </span>
-                    <span className="weekly-stat-label">vs last week</span>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -3596,6 +3616,39 @@ function App() {
                 <div className="validation-error">{validationError}</div>
               )}
             </div>
+
+            {/* User Rank & Weekly Stats */}
+            {userProfile && (
+              <div className="user-status-card">
+                <div
+                  className="user-rank-display clickable"
+                  onClick={() => setShowRankProgressModal(true)}
+                >
+                  <span className="rank-emoji">{getUserRank(userProfile.totalMeters).emoji}</span>
+                  <div className="rank-info">
+                    <span className="rank-title">{getUserRank(userProfile.totalMeters).title}</span>
+                    {getNextRank(userProfile.totalMeters) && (
+                      <span className="rank-next">
+                        {formatMeters(getNextRank(userProfile.totalMeters).minMeters - userProfile.totalMeters)}m to {getNextRank(userProfile.totalMeters).title}
+                      </span>
+                    )}
+                  </div>
+                  <span className="rank-tap-hint">Tap for all ranks →</span>
+                </div>
+                <div className="weekly-stats-mini">
+                  <div className="weekly-stat">
+                    <span className="weekly-stat-value">{formatMeters(getWeeklyStats(currentUser?.uid).meters)}</span>
+                    <span className="weekly-stat-label">this week</span>
+                  </div>
+                  <div className="weekly-stat">
+                    <span className={`weekly-stat-change ${getWeeklyStats(currentUser?.uid).isUp ? 'up' : 'down'}`}>
+                      {getWeeklyStats(currentUser?.uid).isUp ? '↑' : '↓'} {Math.abs(getWeeklyStats(currentUser?.uid).percentChange)}%
+                    </span>
+                    <span className="weekly-stat-label">vs last week</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Personal Record Display */}
             {userProfile && getPersonalRecord(currentUser?.uid) > 0 && (
@@ -3809,6 +3862,25 @@ function App() {
               )}
             </div>
 
+            {/* Feed Type Filters */}
+            <div className="feed-filters">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'row', label: '🚣 Rows' },
+                { key: 'achievement', label: '🏆 Awards' },
+                { key: 'rank', label: '⬆️ Ranks' },
+                { key: 'join', label: '👋 Joined' },
+              ].map(f => (
+                <button
+                  key={f.key}
+                  className={`feed-filter-pill ${feedTypeFilter === f.key ? 'active' : ''}`}
+                  onClick={() => { setFeedTypeFilter(f.key); setFeedPage(1); }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             {/* Guest Sign In Prompt */}
             {!currentUser && (
               <div className="guest-prompt">
@@ -3820,11 +3892,23 @@ function App() {
             )}
 
             {(() => {
-              const feedData = getActivityFeed(feedSearchQuery, feedPage);
+              const feedData = getActivityFeed(feedSearchQuery, feedPage, feedTypeFilter);
               return feedData.items.length === 0 ? (
                 <div className="empty-state">
-                  {feedSearchQuery ? (
-                    <p>No activity found for "{feedSearchQuery}"</p>
+                  {feedSearchQuery || feedTypeFilter !== 'all' ? (
+                    <p>No activity found{feedSearchQuery ? ` for "${feedSearchQuery}"` : ' for this filter'}.</p>
+                  ) : entries.length === 0 ? (
+                    <div className="skeleton-feed">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="skeleton-feed-item">
+                          <div className="skeleton skeleton-avatar" />
+                          <div className="skeleton-content">
+                            <div className="skeleton skeleton-line skeleton-line-short" />
+                            <div className="skeleton skeleton-line skeleton-line-medium" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <>
                       <p>No activity yet!</p>
@@ -3859,14 +3943,6 @@ function App() {
                               <span className="feed-name">
                                 {item.user?.name}
                                 {itemRank && <span className="feed-rank-badge">{itemRank.emoji}</span>}
-                                {/* Weekly leaderboard position badge */}
-                                {(() => {
-                                  const weeklyPos = getWeeklyLeaderboard().findIndex(u => u.id === item.userId);
-                                  if (weeklyPos === 0) return <span className="feed-weekly-badge gold" title="Weekly Leader">👑</span>;
-                                  if (weeklyPos === 1) return <span className="feed-weekly-badge silver" title="2nd This Week">🥈</span>;
-                                  if (weeklyPos === 2) return <span className="feed-weekly-badge bronze" title="3rd This Week">🥉</span>;
-                                  return null;
-                                })()}
                               </span>
                               <span className="feed-time">
                                 {formatTimeAgo(new Date(item.date))}
@@ -3895,7 +3971,11 @@ function App() {
                               )}
                               {item.type === 'achievement' && (
                                 <span className="feed-achievement">
-                                  unlocked <span className="feed-achievement-name">{item.achievement.emoji} {item.achievement.name}</span>
+                                  {item.achievements && item.achievements.length > 1 ? (
+                                    <>unlocked {item.achievements.length} awards: {item.achievements.map(a => a.emoji).join(' ')}</>
+                                  ) : (
+                                    <>unlocked <span className="feed-achievement-name">{item.achievement.emoji} {item.achievement.name}</span></>
+                                  )}
                                 </span>
                               )}
                               {item.type === 'rank' && (
@@ -4111,18 +4191,6 @@ function App() {
                 📅 Weekly
               </button>
               <button 
-                className={`lb-tab ${leaderboardTab === 'time' ? 'active' : ''}`}
-                onClick={() => setLeaderboardTab('time')}
-              >
-                ⏱️ Time
-              </button>
-              <button 
-                className={`lb-tab ${leaderboardTab === 'calories' ? 'active' : ''}`}
-                onClick={() => setLeaderboardTab('calories')}
-              >
-                🔥 Calories
-              </button>
-              <button 
                 className={`lb-tab ${leaderboardTab === 'streak' ? 'active' : ''}`}
                 onClick={() => setLeaderboardTab('streak')}
               >
@@ -4139,14 +4207,14 @@ function App() {
             {/* All Time Leaderboard */}
             {leaderboardTab === 'alltime' && (
               <>
-                {getLeaderboard().length === 0 ? (
+                {getLeaderboard.length === 0 ? (
                   <div className="empty-state">
                     <p>No rowers yet!</p>
                     <p>Be the first to log a row.</p>
                   </div>
                 ) : (
                   <div className="leaderboard">
-                    {getLeaderboard().map((user, index) => (
+                    {getLeaderboard.map((user, index) => (
                       <div 
                         key={user.id} 
                         className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
@@ -4188,14 +4256,14 @@ function App() {
             {/* Weekly Leaderboard */}
             {leaderboardTab === 'weekly' && (
               <>
-                {getWeeklyLeaderboard().length === 0 ? (
+                {getWeeklyLeaderboard.length === 0 ? (
                   <div className="empty-state">
                     <p>No rows this week yet!</p>
                     <p>Be the first to get on the board.</p>
                   </div>
                 ) : (
                   <div className="leaderboard">
-                    {getWeeklyLeaderboard().map((user, index) => (
+                    {getWeeklyLeaderboard.map((user, index) => (
                       <div 
                         key={user.id} 
                         className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
@@ -4234,113 +4302,17 @@ function App() {
               </>
             )}
 
-            {/* Time Leaderboard */}
-            {leaderboardTab === 'time' && (
-              <>
-                {getTimeLeaderboard().length === 0 ? (
-                  <div className="empty-state">
-                    <p>No time logged yet!</p>
-                    <p>Add time to your rows to appear here.</p>
-                  </div>
-                ) : (
-                  <div className="leaderboard">
-                    {getTimeLeaderboard().map((user, index) => (
-                      <div 
-                        key={user.id} 
-                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
-                        onClick={() => setShowUserProfileModal(user)}
-                      >
-                        <div className="rank">
-                          {index === 0 ? '⏱️' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-                        </div>
-                        <div className="user-avatar-wrapper">
-                          {user.photoURL ? (
-                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
-                          ) : (
-                            <div className="leaderboard-avatar-placeholder">
-                              {user.name?.charAt(0)?.toUpperCase() || '?'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="user-info">
-                          <span className="user-name">
-                            {user.name}
-                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
-                          </span>
-                          <span className="user-rank-label">
-                            {user.rank?.emoji} {user.rank?.title}
-                          </span>
-                        </div>
-                        <div className="user-meters">
-                          <span className="meters-value">{formatTimeDisplay(user.totalTime)}</span>
-                          <span className="meters-label">total time</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Calories Leaderboard */}
-            {leaderboardTab === 'calories' && (
-              <>
-                {getCaloriesLeaderboard().length === 0 ? (
-                  <div className="empty-state">
-                    <p>No calories logged yet!</p>
-                    <p>Add calories to your rows to appear here.</p>
-                  </div>
-                ) : (
-                  <div className="leaderboard">
-                    {getCaloriesLeaderboard().map((user, index) => (
-                      <div 
-                        key={user.id} 
-                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
-                        onClick={() => setShowUserProfileModal(user)}
-                      >
-                        <div className="rank">
-                          {index === 0 ? '🔥' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-                        </div>
-                        <div className="user-avatar-wrapper">
-                          {user.photoURL ? (
-                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
-                          ) : (
-                            <div className="leaderboard-avatar-placeholder">
-                              {user.name?.charAt(0)?.toUpperCase() || '?'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="user-info">
-                          <span className="user-name">
-                            {user.name}
-                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
-                          </span>
-                          <span className="user-rank-label">
-                            {user.rank?.emoji} {user.rank?.title}
-                          </span>
-                        </div>
-                        <div className="user-meters">
-                          <span className="meters-value">{user.totalCalories.toLocaleString()}</span>
-                          <span className="meters-label">calories</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
             {/* Streak Leaderboard */}
             {leaderboardTab === 'streak' && (
               <>
-                {getStreakLeaderboard().length === 0 ? (
+                {getStreakLeaderboard.length === 0 ? (
                   <div className="empty-state">
                     <p>No active streaks!</p>
                     <p>Row consistently to build yours.</p>
                   </div>
                 ) : (
                   <div className="leaderboard">
-                    {getStreakLeaderboard().map((user, index) => (
+                    {getStreakLeaderboard.map((user, index) => (
                       <div 
                         key={user.id} 
                         className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
@@ -4381,14 +4353,14 @@ function App() {
             {/* Achievements Leaderboard */}
             {leaderboardTab === 'achievements' && (
               <>
-                {getAchievementsLeaderboard().length === 0 ? (
+                {getAchievementsLeaderboard.length === 0 ? (
                   <div className="empty-state">
                     <p>No achievements unlocked yet!</p>
                     <p>Start rowing to earn badges.</p>
                   </div>
                 ) : (
                   <div className="leaderboard">
-                    {getAchievementsLeaderboard().map((user, index) => (
+                    {getAchievementsLeaderboard.map((user, index) => (
                       <div 
                         key={user.id} 
                         className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
@@ -4435,17 +4407,21 @@ function App() {
             
             {/* Achievements Section */}
             <div className="achievements-full-section">
-              <h3>🏅 {currentUser ? 'Your Achievements' : 'Achievements'}</h3>
+              <h3>🏅 {currentUser ? 'Your Achievements' : 'Achievements'}
+                {currentUser && (
+                  <span className="achievements-count-inline"> {getUserAchievements(currentUser.uid).length}/{ACHIEVEMENTS.length}</span>
+                )}
+              </h3>
               <div className="achievements-grid-full">
-                {ACHIEVEMENTS.map((achievement) => {
+                {ACHIEVEMENTS.slice(achievementsPage * ACHIEVEMENTS_PAGE_SIZE, (achievementsPage + 1) * ACHIEVEMENTS_PAGE_SIZE).map((achievement) => {
                   const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
                   const progress = currentUser ? getAchievementProgress(currentUser.uid, achievement) : { current: 0, target: 1 };
                   const unlockedAchievement = currentUser ? getUserAchievements(currentUser.uid).find(a => a.id === achievement.id) : null;
                   const progressPercent = Math.min((progress.current / progress.target) * 100, 100);
-                  
+
                   return (
-                    <div 
-                      key={achievement.id} 
+                    <div
+                      key={achievement.id}
                       className={`achievement-card ${unlocked ? 'unlocked' : 'locked'}`}
                       onClick={() => setShowAchievementModal({ ...achievement, progress, unlockedDate: unlockedAchievement?.unlockedDate })}
                     >
@@ -4466,11 +4442,25 @@ function App() {
                   );
                 })}
               </div>
-              {currentUser && (
-                <p className="achievements-count">
-                  {getUserAchievements(currentUser.uid).length} / {ACHIEVEMENTS.length} unlocked
-                </p>
-              )}
+              <div className="achievements-pagination">
+                <button
+                  className="achievements-page-btn"
+                  onClick={() => setAchievementsPage(p => p - 1)}
+                  disabled={achievementsPage === 0}
+                >
+                  ← Prev
+                </button>
+                <span className="achievements-page-info">
+                  {achievementsPage + 1} / {Math.ceil(ACHIEVEMENTS.length / ACHIEVEMENTS_PAGE_SIZE)}
+                </span>
+                <button
+                  className="achievements-page-btn"
+                  onClick={() => setAchievementsPage(p => p + 1)}
+                  disabled={(achievementsPage + 1) * ACHIEVEMENTS_PAGE_SIZE >= ACHIEVEMENTS.length}
+                >
+                  Next →
+                </button>
+              </div>
             </div>
 
             {/* Rank Progression */}
@@ -4819,6 +4809,21 @@ function App() {
         </div>
       )}
 
+      {/* Toast notifications */}
+      {toasts.map((toast, i) => (
+        <div
+          key={toast.id}
+          className={`app-toast app-toast-${toast.type}`}
+          style={{ bottom: `${80 + i * 56}px` }}
+          onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+        >
+          <span className="toast-icon">
+            {toast.type === 'error' ? '⚠️' : toast.type === 'success' ? '✅' : 'ℹ️'}
+          </span>
+          <span>{toast.message}</span>
+        </div>
+      ))}
+
       {/* Setup Profile Modal */}
       {showSetupModal && (
         <div className="modal-overlay">
@@ -4999,26 +5004,6 @@ function App() {
           <div className="modal settings-modal" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setShowSettingsModal(false)}>✕</button>
             <h2>Settings</h2>
-            
-            {/* Theme Selector */}
-            <div className="settings-section">
-              <h3>🎨 Theme</h3>
-              <div className="theme-selector">
-                {THEME_LIST.map((theme) => (
-                  <button
-                    key={theme.id}
-                    className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
-                    onClick={() => setCurrentTheme(theme.id)}
-                    data-theme-preview={theme.id}
-                  >
-                    <span className="theme-emoji">{theme.emoji}</span>
-                    <span className="theme-name">{theme.name}</span>
-                    {currentTheme === theme.id && <span className="theme-check">✓</span>}
-                  </button>
-                ))}
-              </div>
-              <p className="settings-section-desc">{THEMES[currentTheme]?.description}</p>
-            </div>
             
             {userProfile && (
               <>
@@ -5239,6 +5224,26 @@ function App() {
                   )}
                 </div>
 
+                {/* Theme Selector */}
+                <div className="settings-section">
+                  <h3>🎨 Theme</h3>
+                  <div className="theme-selector">
+                    {THEME_LIST.map((theme) => (
+                      <button
+                        key={theme.id}
+                        className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
+                        onClick={() => setCurrentTheme(theme.id)}
+                        data-theme-preview={theme.id}
+                      >
+                        <span className="theme-emoji">{theme.emoji}</span>
+                        <span className="theme-name">{theme.name}</span>
+                        {currentTheme === theme.id && <span className="theme-check">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="settings-section-desc">{THEMES[currentTheme]?.description}</p>
+                </div>
+
                 {/* Session History Button */}
                 <div className="settings-section">
                   <h3>History</h3>
@@ -5272,6 +5277,82 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Journey Modal */}
+      {showJourneyModal && (() => {
+        const milestoneIdx = getMilestoneIndex(totalMeters);
+        const checkpoints = getNearestCheckpoints(totalMeters);
+        return (
+          <div className="modal-overlay" onClick={() => setShowJourneyModal(false)}>
+            <div className="modal journey-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-close" onClick={() => setShowJourneyModal(false)}>✕</button>
+              <h2>🌍 Journey Around the World</h2>
+              <p className="journey-subtitle">Starting from Seattle, WA</p>
+
+              <div className="journey-location-banner">
+                <span className="journey-location-pin">📍</span>
+                <div className="journey-location-info">
+                  {checkpoints.prev ? (
+                    <span className="journey-location-text">
+                      Passed {checkpoints.prev.checkpoint}
+                    </span>
+                  ) : (
+                    <span className="journey-location-text">Just departed Seattle!</span>
+                  )}
+                  {checkpoints.next && (
+                    <span className="journey-location-next">
+                      {formatMeters(checkpoints.next.meters - totalMeters)} to {checkpoints.next.checkpoint}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="journey-list">
+                {/* Start marker */}
+                <div className="journey-item completed checkpoint">
+                  <div className="journey-indicator">📍</div>
+                  <div className="journey-item-content">
+                    <span className="journey-item-label">Start</span>
+                    <span className="journey-checkpoint-name">Seattle, WA</span>
+                  </div>
+                  <span className="journey-item-check">✅</span>
+                </div>
+
+                {MILESTONES.map((m, i) => {
+                  const isCompleted = totalMeters >= m.meters;
+                  const isCurrent = i === milestoneIdx;
+                  const isCheckpoint = !!m.checkpoint;
+
+                  return (
+                    <div
+                      key={m.meters}
+                      className={`journey-item ${isCompleted ? 'completed' : 'upcoming'} ${isCurrent ? 'current' : ''} ${isCheckpoint ? 'checkpoint' : ''}`}
+                      ref={isCurrent ? (el) => el?.scrollIntoView({ block: 'center', behavior: 'smooth' }) : undefined}
+                    >
+                      <div className="journey-indicator">
+                        {isCheckpoint ? '📍' : isCompleted ? '✅' : m.emoji}
+                      </div>
+                      <div className="journey-item-content">
+                        <span className="journey-item-label">{m.label}</span>
+                        {isCheckpoint && <span className="journey-checkpoint-name">{m.checkpoint}</span>}
+                        <span className="journey-item-comparison">{m.comparison}</span>
+                      </div>
+                      {isCompleted && !isCheckpoint && <span className="journey-item-check">✅</span>}
+                      {!isCompleted && isCurrent && (
+                        <span className="journey-item-distance">{formatMeters(m.meters - totalMeters)}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button className="journey-close-btn" onClick={() => setShowJourneyModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Achievement Detail Modal */}
       {showAchievementModal && (
@@ -6630,7 +6711,7 @@ function App() {
               });
             } else if (navigator.clipboard?.write) {
               await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-              alert('Copied to clipboard!');
+              showToast('Copied to clipboard!', 'success', 2000);
             }
           } catch (err) {
             console.error('Share failed:', err);

@@ -85,15 +85,15 @@ export const ACHIEVEMENTS = [
   },
   
   // Fun achievements
-  { 
-    id: 'early_bird', name: 'Early Bird', desc: 'Log a row before 7am', emoji: '🌅', 
-    check: (u, e) => e.some(x => new Date(x.date).getHours() < 7),
-    getProgress: (u, e) => ({ current: e.some(x => new Date(x.date).getHours() < 7) ? 1 : 0, target: 1 })
+  {
+    id: 'early_bird', name: 'Early Bird', desc: 'Log a row before 7am', emoji: '🌅',
+    check: (u, e) => e.some(x => (x.localHour ?? new Date(x.date).getHours()) < 7),
+    getProgress: (u, e) => ({ current: e.some(x => (x.localHour ?? new Date(x.date).getHours()) < 7) ? 1 : 0, target: 1 })
   },
-  { 
-    id: 'night_owl', name: 'Night Owl', desc: 'Log a row after 10pm', emoji: '🦉', 
-    check: (u, e) => e.some(x => new Date(x.date).getHours() >= 22),
-    getProgress: (u, e) => ({ current: e.some(x => new Date(x.date).getHours() >= 22) ? 1 : 0, target: 1 })
+  {
+    id: 'night_owl', name: 'Night Owl', desc: 'Log a row after 10pm', emoji: '🦉',
+    check: (u, e) => e.some(x => (x.localHour ?? new Date(x.date).getHours()) >= 22),
+    getProgress: (u, e) => ({ current: e.some(x => (x.localHour ?? new Date(x.date).getHours()) >= 22) ? 1 : 0, target: 1 })
   },
   { 
     id: 'consistent', name: 'Consistency King', desc: 'Row 4+ days in a week', emoji: '👑', 
@@ -234,18 +234,18 @@ export const ACHIEVEMENTS = [
       return { current: Math.min(maxInDay, 3), target: 3 };
     }
   },
-  { 
-    id: 'lunch_rower', name: 'Lunch Break Legend', desc: 'Log a row between 11am and 1pm', emoji: '🍽️', 
+  {
+    id: 'lunch_rower', name: 'Lunch Break Legend', desc: 'Log a row between 11am and 1pm', emoji: '🍽️',
     check: (u, e) => e.some(x => {
-      const hour = new Date(x.date).getHours();
+      const hour = x.localHour ?? new Date(x.date).getHours();
       return hour >= 11 && hour < 13;
     }),
-    getProgress: (u, e) => ({ 
+    getProgress: (u, e) => ({
       current: e.some(x => {
-        const hour = new Date(x.date).getHours();
+        const hour = x.localHour ?? new Date(x.date).getHours();
         return hour >= 11 && hour < 13;
-      }) ? 1 : 0, 
-      target: 1 
+      }) ? 1 : 0,
+      target: 1
     })
   },
   

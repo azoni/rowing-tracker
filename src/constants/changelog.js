@@ -1,6 +1,23 @@
 // Changelog entries
 export const CHANGELOG = [
   {
+    version: '4.4.0',
+    date: '2026-03-10',
+    changes: [
+      '🗺️ Tap progress bar to see full Journey — route around the world from Seattle!',
+      '📍 21 real-world checkpoints: Portland → SF → Tokyo → Paris → NYC → home',
+      '🎯 83 fun milestones — progress bar now fills between each one',
+      '🌍 World progress moved to subtle bar at the bottom',
+      '🏆 Leaderboard trimmed to 4 tabs (Meters, Weekly, Streaks, Awards)',
+      '📊 "More" tab renamed to "Stats"',
+      '📸 Upload buttons now appear first on Log tab',
+      '🏅 Achievements paginated (8 per page) on Stats tab',
+      '📣 Same-day achievements grouped into single feed items',
+      '✨ Feed badges cleaned up — less visual clutter',
+      '⚙️ Settings reorganized — profile first, theme lower',
+    ]
+  },
+  {
     version: '4.3.0',
     date: '2025-01-17',
     changes: [

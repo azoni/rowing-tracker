@@ -53,6 +53,56 @@ service cloud.firestore {
                     && request.auth.uid in resource.data.memberIds;
     }
 
+    // Reactions collection
+    match /reactions/{reactionId} {
+      // Anyone can read reactions (allows guests to see them)
+      allow read: if true;
+
+      // Authenticated users can create reactions with their own userId
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+
+      // Users can only delete their own reactions
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+
+      // No updates needed for reactions
+      allow update: if false;
+    }
+
+    // Comments collection
+    match /comments/{commentId} {
+      // Anyone can read comments (allows guests to see them)
+      allow read: if true;
+
+      // Authenticated users can create comments with their own userId
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+
+      // Users can only delete their own comments
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+
+      // No updates needed for comments
+      allow update: if false;
+    }
+
+    // Notifications collection
+    match /notifications/{notifId} {
+      // Users can only read their own notifications
+      allow read: if request.auth != null
+                  && resource.data.recipientId == request.auth.uid;
+
+      // Authenticated users can create notifications
+      allow create: if request.auth != null;
+
+      // Users can update their own notifications (mark as read)
+      allow update: if request.auth != null
+                    && resource.data.recipientId == request.auth.uid;
+
+      allow delete: if false;
+    }
+
     // Admin review queue (readable/writable only via Cloud Functions)
     match /reviewQueue/{docId} {
       allow read, write: if false;

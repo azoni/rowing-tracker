@@ -904,7 +904,7 @@ function App() {
   // Log activity to feed (groups, challenges, etc.)
   const logActivity = async (type, data) => {
     if (!currentUser) return;
-    
+
     try {
       const activityId = `activity_${Date.now()}_${currentUser.uid.slice(0, 6)}`;
       await setDoc(doc(db, 'activities', activityId), {
@@ -913,6 +913,12 @@ function App() {
         createdAt: serverTimestamp(),
         ...data
       });
+      // Fire-and-forget to MCP ecosystem feed
+      fetch('/.netlify/functions/log-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, title: (data.groupName || data.challengeName || type).slice(0, 120) }),
+      }).catch(() => {});
     } catch (error) {
       console.error('Error logging activity:', error);
     }

@@ -60,6 +60,14 @@ import {
 } from './utils';
 
 function App() {
+  // Log visit once per session
+  useEffect(() => {
+    if (!sessionStorage.getItem('_av')) {
+      sessionStorage.setItem('_av', '1');
+      fetch('/.netlify/functions/log-visit', { method: 'POST' }).catch(() => {});
+    }
+  }, []);
+
   // Auth state
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);

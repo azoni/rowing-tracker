@@ -9,51 +9,29 @@ if (admin.apps.length === 0) {
 
 const db = admin.firestore();
 
-// Fire-and-forget activity logger (uses https module for Firebase Functions compatibility)
-function logActivity({ type, title, description, reasoning, model, tokens, cost, metadata }) {
-  const secret = functions.config().agent?.webhook_secret;
+// Fire-and-forget activity logger — logs to MCP ecosystem feed.
+function logActivity({ type, title, description, model, tokens, cost, metadata }) {
   const mcpKey = functions.config().mcp?.admin_key;
+  if (!mcpKey) return;
+
   const https = require('https');
-
-  // Legacy azoni.ai webhook
-  if (secret) {
-    const payload = JSON.stringify({
-      type, title, description: description || '', reasoning: reasoning || '',
-      source: 'rowcrew', model, tokens, cost, metadata: metadata || {}, secret,
-    });
-    const req = https.request({
-      hostname: 'azoni.ai',
-      path: '/.netlify/functions/log-agent-activity',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
-    });
-    req.on('error', (e) => console.error('[activity-log] Legacy failed:', e.message));
-    req.write(payload);
-    req.end();
-  }
-
-  // MCP ecosystem activity map
-  if (mcpKey) {
-    const mcpPayload = JSON.stringify({
-      type: type || 'row_verified',
-      title: title || 'Row activity',
-      source: 'rowcrew',
-      description: description || '',
-    });
-    const mcpReq = https.request({
-      hostname: 'azoni-mcp.onrender.com',
-      path: '/activity/log',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${mcpKey}`,
-        'Content-Length': Buffer.byteLength(mcpPayload),
-      },
-    });
-    mcpReq.on('error', (e) => console.error('[activity-log] MCP failed:', e.message));
-    mcpReq.write(mcpPayload);
-    mcpReq.end();
-  }
+  const payload = JSON.stringify({
+    type, title, source: 'rowcrew',
+    description: description || '', model, tokens, cost, metadata,
+  });
+  const req = https.request({
+    hostname: 'azoni-mcp.onrender.com',
+    path: '/activity/log',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${mcpKey}`,
+      'Content-Length': Buffer.byteLength(payload),
+    },
+  });
+  req.on('error', (e) => console.error('[activity-log] Failed:', e.message));
+  req.write(payload);
+  req.end();
 }
 
 // Constants
@@ -434,3 +412,21 @@ exports.getVerificationStats = functions.https.onCall(async (data, context) => {
     rejected: rejected.data().count,
   };
 });
+
+// Forward group/challenge activities to the ecosystem activity feed
+exports.forwardActivity = functions.firestore
+  .document('activities/{activityId}')
+  .onCreate((snap) => {
+    const data = snap.data();
+    const type = data.type;
+    const titles = {
+      group_created: `Group created: ${data.groupName || 'group'}`,
+      group_joined: `Joined group: ${data.groupName || 'group'}`,
+      challenge_created: `Challenge created: ${data.challengeName || 'challenge'}`,
+      admin_transferred: `Admin transferred in ${data.groupName || 'group'}`,
+    };
+    const title = titles[type];
+    if (!title) return null;
+    logActivity({ type, title, description: `RowCrew ${type.replace('_', ' ')}` });
+    return null;
+  });

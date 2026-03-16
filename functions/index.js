@@ -420,6 +420,7 @@ exports.forwardActivity = functions.firestore
     const data = snap.data();
     const type = data.type;
     const titles = {
+      row_completed: `Rowed ${data.meters || '?'}m`,
       group_created: `Group created: ${data.groupName || 'group'}`,
       group_joined: `Joined group: ${data.groupName || 'group'}`,
       challenge_created: `Challenge created: ${data.challengeName || 'challenge'}`,

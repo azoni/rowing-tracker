@@ -2139,12 +2139,21 @@ function App() {
         }, 500);
       }
 
+      // Log row completion to activity feed
+      logActivity('row_completed', {
+        meters: finalMeters,
+        time: timeSeconds || null,
+        calories: calories || null,
+        verification: verification.status,
+        totalMeters: newTotalMeters,
+      });
+
       // Check for new achievements and rank promotion (after a delay to let state update)
       setTimeout(async () => {
         await checkAndSaveNewAchievements(currentUser.uid);
         await checkAndSaveRankPromotion(currentUser.uid, newTotalMeters);
       }, 1000);
-      
+
       return true;
     } catch (error) {
       console.error('Error adding entry:', error);

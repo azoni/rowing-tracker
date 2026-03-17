@@ -256,9 +256,11 @@ Respond ONLY with valid JSON.${learningContext}`;
     const totalCost = inputCost + outputCost;
 
     // Parse JSON from response
+    console.log('Claude raw response:', responseText.substring(0, 500));
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const result = JSON.parse(jsonMatch[0]);
+      console.log('Parsed result:', JSON.stringify({ meters: result.extractedMeters, time: result.extractedTime, cal: result.extractedCalories, confidence: result.overallConfidence, display: result.displayType }));
 
       // Log to activity feed
       logActivity({

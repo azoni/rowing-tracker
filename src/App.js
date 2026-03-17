@@ -1957,7 +1957,8 @@ function App() {
           sessionType: sessionType,
         });
         claudeResult = result.data;
-        
+        console.log('[RowCrew] Claude result:', JSON.stringify({ meters: claudeResult.extractedMeters, time: claudeResult.extractedTime, cal: claudeResult.extractedCalories, confidence: claudeResult.confidence, display: claudeResult.displayType, status: claudeResult.status }));
+
         // If Claude extracted meters successfully
         if (claudeResult.extractedMeters && claudeResult.confidence >= 60) {
           detectedMeterValue = claudeResult.extractedMeters;
@@ -1976,7 +1977,7 @@ function App() {
           detectedCalorieValue = claudeResult.extractedCalories;
         }
       } catch (verifyError) {
-        console.error('Claude verification error:', verifyError);
+        console.error('[RowCrew] Claude verification error:', verifyError?.message || verifyError);
         setProcessingStatus('AI unavailable, using OCR...');
         
         // Fallback to Tesseract OCR

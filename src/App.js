@@ -2417,9 +2417,44 @@ function App() {
         return;
       }
 
-      // Profile-derived items (achievements, ranks, joins) — these have synthetic IDs
-      // and are built from user profile data, not deletable as individual documents
-      showToast('This item comes from user profile data. Remove it from the user\'s profile in Firebase Console.', 'info', 6000);
+      // Profile-derived items — remove from user's profile data
+      if (itemType === 'rank' && itemId.startsWith('rank-')) {
+        // ID format: rank-{userId}-{index}
+        const parts = itemId.split('-');
+        const rankIndex = parseInt(parts[parts.length - 1], 10);
+        const userId = parts.slice(1, -1).join('-');
+        const user = users[userId];
+        if (user?.rankHistory && !isNaN(rankIndex)) {
+          const updatedHistory = [...user.rankHistory];
+          updatedHistory.splice(rankIndex, 1);
+          await updateDoc(doc(db, 'users', userId), { rankHistory: updatedHistory });
+          showToast('Rank event removed.', 'success');
+          return;
+        }
+      }
+
+      if (itemType === 'achievement' && itemId.startsWith('achievement-')) {
+        // ID format: achievement-{userId}-{dayKey}
+        // Remove all achievements unlocked on that day
+        const parts = itemId.split('-');
+        const dayKey = parts[parts.length - 1];
+        const userId = parts.slice(1, -1).join('-');
+        const user = users[userId];
+        if (user?.unlockedAchievements) {
+          const updated = { ...user.unlockedAchievements };
+          // Find and remove achievements from that day
+          Object.entries(updated).forEach(([achievementId, dateStr]) => {
+            const d = new Date(dateStr);
+            const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            if (key === dayKey) delete updated[achievementId];
+          });
+          await updateDoc(doc(db, 'users', userId), { unlockedAchievements: updated });
+          showToast('Achievement event removed.', 'success');
+          return;
+        }
+      }
+
+      showToast('Could not find item to delete.', 'info');
     } catch (error) {
       console.error('Error deleting activity:', error);
       showToast('Failed to delete. Try again.');

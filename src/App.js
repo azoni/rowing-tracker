@@ -2859,6 +2859,7 @@ function App() {
         rankHistory.push({
           rank: newRank.title,
           emoji: newRank.emoji,
+          tier: newRank.tier || 'bronze',
           date: new Date().toISOString(),
         });
         await setDoc(userRef, { 

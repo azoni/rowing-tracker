@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTime, formatTimeDisplay, formatTimeAgo } from '../utils';
-import { getUserRank } from '../constants';
+import { getUserRank, getRankTier, TIER_COLORS } from '../constants';
 import Icon from './Icon';
 
 function ActivityFeed() {
@@ -250,7 +250,7 @@ function ActivityFeed() {
                 return (
                   <div
                     key={item.id}
-                    className={`feed-item feed-item-${item.type} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
+                    className={`feed-item feed-item-${item.type} ${item.type === 'rank' ? `tier-${getRankTier(item.rank?.rank)}` : ''} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
                     onClick={() => item.user && setShowUserProfileModal(item.user)}
                   >
                     <div className="feed-avatar">
@@ -290,9 +290,20 @@ function ActivityFeed() {
                             )}
                           </span>
                         )}
-                        {item.type === 'rank' && (
-                          <span className="feed-rank">reached <span className="feed-rank-name"><Icon name={item.rank?.emoji} size={16} /> {item.rank.rank}</span></span>
-                        )}
+                        {item.type === 'rank' && (() => {
+                          const tier = getRankTier(item.rank?.rank);
+                          const tierColor = TIER_COLORS[tier] || '#00d4aa';
+                          return (
+                            <div className="feed-rank-epic">
+                              <div className="feed-rank-label" style={{ color: tierColor }}>RANK UP</div>
+                              <Icon name={item.rank?.emoji} size={36} />
+                              <div className="feed-rank-title" style={{ color: tierColor }}>{item.rank?.rank}</div>
+                              <div className="feed-rank-tier-badge" style={{ borderColor: tierColor, color: tierColor }}>
+                                {tier.toUpperCase()}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {item.type === 'join' && <span className="feed-join">joined Row Crew! 🎉</span>}
                         {item.type === 'group_created' && <span className="feed-group">created group <span className="feed-group-name"><Icon name="ui_rowing" size={14} /> {item.groupName}</span></span>}
                         {item.type === 'group_joined' && <span className="feed-group">joined <span className="feed-group-name"><Icon name="ui_users" size={14} /> {item.groupName}</span></span>}

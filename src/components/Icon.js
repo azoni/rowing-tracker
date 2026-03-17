@@ -56,16 +56,27 @@ const ICON_COLORS = {
   ui_comment: '#74b9ff',
   ui_police: '#ff4757',
 
-  // Ranks — progression from cool to warm to gold
-  rank_landlubber: '#a29bfe',
-  rank_novice: '#74b9ff',
-  rank_river: '#54a0ff',
-  rank_lake: '#00d4aa',
-  rank_ocean: '#2ed573',
-  rank_iron: '#ff6b35',
-  rank_champion: '#ffd700',
-  rank_legend: '#ffd700',
-  rank_mythical: '#ff6b6b',
+  // Ranks — colored by tier
+  rank_landlubber: '#cd7f32',   // bronze
+  rank_deckhand: '#cd7f32',     // bronze
+  rank_oar_dipper: '#cd7f32',   // bronze
+  rank_novice: '#cd7f32',       // bronze
+  rank_river: '#c0c0c0',        // silver
+  rank_lake: '#c0c0c0',         // silver
+  rank_channel: '#c0c0c0',      // silver
+  rank_ocean: '#c0c0c0',        // silver
+  rank_iron: '#ffd700',          // gold
+  rank_steel: '#ffd700',         // gold
+  rank_wave_breaker: '#ffd700',  // gold
+  rank_champion: '#ffd700',      // gold
+  rank_storm: '#a29bfe',         // platinum
+  rank_tide: '#a29bfe',          // platinum
+  rank_legend: '#a29bfe',        // platinum
+  rank_ocean_master: '#a29bfe',  // platinum
+  rank_mythical: '#00d4aa',      // diamond
+  rank_kraken: '#00d4aa',        // diamond
+  rank_poseidon: '#00d4aa',      // diamond
+  rank_immortal: '#00d4aa',      // diamond
 
   // Achievements — colorful by category
   achievement_first_strokes: '#ff6b6b',

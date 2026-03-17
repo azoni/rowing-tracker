@@ -6,7 +6,8 @@ import Icon from './Icon';
 
 function ActivityFeed() {
   const {
-    currentUser, users, isAdmin, deleteActivity, getLeaderboard,
+    currentUser, users, isAdmin, deleteActivity,
+    getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard,
     selectedGroupId, getSelectedGroup,
     isGroupAdmin, challenges,
     getChallengeStatus, getChallengeProgress,
@@ -30,16 +31,22 @@ function ActivityFeed() {
     entries,
   } = useApp();
 
-  // Build top-3 leaderboard position lookup
-  const leaderboardPositions = React.useMemo(() => {
-    const positions = {};
-    if (getLeaderboard) {
-      getLeaderboard.slice(0, 3).forEach((user, i) => {
-        positions[user.id] = i; // 0=gold, 1=silver, 2=bronze
+  // Build top-3 badges across all leaderboard categories
+  const userBadges = React.useMemo(() => {
+    const badges = {}; // userId -> [{icon, category}]
+    const addBadges = (list, icon) => {
+      if (!list) return;
+      list.slice(0, 3).forEach((user, i) => {
+        const medalIcon = i === 0 ? 'ui_gold' : i === 1 ? 'ui_silver' : 'ui_bronze';
+        if (!badges[user.id]) badges[user.id] = [];
+        badges[user.id].push({ medal: medalIcon, category: icon });
       });
-    }
-    return positions;
-  }, [getLeaderboard]);
+    };
+    addBadges(getLeaderboard, 'ui_trophy');     // All-time meters
+    addBadges(getWeeklyLeaderboard, 'ui_calendar'); // Weekly
+    addBadges(getStreakLeaderboard, 'ui_fire');   // Streak
+    return badges;
+  }, [getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard]);
 
   return (
     <section className="feed-section">
@@ -255,7 +262,7 @@ function ActivityFeed() {
                 const itemStreak = item.user ? calculateStreak(item.user.id) : 0;
                 const itemRank = item.user ? getUserRank(item.user.totalMeters) : null;
                 const itemTier = itemRank?.tier || 'bronze';
-                const lbPos = item.user ? leaderboardPositions[item.user.id] : undefined;
+                const lbBadges = item.user ? (userBadges[item.user.id] || []) : [];
 
                 return (
                   <div
@@ -276,7 +283,15 @@ function ActivityFeed() {
                       <div className="feed-header">
                         <span className="feed-name">
                           {item.user?.name}
-                          {lbPos !== undefined && <span className="feed-lb-badge"><Icon name={lbPos === 0 ? 'ui_gold' : lbPos === 1 ? 'ui_silver' : 'ui_bronze'} size={12} /></span>}
+                          {lbBadges.length > 0 && (
+                            <span className="feed-lb-badges">
+                              {lbBadges.map((b, i) => (
+                                <span key={i} className="feed-lb-badge" title={`Top 3 ${b.category}`}>
+                                  <Icon name={b.medal} size={10} /><Icon name={b.category} size={8} />
+                                </span>
+                              ))}
+                            </span>
+                          )}
                           {itemRank && <span className="feed-rank-badge"><Icon name={itemRank.emoji} size={14} /></span>}
                         </span>
                         <span className="feed-time">{formatTimeAgo(new Date(item.date))}</span>

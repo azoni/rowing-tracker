@@ -4,6 +4,21 @@ import { useApp } from '../context/AppContext';
 import { formatMeters } from '../utils';
 import { ACHIEVEMENTS } from '../constants';
 
+const PAGE_SIZE = 12;
+
+const CATEGORIES = [
+  { key: 'all', label: 'All' },
+  { key: 'distance', label: 'Distance' },
+  { key: 'sessions', label: 'Sessions' },
+  { key: 'streaks', label: 'Streaks' },
+  { key: 'time', label: 'Time' },
+  { key: 'calories', label: 'Calories' },
+  { key: 'pace', label: 'Pace' },
+  { key: 'habits', label: 'Habits' },
+  { key: 'fun', label: 'Fun' },
+  { key: 'milestones', label: 'Milestones' },
+];
+
 function StatsTab() {
   const {
     currentUser, isAdmin,
@@ -15,19 +30,24 @@ function StatsTab() {
   } = useApp();
 
   const [achievementFilter, setAchievementFilter] = React.useState('all');
+  const [categoryFilter, setCategoryFilter] = React.useState('all');
+  const [page, setPage] = React.useState(0);
 
   const filteredAchievements = ACHIEVEMENTS
     .filter(achievement => {
-      if (achievementFilter === 'all') return true;
-      const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
-      if (achievementFilter === 'completed') return unlocked;
-      if (achievementFilter === 'locked') return !unlocked;
-      if (achievementFilter === 'incomplete') {
-        if (unlocked) return false;
-        // "Almost There" — only show if some progress
-        const progress = getAchievementProgress(currentUser.uid, achievement);
-        return progress.current > 0;
+      // Status filter
+      if (achievementFilter !== 'all') {
+        const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
+        if (achievementFilter === 'completed' && !unlocked) return false;
+        if (achievementFilter === 'locked' && unlocked) return false;
+        if (achievementFilter === 'incomplete') {
+          if (unlocked) return false;
+          const progress = getAchievementProgress(currentUser.uid, achievement);
+          if (progress.current <= 0) return false;
+        }
       }
+      // Category filter
+      if (categoryFilter !== 'all' && achievement.category !== categoryFilter) return false;
       return true;
     })
     .sort((a, b) => {
@@ -41,6 +61,9 @@ function StatsTab() {
       return 0;
     });
 
+  const totalPages = Math.ceil(filteredAchievements.length / PAGE_SIZE) || 1;
+  const pageItems = filteredAchievements.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   return (
     <section className="more-section">
       <h2>Achievements & More</h2>
@@ -49,9 +72,11 @@ function StatsTab() {
       <div className="achievements-full-section">
         <h3><Icon name="ui_medal" size={18} /> {currentUser ? 'Your Achievements' : 'Achievements'}
           {currentUser && (
-            <span className="achievements-count-inline"> {achievementFilter !== 'all' ? `Showing ${filteredAchievements.length} of ${ACHIEVEMENTS.length}` : `${getUserAchievements(currentUser.uid).length}/${ACHIEVEMENTS.length}`}</span>
+            <span className="achievements-count-inline"> {getUserAchievements(currentUser.uid).length}/{ACHIEVEMENTS.length}</span>
           )}
         </h3>
+
+        {/* Status filters */}
         <div className="achievement-filters">
           {[
             { key: 'all', label: 'All' },
@@ -62,14 +87,29 @@ function StatsTab() {
             <button
               key={f.key}
               className={`achievement-filter-btn ${achievementFilter === f.key ? 'active' : ''}`}
-              onClick={() => { setAchievementFilter(f.key); }}
+              onClick={() => { setAchievementFilter(f.key); setPage(0); }}
             >
               {f.label}
             </button>
           ))}
         </div>
+
+        {/* Category filters */}
+        <div className="achievement-category-filters">
+          {CATEGORIES.map(c => (
+            <button
+              key={c.key}
+              className={`achievement-category-btn ${categoryFilter === c.key ? 'active' : ''}`}
+              onClick={() => { setCategoryFilter(c.key); setPage(0); }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Achievement grid */}
         <div className="achievements-grid-full">
-          {filteredAchievements.map((achievement) => {
+          {pageItems.map((achievement) => {
             const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
             const progress = currentUser ? getAchievementProgress(currentUser.uid, achievement) : { current: 0, target: 1 };
             const unlockedAchievement = currentUser ? getUserAchievements(currentUser.uid).find(a => a.id === achievement.id) : null;
@@ -97,6 +137,15 @@ function StatsTab() {
               </div>
             );
           })}
+        </div>
+
+        {/* Pagination */}
+        <div className="achievements-pagination">
+          <button className="achievements-page-btn" onClick={() => setPage(p => p - 1)} disabled={page === 0}>← Prev</button>
+          <span className="achievements-page-info">
+            {filteredAchievements.length > 0 ? `${page + 1} / ${totalPages}` : 'No matches'}
+          </span>
+          <button className="achievements-page-btn" onClick={() => setPage(p => p + 1)} disabled={page + 1 >= totalPages}>Next →</button>
         </div>
       </div>
 

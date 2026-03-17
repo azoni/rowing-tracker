@@ -2390,13 +2390,24 @@ function App() {
     if (!isAdmin) return;
     try {
       if (itemType === 'row') {
-        // Row items come from entries collection — use existing delete
+        // Row items come from entries collection
         const entry = entries.find(e => e.id === itemId);
         if (entry) {
           await handleDeleteEntry(itemId, entry.meters);
         }
+      } else if (['group_created', 'group_joined', 'challenge_created', 'admin_transferred', 'row_completed', 'distance_record'].includes(itemType)) {
+        // These come from the activities collection
+        await deleteDoc(doc(db, 'activities', itemId));
+      } else if (itemType === 'achievement' || itemType === 'rank' || itemType === 'join') {
+        // These are derived from user profile data — can't delete directly
+        // Try activities collection first (some may be logged there too)
+        try {
+          await deleteDoc(doc(db, 'activities', itemId));
+        } catch {
+          showToast('This item is derived from profile data and cannot be deleted.', 'info');
+        }
       } else {
-        // Activities, achievements, rank events — delete from activities collection
+        // Generic fallback — try activities collection
         await deleteDoc(doc(db, 'activities', itemId));
       }
     } catch (error) {

@@ -2997,20 +2997,42 @@ input[type="number"] {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding-right: 4px;
 }
 
-.achievements-grid-full::-webkit-scrollbar {
-  width: 4px;
+.achievements-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
 }
-.achievements-grid-full::-webkit-scrollbar-track {
+
+.achievements-page-btn {
   background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.achievements-grid-full::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 2px;
+
+.achievements-page-btn:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.achievements-page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.achievements-page-info {
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .achievement-card {
@@ -3618,11 +3640,21 @@ input[type="number"] {
 .feed-item-row.row-tier-platinum { border-left: 3px solid rgba(162, 155, 254, 0.5); }
 .feed-item-row.row-tier-diamond { border-left: 3px solid rgba(0, 212, 170, 0.5); }
 
-/* Leaderboard position badge next to name */
+/* Leaderboard position badges next to name */
+.feed-lb-badges {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+
 .feed-lb-badge {
   display: inline-flex;
-  margin-left: 2px;
-  vertical-align: middle;
+  align-items: center;
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 1px 3px;
 }
 
 /* Tier-specific glowing borders and backgrounds */

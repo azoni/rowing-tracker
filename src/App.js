@@ -136,7 +136,7 @@ function App() {
   const [feedPage, setFeedPage] = useState(1);
   const FEED_PAGE_SIZE = 15;
   const [achievementsPage, setAchievementsPage] = useState(0);
-  const ACHIEVEMENTS_PAGE_SIZE = 8;
+  const ACHIEVEMENTS_PAGE_SIZE = 12;
   const [, setVerificationStatus] = useState(null);
   const [showPhotoModal, setShowPhotoModal] = useState(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);

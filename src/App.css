@@ -2235,6 +2235,44 @@ input[type="number"] {
   color: var(--text-primary);
 }
 
+.achievement-category-filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.achievement-category-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.achievement-category-btn {
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.achievement-category-btn.active {
+  background: var(--accent-secondary, var(--accent-primary));
+  color: var(--bg-dark);
+  border-color: var(--accent-secondary, var(--accent-primary));
+  font-weight: 600;
+}
+
+.achievement-category-btn:hover:not(.active) {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
 .achievements-pagination {
   display: flex;
   align-items: center;

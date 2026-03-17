@@ -16,12 +16,44 @@ function StatsTab() {
   } = useApp();
 
   const [achievementFilter, setAchievementFilter] = React.useState('all');
+  const [categoryFilter, setCategoryFilter] = React.useState('all');
 
-  const filteredAchievements = ACHIEVEMENTS.filter(achievement => {
-    if (achievementFilter === 'all') return true;
-    const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
-    return achievementFilter === 'completed' ? unlocked : !unlocked;
-  });
+  const CATEGORIES = [
+    { key: 'all', label: 'All' },
+    { key: 'distance', label: 'Distance' },
+    { key: 'sessions', label: 'Sessions' },
+    { key: 'streaks', label: 'Streaks' },
+    { key: 'time', label: 'Time' },
+    { key: 'calories', label: 'Calories' },
+    { key: 'pace', label: 'Pace' },
+    { key: 'habits', label: 'Habits' },
+    { key: 'fun', label: 'Fun' },
+    { key: 'milestones', label: 'Milestones' },
+  ];
+
+  const filteredAchievements = ACHIEVEMENTS
+    .filter(achievement => {
+      // Status filter
+      if (achievementFilter !== 'all') {
+        const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
+        if (achievementFilter === 'completed' && !unlocked) return false;
+        if (achievementFilter === 'incomplete' && unlocked) return false;
+      }
+      // Category filter
+      if (categoryFilter !== 'all' && achievement.category !== categoryFilter) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      // When viewing incomplete, sort by closest to completion first
+      if (achievementFilter === 'incomplete' && currentUser) {
+        const progA = getAchievementProgress(currentUser.uid, a);
+        const progB = getAchievementProgress(currentUser.uid, b);
+        const pctA = progA.target > 0 ? progA.current / progA.target : 0;
+        const pctB = progB.target > 0 ? progB.current / progB.target : 0;
+        return pctB - pctA; // Highest progress first
+      }
+      return 0; // Keep original order otherwise
+    });
 
   return (
     <section className="more-section">
@@ -38,7 +70,7 @@ function StatsTab() {
           {[
             { key: 'all', label: 'All' },
             { key: 'completed', label: 'Completed' },
-            { key: 'incomplete', label: 'Incomplete' },
+            { key: 'incomplete', label: 'Almost There' },
           ].map(f => (
             <button
               key={f.key}
@@ -46,6 +78,17 @@ function StatsTab() {
               onClick={() => { setAchievementFilter(f.key); setAchievementsPage(0); }}
             >
               {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="achievement-category-filters">
+          {CATEGORIES.map(c => (
+            <button
+              key={c.key}
+              className={`achievement-category-btn ${categoryFilter === c.key ? 'active' : ''}`}
+              onClick={() => { setCategoryFilter(c.key); setAchievementsPage(0); }}
+            >
+              {c.label}
             </button>
           ))}
         </div>

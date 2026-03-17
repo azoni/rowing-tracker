@@ -521,12 +521,12 @@ exports.adminDeleteFeedItem = functions.https.onCall(async (data, context) => {
     if (itemType === 'row') {
       const entryRef = db.collection('entries').doc(itemId);
       const entrySnap = await entryRef.get();
-      if (entrySnap.exists()) {
+      if (entrySnap.exists) {
         const entry = entrySnap.data();
         // Revert user stats
         const userRef = db.collection('users').doc(entry.userId);
         const userSnap = await userRef.get();
-        if (userSnap.exists()) {
+        if (userSnap.exists) {
           const user = userSnap.data();
           await userRef.update({
             totalMeters: Math.max(0, (user.totalMeters || 0) - (entry.meters || 0)),
@@ -543,7 +543,7 @@ exports.adminDeleteFeedItem = functions.https.onCall(async (data, context) => {
     // Activities collection
     const activityRef = db.collection('activities').doc(itemId);
     const activitySnap = await activityRef.get();
-    if (activitySnap.exists()) {
+    if (activitySnap.exists) {
       await activityRef.delete();
       return { success: true, message: 'Activity deleted' };
     }
@@ -555,7 +555,7 @@ exports.adminDeleteFeedItem = functions.https.onCall(async (data, context) => {
       const userId = parts.slice(1, -1).join('-');
       const userRef = db.collection('users').doc(userId);
       const userSnap = await userRef.get();
-      if (userSnap.exists() && userSnap.data().rankHistory && !isNaN(rankIndex)) {
+      if (userSnap.exists && userSnap.data().rankHistory && !isNaN(rankIndex)) {
         const history = [...userSnap.data().rankHistory];
         if (rankIndex < history.length) {
           history.splice(rankIndex, 1);
@@ -572,7 +572,7 @@ exports.adminDeleteFeedItem = functions.https.onCall(async (data, context) => {
       const userId = parts.slice(1, -3).join('-');
       const userRef = db.collection('users').doc(userId);
       const userSnap = await userRef.get();
-      if (userSnap.exists() && userSnap.data().unlockedAchievements) {
+      if (userSnap.exists && userSnap.data().unlockedAchievements) {
         const updated = { ...userSnap.data().unlockedAchievements };
         let removed = false;
         Object.entries(updated).forEach(([achievementId, dateStr]) => {

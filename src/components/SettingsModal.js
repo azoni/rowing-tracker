@@ -64,18 +64,6 @@ function SettingsModal() {
                 <span>Username</span>
                 <span className="settings-username">@{userProfile.username || 'not set'}</span>
               </div>
-              <div className="settings-info-row">
-                <span>Email</span>
-                <span>{currentUser?.email}</span>
-              </div>
-              <div className="settings-info-row">
-                <span>Total Meters</span>
-                <span>{userProfile.totalMeters?.toLocaleString() || 0}m</span>
-              </div>
-              <div className="settings-info-row">
-                <span>Sessions</span>
-                <span>{userProfile.uploadCount || 0}</span>
-              </div>
             </div>
 
             {/* Change Username */}

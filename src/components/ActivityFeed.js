@@ -194,10 +194,7 @@ function ActivityFeed() {
         {[
           { key: 'all', label: 'All' },
           { key: 'row', label: <><Icon name="ui_rowing" size={14} /> Rows</> },
-          { key: 'distance_record', label: <><Icon name="ui_records" size={14} /> Records</> },
-          { key: 'achievement', label: <><Icon name="ui_trophy" size={14} /> Awards</> },
-          { key: 'rank', label: <><Icon name="ui_streak" size={14} /> Ranks</> },
-          { key: 'join', label: <><Icon name="ui_celebrate" size={14} /> Joined</> },
+          { key: 'milestone', label: <><Icon name="ui_trophy" size={14} /> Milestones</> },
         ].map(f => (
           <button
             key={f.key}

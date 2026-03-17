@@ -3010,7 +3010,11 @@ function App() {
     }
 
     if (typeFilter && typeFilter !== 'all') {
-      feedItems = feedItems.filter(item => item.type === typeFilter);
+      if (typeFilter === 'milestone') {
+        feedItems = feedItems.filter(item => ['achievement', 'rank', 'distance_record', 'join', 'group_created', 'group_joined', 'challenge_created'].includes(item.type));
+      } else {
+        feedItems = feedItems.filter(item => item.type === typeFilter);
+      }
     }
 
     const endIndex = page * FEED_PAGE_SIZE;

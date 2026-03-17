@@ -16,7 +16,7 @@ function EntryForm() {
     aiMachineType, setAiMachineType,
     customMachineName, setCustomMachineName,
     validationError,
-    getWeeklyStats, getPersonalRecord,
+    getPersonalRecord,
     setShowRankProgressModal,
   } = useApp();
 
@@ -222,16 +222,14 @@ function EntryForm() {
             </div>
             <span className="rank-tap-hint">Tap for all ranks →</span>
           </div>
-          <div className="weekly-stats-mini">
-            <div className="weekly-stat">
-              <span className="weekly-stat-value">{formatMeters(getWeeklyStats(currentUser?.uid).meters)}</span>
-              <span className="weekly-stat-label">this week</span>
+          <div className="user-stats-compact">
+            <div className="compact-stat">
+              <span className="compact-stat-value">{formatMeters(userProfile.totalMeters)}</span>
+              <span className="compact-stat-label">total meters</span>
             </div>
-            <div className="weekly-stat">
-              <span className={`weekly-stat-change ${getWeeklyStats(currentUser?.uid).isUp ? 'up' : 'down'}`}>
-                {getWeeklyStats(currentUser?.uid).isUp ? '↑' : '↓'} {Math.abs(getWeeklyStats(currentUser?.uid).percentChange)}%
-              </span>
-              <span className="weekly-stat-label">vs last week</span>
+            <div className="compact-stat">
+              <span className="compact-stat-value">{userProfile.uploadCount || 0}</span>
+              <span className="compact-stat-label">sessions</span>
             </div>
           </div>
         </div>

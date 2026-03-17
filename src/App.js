@@ -3519,8 +3519,8 @@ function App() {
         </button>
       </nav>
 
-      {/* Group Selector */}
-      {currentUser && userProfile && (
+      {/* Group Selector — hidden for now */}
+      {false && currentUser && userProfile && (
         <div className="group-selector-container">
           <button
             className="group-selector-btn"

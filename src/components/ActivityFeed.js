@@ -267,7 +267,7 @@ function ActivityFeed() {
                 return (
                   <div
                     key={item.id}
-                    className={`feed-item feed-item-${item.type} ${item.type === 'rank' ? `tier-${getRankTier(item.rank?.rank)}` : ''} ${item.type === 'row' ? `row-tier-${itemTier}` : ''} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
+                    className={`feed-item feed-item-${item.type} ${item.type === 'rank' ? `tier-${getRankTier(item.rank?.rank)}` : ''} ${(item.type === 'row' || item.type === 'achievement') ? `row-tier-${itemTier}` : ''} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
                     onClick={() => item.user && setShowUserProfileModal(item.user)}
                   >
                     <div className="feed-avatar">

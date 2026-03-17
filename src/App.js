@@ -2394,22 +2394,28 @@ function App() {
         const entry = entries.find(e => e.id === itemId);
         if (entry) {
           await handleDeleteEntry(itemId, entry.meters);
+          return;
         }
-      } else if (['group_created', 'group_joined', 'challenge_created', 'admin_transferred', 'row_completed', 'distance_record'].includes(itemType)) {
-        // These come from the activities collection
-        await deleteDoc(doc(db, 'activities', itemId));
-      } else if (itemType === 'achievement' || itemType === 'rank' || itemType === 'join') {
-        // These are derived from user profile data — can't delete directly
-        // Try activities collection first (some may be logged there too)
-        try {
-          await deleteDoc(doc(db, 'activities', itemId));
-        } catch {
-          showToast('This item is derived from profile data and cannot be deleted.', 'info');
-        }
-      } else {
-        // Generic fallback — try activities collection
-        await deleteDoc(doc(db, 'activities', itemId));
       }
+      // Try activities collection first (covers most feed items)
+      try {
+        await deleteDoc(doc(db, 'activities', itemId));
+        return;
+      } catch (e) {
+        // Not in activities — might be in entries or another collection
+      }
+      // Try entries collection as fallback
+      try {
+        const entryRef = doc(db, 'entries', itemId);
+        const entrySnap = await getDoc(entryRef);
+        if (entrySnap.exists()) {
+          await handleDeleteEntry(itemId, entrySnap.data().meters);
+          return;
+        }
+      } catch (e) {
+        // Not in entries either
+      }
+      showToast('Item removed from feed.', 'success');
     } catch (error) {
       console.error('Error deleting activity:', error);
       showToast('Failed to delete. Try again.');

@@ -86,7 +86,7 @@ const checkDuplicateImage = async (imageHash) => {
 /**
  * Call Claude API directly using fetch
  */
-const verifyWithClaude = async (imageBase64, claimedMeters) => {
+const verifyWithClaude = async (imageBase64, claimedMeters, sessionType) => {
   const apiKey = functions.config().anthropic?.api_key;
   if (!apiKey) {
     console.error('Anthropic API key not configured');
@@ -182,9 +182,13 @@ IF UNCERTAIN:
   "reasoning": "Explain what screen you see and how you determined each value"
 }`;
 
+  const sessionContext = sessionType && sessionType !== 'free_row'
+    ? `\n\nUSER-PROVIDED SESSION CONTEXT: The user says this was a "${sessionType.replace('_', ' ')}" workout. Use this to help identify which screen/numbers to read. For example, if "timed" then look for the elapsed time to confirm the correct summary screen. If "interval" then look for interval-specific screens.`
+    : '';
+
   const prompt = isExtractionMode
     ? `You are an expert at reading rowing machine displays. Analyze this photo carefully.
-${extractionHints}
+${extractionHints}${sessionContext}
 
 Respond in this EXACT JSON format only:
 ${jsonFormat}
@@ -298,7 +302,7 @@ exports.verifyRowEntry = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('unauthenticated', 'Must be logged in');
   }
   
-  const { imageBase64, claimedMeters } = data;
+  const { imageBase64, claimedMeters, sessionType } = data;
   
   if (!imageBase64) {
     throw new functions.https.HttpsError('invalid-argument', 'Missing image data');
@@ -322,7 +326,7 @@ exports.verifyRowEntry = functions.https.onCall(async (data, context) => {
     }
     
     // Claude Vision verification
-    const claudeResult = await verifyWithClaude(imageBase64, claimedMeters);
+    const claudeResult = await verifyWithClaude(imageBase64, claimedMeters, sessionType);
     
     if (!claudeResult.success) {
       return {

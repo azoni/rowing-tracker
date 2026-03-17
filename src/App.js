@@ -115,6 +115,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('feed'); // Will be set to 'home' after auth
   const [showLogModal, setShowLogModal] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
+  const [sessionType, setSessionType] = useState('free_row');
   const [validationError, setValidationError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -1945,7 +1946,8 @@ function App() {
         const verifyRowEntry = httpsCallable(functions, 'verifyRowEntry');
         const result = await verifyRowEntry({
           imageBase64,
-          claimedMeters: 0, // We don't know yet, Claude will extract
+          claimedMeters: 0,
+          sessionType: sessionType,
         });
         claudeResult = result.data;
         
@@ -2141,6 +2143,7 @@ function App() {
           imageHash: imageHash,
         },
         imageUrl: imageUrl,
+        sessionType: sessionType || 'free_row',
         machineType: machineInfo?.type || null,
         machineCustomName: machineInfo?.customName || null,
       });
@@ -2414,6 +2417,7 @@ function App() {
       setEditableCalories('');
       setAiMachineType('');
       setCustomMachineName('');
+      setSessionType('free_row');
       setValidationError('');
       setVerificationStatus(null);
       // Close log modal and show share
@@ -3587,6 +3591,7 @@ function App() {
 
     // Machine
     aiMachineType, setAiMachineType,
+    sessionType, setSessionType,
     customMachineName, setCustomMachineName,
 
     // Theme

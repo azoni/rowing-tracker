@@ -16,6 +16,7 @@ function EntryForm() {
     isSubmittingManual, handleManualSubmit,
     aiMachineType, setAiMachineType,
     customMachineName, setCustomMachineName,
+    sessionType, setSessionType,
     validationError,
   } = useApp();
 
@@ -26,6 +27,25 @@ function EntryForm() {
       <div className="log-modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={() => setShowLogModal(false)}>✕</button>
         <h2>Log Your Row</h2>
+
+        {/* Session Type Selector */}
+        <div className="session-type-selector">
+          <label className="session-type-label">Workout Type</label>
+          <div className="session-type-pills">
+            {[
+              { key: 'free_row', label: 'Free Row' },
+              { key: 'timed', label: 'Timed' },
+              { key: 'distance', label: 'Distance' },
+              { key: 'interval', label: 'Interval' },
+            ].map(t => (
+              <button
+                key={t.key}
+                className={`session-type-pill ${sessionType === t.key ? 'active' : ''}`}
+                onClick={() => setSessionType(t.key)}
+              >{t.label}</button>
+            ))}
+          </div>
+        </div>
 
         <div className="upload-buttons-row">
           <label className="upload-button">

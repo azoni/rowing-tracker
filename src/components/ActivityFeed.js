@@ -303,6 +303,9 @@ function ActivityFeed() {
                             rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span>
                             {item.time && <span className="feed-time-cal"> in {formatTimeDisplay(item.time)}</span>}
                             {item.calories && <span className="feed-time-cal"> • {item.calories} cal</span>}
+                            {item.sessionType && item.sessionType !== 'free_row' && (
+                              <span className="feed-session-type">{item.sessionType.replace('_', ' ')}</span>
+                            )}
                             {item.verificationStatus === 'verified' && <span className="verification-badge verified" title="Verified with photo"><Icon name="ui_check" size={12} /></span>}
                             {item.verificationStatus === 'pending_review' && <span className="verification-badge pending" title="Pending Review"><Icon name="ui_pending" size={12} /></span>}
                             {(item.verificationStatus === 'unverified' || !item.verificationStatus) && <span className="verification-badge unverified" title="No photo - unverified"><Icon name="ui_unverified" size={12} /></span>}

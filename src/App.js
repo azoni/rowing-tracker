@@ -3499,7 +3499,6 @@ function App() {
       )}
 
       <Header />
-      <WorldProgress />
 
       {/* Tabs */}
       <nav className="tabs">

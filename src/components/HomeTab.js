@@ -1,5 +1,6 @@
 import React from 'react';
 import Icon from './Icon';
+import WorldProgress from './WorldProgress';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import { getUserRank, getNextRank, ACHIEVEMENTS, TIER_COLORS } from '../constants';
@@ -40,6 +41,8 @@ function HomeTab() {
 
   return (
     <section className="home-section">
+      <WorldProgress />
+
       {/* Daily Quote */}
       {dailyQuote && (
         <div className="daily-quote">

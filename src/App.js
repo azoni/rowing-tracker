@@ -4,13 +4,13 @@ import html2canvas from 'html2canvas';
 import confetti from 'canvas-confetti';
 import exifr from 'exifr';
 import { db, auth, googleProvider, functions } from './firebase';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
+import {
+  collection,
+  doc,
+  setDoc,
   getDoc,
-  onSnapshot, 
-  query, 
+  onSnapshot,
+  query,
   orderBy,
   serverTimestamp,
   where,
@@ -36,28 +36,39 @@ import {
   getUserRank,
   getNextRank,
   ACHIEVEMENTS,
-  ROWING_MACHINES,
   normalizeMachineName,
   getMachineName,
   QUOTES,
   MILESTONES,
-  getMilestoneIndex,
-  getNearestCheckpoints,
-  CHANGELOG,
   THEMES,
   DEFAULT_THEME,
-  THEME_LIST
 } from './constants';
 
 // Import utilities
 import {
   formatMeters,
-  formatTime,
-  formatTimeDisplay,
-  formatTimeAgo,
   parseTimeInput,
-  calculatePace
 } from './utils';
+
+// Import context
+import { AppContext } from './context/AppContext';
+
+// Import components
+import Header from './components/Header';
+import WorldProgress from './components/WorldProgress';
+import EntryForm from './components/EntryForm';
+import ActivityFeed from './components/ActivityFeed';
+import Leaderboard from './components/Leaderboard';
+import StatsTab from './components/StatsTab';
+import ConfirmEntryModal from './components/ConfirmEntryModal';
+import ShareCardModal from './components/ShareCardModal';
+import SettingsModal from './components/SettingsModal';
+import AdminPanel from './components/AdminPanel';
+import UserProfileModal from './components/UserProfileModal';
+import ChallengeDetailModal from './components/ChallengeDetailModal';
+import WrappedModal from './components/WrappedModal';
+import { CreateGroupModal, JoinGroupModal, InviteUserModal, ManageMembersModal, CreateChallengeModal } from './components/GroupModals';
+import { PRModal, BustedModal, JourneyModal, AchievementModal, PhotoModal, InstallPrompt, WelcomeModal, ChangelogModal } from './components/SmallModals';
 
 function App() {
   // Log visit once per session
@@ -913,11 +924,14 @@ function App() {
         createdAt: serverTimestamp(),
         ...data
       });
-      // Fire-and-forget to MCP ecosystem feed
+      // Fire-and-forget to ecosystem feed
+      const title = type === 'row_completed'
+        ? `Rowed ${data.meters || '?'}m`
+        : (data.groupName || data.challengeName || type);
       fetch('/.netlify/functions/log-activity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, title: (data.groupName || data.challengeName || type).slice(0, 120) }),
+        body: JSON.stringify({ type, title: title.slice(0, 120) }),
       }).catch(() => {});
     } catch (error) {
       console.error('Error logging activity:', error);
@@ -3195,6 +3209,153 @@ function App() {
   const totalMeters = getTotalMeters();
   const worldProgress = (totalMeters / WORLD_CIRCUMFERENCE) * 100;
 
+  // Build context value with all state and handlers
+  const contextValue = {
+    // Auth
+    currentUser, userProfile, authLoading, isAdmin,
+    handleSignIn, handleSignOut, handleCreateProfile,
+    displayName, setDisplayName,
+    generateUsernameFromName,
+
+    // Core data
+    users, entries, isLoading,
+
+    // Processing
+    isProcessing, setIsProcessing, processingStatus, setProcessingStatus,
+    capturedImage, setCapturedImage,
+    detectedMeters, setDetectedMeters, detectedTime, setDetectedTime, detectedCalories, setDetectedCalories,
+    editableMeters, setEditableMeters, editableTime, setEditableTime, editableCalories, setEditableCalories,
+    manualMeters, setManualMeters, manualTime, setManualTime, manualCalories, setManualCalories,
+    isSubmittingManual,
+    validationError, setValidationError,
+    setVerificationStatus,
+
+    // Image upload
+    handleImageUpload, handleManualSubmit, handleConfirmEntry,
+    fileInputRef, galleryInputRef, canvasRef,
+
+    // Entry management
+    handleDeleteEntry, deletingEntryId,
+
+    // Tabs & Navigation
+    activeTab, setActiveTab,
+    feedPage, setFeedPage, FEED_PAGE_SIZE,
+    feedSearchQuery, setFeedSearchQuery,
+    feedTypeFilter, setFeedTypeFilter,
+    achievementsPage, setAchievementsPage, ACHIEVEMENTS_PAGE_SIZE,
+
+    // Modals
+    showConfirmModal, setShowConfirmModal,
+    showSetupModal, setShowSetupModal,
+    showShareModal, setShowShareModal,
+    showBustedModal, setShowBustedModal,
+    showPRModal, setShowPRModal,
+    showAchievementModal, setShowAchievementModal,
+    showJourneyModal, setShowJourneyModal,
+    showSettingsModal, setShowSettingsModal,
+    showInstallPrompt, setShowInstallPrompt,
+    showPhotoModal, setShowPhotoModal,
+    showAdminPanel, setShowAdminPanel,
+    showUserProfileModal, setShowUserProfileModal,
+    showRankProgressModal, setShowRankProgressModal,
+    showSessionHistory, setShowSessionHistory,
+    showWrapped, setShowWrapped,
+    wrappedSlide, setWrappedSlide,
+    showWelcomeModal, setShowWelcomeModal,
+    showChangelogModal, setShowChangelogModal,
+    showNotifications, setShowNotifications,
+    showGroupSelector, setShowGroupSelector,
+    showCreateGroupModal, setShowCreateGroupModal,
+    showJoinGroupModal, setShowJoinGroupModal,
+    showCreateChallengeModal, setShowCreateChallengeModal,
+    showChallengeDetail, setShowChallengeDetail,
+    showTimeTrialModal, setShowTimeTrialModal,
+    showInviteUserModal, setShowInviteUserModal,
+    showManageMembersModal, setShowManageMembersModal,
+
+    // Share
+    shareCardRef, shareImageUrl, lastSessionMeters,
+    linkCopied, isCopying, handleCopyLink, handleCloseShare,
+
+    // Notifications
+    notifications, unreadNotificationCount,
+    markNotificationRead, markAllNotificationsRead,
+
+    // Feed interactions
+    REACTION_EMOJIS,
+    getReactionCounts, hasUserReacted, toggleReaction,
+    getItemComments, commentsByItem,
+    expandedComments, setExpandedComments,
+    showReactionPicker, setShowReactionPicker,
+    newComment, setNewComment,
+    replyingTo, setReplyingTo,
+    addComment, deleteComment,
+
+    // Groups & Challenges
+    groups, selectedGroupId, setSelectedGroupId,
+    challenges,
+    getSelectedGroup, isGroupAdmin,
+    handleCreateGroup, handleJoinGroup, handleLeaveGroup,
+    handleRemoveMember, handleTransferAdmin, handleRemoveAdmin,
+    handleCreateChallenge, handleSubmitTimeTrial,
+    newGroupName, setNewGroupName,
+    newGroupDescription, setNewGroupDescription,
+    joinGroupCode, setJoinGroupCode,
+    groupError, setGroupError,
+    isCreatingGroup, isJoiningGroup,
+    newChallengeName, setNewChallengeName,
+    newChallengeType, setNewChallengeType,
+    newChallengeTarget, setNewChallengeTarget,
+    newChallengeStartDate, setNewChallengeStartDate,
+    newChallengeEndDate, setNewChallengeEndDate,
+    isCreatingChallenge,
+    timeTrialTime, setTimeTrialTime,
+    timeTrialImage, setTimeTrialImage,
+    isSubmittingTimeTrial,
+    inviteUsername, setInviteUsername,
+    searchUsers,
+    getChallengeStatus, getChallengeProgress, getChallengeLeaderboard,
+
+    // Leaderboards & Stats
+    leaderboardTab, setLeaderboardTab,
+    getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard, getAchievementsLeaderboard,
+    calculateStreak, calculateLongestStreak, calculateWeeklyAverage,
+    getPersonalRecord, getTotalDaysRowed, getFirstRowDate,
+    getUserAchievements, getAchievementProgress,
+    getUserSessionHistory, getActivityFeed, getWeeklyStats, getWrappedStats,
+
+    // Machine
+    aiMachineType, setAiMachineType,
+    customMachineName, setCustomMachineName,
+
+    // Theme
+    currentTheme, setCurrentTheme,
+
+    // Profile
+    profilePicInputRef, handleProfilePicUpload, isUploadingPhoto,
+    newUsername, handleUsernameChange, usernameStatus,
+
+    // Admin
+    pendingReviews, adminStats, loadPendingReviews,
+    reviewingEntry, setReviewingEntry,
+    adjustedMeters, setAdjustedMeters,
+    reviewNote, setReviewNote,
+    handleReviewEntry,
+
+    // PWA
+    deferredPrompt, isIOS, isStandalone,
+    handleInstallClick, dismissInstallPrompt,
+
+    // Misc
+    dailyQuote, showToast,
+    wrappedDismissed, setWrappedDismissed,
+    wrappedCardRef,
+    totalMeters, milestoneProgress, worldProgress,
+    showAiFeedbackToast, toasts, setToasts,
+    recentMilestone, setRecentMilestone,
+    handleFooterTap,
+  };
+
   // Auth loading state
   if (authLoading) {
     return (
@@ -3221,6 +3382,7 @@ function App() {
   }
 
   return (
+    <AppContext.Provider value={contextValue}>
     <div className="app">
       <canvas ref={canvasRef} style={{ display: 'none' }} />
 
@@ -3236,140 +3398,8 @@ function App() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="header">
-        <div className="header-top">
-          <h1>ROW CREW</h1>
-          <div className="user-menu">
-            {currentUser && userProfile ? (
-              <>
-                {isAdmin && (
-                  <button 
-                    className="admin-btn-header" 
-                    onClick={() => { setShowAdminPanel(true); loadPendingReviews(); }}
-                    title="Admin Panel"
-                  >
-                    🛡️
-                  </button>
-                )}
-                
-                {/* Notification bell */}
-                <div className="notification-wrapper">
-                  <button 
-                    className={`notification-btn ${showNotifications ? 'active' : ''}`}
-                    onClick={() => setShowNotifications(!showNotifications)}
-                    title="Notifications"
-                  >
-                    🔔
-                    {unreadNotificationCount > 0 && (
-                      <span className="notification-badge">{unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}</span>
-                    )}
-                  </button>
-                  
-                  {showNotifications && (
-                    <>
-                      <div className="notification-backdrop" onClick={() => setShowNotifications(false)} />
-                      <div className="notification-dropdown">
-                        <div className="notification-header">
-                          <span>Notifications</span>
-                          {unreadNotificationCount > 0 && (
-                            <button onClick={markAllNotificationsRead}>Mark all read</button>
-                          )}
-                        </div>
-                        <div className="notification-list">
-                          {notifications.length === 0 ? (
-                            <div className="notification-empty">No notifications yet</div>
-                          ) : (
-                            notifications.slice(0, 20).map(notif => {
-                              const notifDate = notif.createdAt?.toDate ? notif.createdAt.toDate() : new Date(notif.createdAt);
-                              return (
-                                <div 
-                                  key={notif.id} 
-                                  className={`notification-item ${!notif.read ? 'unread' : ''}`}
-                                  onClick={() => {
-                                    markNotificationRead(notif.id);
-                                    setExpandedComments(prev => ({ ...prev, [notif.targetId]: true }));
-                                    setActiveTab('feed');
-                                    setShowNotifications(false);
-                                  }}
-                                >
-                                  <div className="notification-content">
-                                    <span className="notification-from">{notif.fromUserName}</span>
-                                    <span className="notification-action">
-                                      {notif.type === 'reply' ? ' replied: ' : ' commented: '}
-                                    </span>
-                                    <span className="notification-text">"{notif.commentText}"</span>
-                                  </div>
-                                  <div className="notification-time">{formatTimeAgo(notifDate)}</div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                {userProfile.photoURL ? (
-                  <img src={userProfile.photoURL} alt="" className="user-avatar" onClick={() => setShowSettingsModal(true)} />
-                ) : (
-                  <div className="user-avatar user-avatar-placeholder" onClick={() => setShowSettingsModal(true)}>
-                    {userProfile.name?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <button className="info-btn" onClick={() => setShowWelcomeModal(true)} title="About Row Crew">ℹ️</button>
-                <button className="signin-header-btn" onClick={handleSignIn}>Sign In</button>
-              </>
-            )}
-          </div>
-        </div>
-        <p className="subtitle">Row Around The World Together</p>
-      </header>
-
-      {/* World Progress */}
-      <section className="world-progress clickable" onClick={() => setShowJourneyModal(true)}>
-        <div className="world-stats">
-          <div className="world-total">
-            <span className="world-number">{formatMeters(totalMeters)}</span>
-            <span className="world-label">meters rowed</span>
-          </div>
-          <div className="milestone-count">
-            <span className="milestone-count-number">{getMilestoneIndex(totalMeters)}/{MILESTONES.length}</span>
-            <span className="milestone-count-label">milestones</span>
-          </div>
-        </div>
-        {milestoneProgress.next ? (() => {
-          const prevMeters = milestoneProgress.current?.meters || 0;
-          const segmentProgress = ((totalMeters - prevMeters) / (milestoneProgress.next.meters - prevMeters)) * 100;
-          return (
-            <>
-              <div className="progress-bar-container">
-                <div className="progress-bar" style={{ width: `${Math.min(segmentProgress, 100)}%` }} />
-              </div>
-              <p className="next-milestone">
-                {milestoneProgress.next.emoji} Next: {milestoneProgress.next.label} — {formatMeters(milestoneProgress.next.meters - totalMeters)} to go!
-              </p>
-            </>
-          );
-        })() : (
-          <div className="progress-bar-container">
-            <div className="progress-bar" style={{ width: '100%' }} />
-          </div>
-        )}
-        {milestoneProgress.current && (
-          <p className="current-achievement">{milestoneProgress.current.emoji} {milestoneProgress.current.comparison}</p>
-        )}
-        <div className="world-bar-row">
-          <div className="world-bar-container">
-            <div className="world-bar" style={{ width: `${Math.min(worldProgress, 100)}%` }} />
-          </div>
-          <span className="world-bar-label">🌍 {worldProgress.toFixed(2)}%</span>
-        </div>
-      </section>
+      <Header />
+      <WorldProgress />
 
       {/* Tabs */}
       <nav className="tabs">
@@ -3392,7 +3422,7 @@ function App() {
       {/* Group Selector */}
       {currentUser && userProfile && (
         <div className="group-selector-container">
-          <button 
+          <button
             className="group-selector-btn"
             onClick={() => setShowGroupSelector(!showGroupSelector)}
           >
@@ -3407,12 +3437,12 @@ function App() {
 
           {showGroupSelector && (
             <>
-              <div 
+              <div
                 className="group-selector-backdrop"
                 onClick={() => setShowGroupSelector(false)}
               />
               <div className="group-selector-dropdown">
-              <button 
+              <button
                 className={`group-option ${!selectedGroupId ? 'active' : ''}`}
                 onClick={() => { setSelectedGroupId(null); setShowGroupSelector(false); }}
               >
@@ -3420,9 +3450,9 @@ function App() {
                 <span>Everyone</span>
                 {!selectedGroupId && <span className="check">✓</span>}
               </button>
-              
+
               {groups.map(group => (
-                <button 
+                <button
                   key={group.id}
                   className={`group-option ${selectedGroupId === group.id ? 'active' : ''}`}
                   onClick={() => { setSelectedGroupId(group.id); setShowGroupSelector(false); }}
@@ -3435,13 +3465,13 @@ function App() {
               ))}
 
               <div className="group-selector-actions">
-                <button 
+                <button
                   className="group-action-btn"
                   onClick={() => { setShowCreateGroupModal(true); setShowGroupSelector(false); }}
                 >
                   ➕ Create Group
                 </button>
-                <button 
+                <button
                   className="group-action-btn"
                   onClick={() => { setShowJoinGroupModal(true); setShowGroupSelector(false); }}
                 >
@@ -3456,1373 +3486,14 @@ function App() {
 
       {/* Main Content */}
       <main className="main-content">
-        {activeTab === 'upload' && (
-          <section className="upload-section">
-            {/* Motivational Quote */}
-            {dailyQuote && (
-              <div className="daily-quote">
-                <p className="quote-text">"{dailyQuote.text}"</p>
-                <p className="quote-author">— {dailyQuote.author}</p>
-              </div>
-            )}
-
-            <div className="upload-card">
-              <h2>Log Your Row</h2>
-              <p>Take a photo of your rowing machine display</p>
-
-              <div className="upload-buttons-row">
-                <label className="upload-button">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleImageUpload}
-                    disabled={isProcessing || !userProfile}
-                  />
-                  <span className="upload-icon">📷</span>
-                  <span>{isProcessing ? processingStatus : 'Take Photo'}</span>
-                </label>
-
-                <label className="upload-button">
-                  <input
-                    ref={galleryInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={isProcessing || !userProfile}
-                  />
-                  <span className="upload-icon">🖼️</span>
-                  <span>{isProcessing ? processingStatus : 'Upload Photo'}</span>
-                </label>
-              </div>
-
-              {isProcessing && (
-                <div className="processing-indicator">
-                  <div className="spinner" />
-                  <p>{processingStatus}</p>
-                </div>
-              )}
-
-              <div className="entry-limits">
-                <p>📏 {MIN_METERS.toLocaleString()} - {MAX_METERS.toLocaleString()} meters per entry</p>
-                <p>⏱️ {COOLDOWN_MINUTES} minute cooldown between entries</p>
-              </div>
-
-              {/* Divider */}
-              <div className="upload-divider">
-                <span>or enter manually</span>
-              </div>
-
-              {/* Manual Entry */}
-              <div className="manual-entry">
-                <div className="manual-entry-fields">
-                  <div className="manual-entry-row">
-                    <div className="manual-field manual-field-main">
-                      <label>Meters *</label>
-                      <input
-                        type="number"
-                        placeholder="2500"
-                        value={manualMeters}
-                        onChange={(e) => setManualMeters(e.target.value)}
-                        disabled={isSubmittingManual || !userProfile}
-                        min={MIN_METERS}
-                        max={MAX_METERS}
-                      />
-                    </div>
-                  </div>
-                  <div className="manual-entry-row">
-                    <div className="manual-field">
-                      <label>Time</label>
-                      <input
-                        type="text"
-                        placeholder="23:45"
-                        value={manualTime}
-                        onChange={(e) => setManualTime(e.target.value)}
-                        disabled={isSubmittingManual || !userProfile}
-                      />
-                    </div>
-                    <div className="manual-field">
-                      <label>Calories</label>
-                      <input
-                        type="number"
-                        placeholder="385"
-                        value={manualCalories}
-                        onChange={(e) => setManualCalories(e.target.value)}
-                        disabled={isSubmittingManual || !userProfile}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Machine Selection */}
-                  <div className="manual-entry-row">
-                    <div className="manual-field manual-field-full">
-                      <label>
-                        🚣 Machine
-                        {(userProfile?.defaultMachine || userProfile?.lastUsedMachine) && !aiMachineType && (
-                          <span className="manual-machine-using">
-                            {getMachineName(
-                              userProfile.defaultMachine || userProfile.lastUsedMachine, 
-                              userProfile.customMachineName || userProfile.lastUsedMachineCustomName
-                            )}
-                          </span>
-                        )}
-                      </label>
-                      {(!(userProfile?.defaultMachine || userProfile?.lastUsedMachine) || aiMachineType) ? (
-                        <>
-                          <select
-                            className="manual-machine-select"
-                            value={aiMachineType || userProfile?.defaultMachine || userProfile?.lastUsedMachine || ''}
-                            onChange={(e) => {
-                              setAiMachineType(e.target.value);
-                              setCustomMachineName('');
-                            }}
-                            disabled={isSubmittingManual || !userProfile}
-                          >
-                            <option value="">Select machine...</option>
-                            <optgroup label="Popular">
-                              {ROWING_MACHINES.filter(m => m.popular && m.id !== 'other').map(machine => (
-                                <option key={machine.id} value={machine.id}>{machine.name}</option>
-                              ))}
-                            </optgroup>
-                            <optgroup label="Other">
-                              {ROWING_MACHINES.filter(m => !m.popular).map(machine => (
-                                <option key={machine.id} value={machine.id}>{machine.name}</option>
-                              ))}
-                            </optgroup>
-                          </select>
-                          {(aiMachineType === 'other' || 
-                            (!aiMachineType && (userProfile?.defaultMachine === 'other' || userProfile?.lastUsedMachine === 'other'))) && (
-                            <input
-                              type="text"
-                              className="manual-custom-machine"
-                              placeholder="Machine name..."
-                              value={customMachineName || userProfile?.customMachineName || userProfile?.lastUsedMachineCustomName || ''}
-                              onChange={(e) => setCustomMachineName(e.target.value)}
-                              maxLength={50}
-                              disabled={isSubmittingManual}
-                            />
-                          )}
-                        </>
-                      ) : (
-                        <button 
-                          type="button"
-                          className="manual-machine-change"
-                          onClick={() => setAiMachineType(userProfile?.defaultMachine || userProfile?.lastUsedMachine || 'change')}
-                          disabled={isSubmittingManual}
-                        >
-                          Change
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {manualMeters && manualTime && parseTimeInput(manualTime) && (
-                    <div className="manual-pace-display">
-                      ⚡ Pace: {calculatePace(parseInt(manualMeters, 10), parseTimeInput(manualTime))}/500m
-                    </div>
-                  )}
-                  <button 
-                    className="manual-submit-btn-full"
-                    onClick={handleManualSubmit}
-                    disabled={isSubmittingManual || !userProfile || !manualMeters}
-                  >
-                    {isSubmittingManual ? 'Saving...' : `Log ${manualMeters ? parseInt(manualMeters, 10).toLocaleString() + 'm' : 'Row'}`}
-                  </button>
-                </div>
-                <p className="manual-entry-note">
-                  ⚠️ Manual entries are marked as unverified
-                </p>
-              </div>
-
-              {validationError && (
-                <div className="validation-error">{validationError}</div>
-              )}
-            </div>
-
-            {/* User Rank & Weekly Stats */}
-            {userProfile && (
-              <div className="user-status-card">
-                <div
-                  className="user-rank-display clickable"
-                  onClick={() => setShowRankProgressModal(true)}
-                >
-                  <span className="rank-emoji">{getUserRank(userProfile.totalMeters).emoji}</span>
-                  <div className="rank-info">
-                    <span className="rank-title">{getUserRank(userProfile.totalMeters).title}</span>
-                    {getNextRank(userProfile.totalMeters) && (
-                      <span className="rank-next">
-                        {formatMeters(getNextRank(userProfile.totalMeters).minMeters - userProfile.totalMeters)}m to {getNextRank(userProfile.totalMeters).title}
-                      </span>
-                    )}
-                  </div>
-                  <span className="rank-tap-hint">Tap for all ranks →</span>
-                </div>
-                <div className="weekly-stats-mini">
-                  <div className="weekly-stat">
-                    <span className="weekly-stat-value">{formatMeters(getWeeklyStats(currentUser?.uid).meters)}</span>
-                    <span className="weekly-stat-label">this week</span>
-                  </div>
-                  <div className="weekly-stat">
-                    <span className={`weekly-stat-change ${getWeeklyStats(currentUser?.uid).isUp ? 'up' : 'down'}`}>
-                      {getWeeklyStats(currentUser?.uid).isUp ? '↑' : '↓'} {Math.abs(getWeeklyStats(currentUser?.uid).percentChange)}%
-                    </span>
-                    <span className="weekly-stat-label">vs last week</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Personal Record Display */}
-            {userProfile && getPersonalRecord(currentUser?.uid) > 0 && (
-              <div className="pr-display">
-                <span className="pr-label">🏆 Personal Record</span>
-                <span className="pr-value">{getPersonalRecord(currentUser?.uid).toLocaleString()}m</span>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Activity Feed Tab */}
-        {activeTab === 'feed' && (
-          <section className="feed-section">
-            <h2>
-              {selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Feed` : 'Activity Feed'}
-            </h2>
-            
-            {/* 2025 Wrapped Banner */}
-            {currentUser && !wrappedDismissed && !selectedGroupId && getWrappedStats(currentUser.uid) && (
-              <div className="wrapped-banner">
-                <div className="wrapped-banner-content">
-                  <span className="wrapped-banner-icon">🎁</span>
-                  <div className="wrapped-banner-text">
-                    <strong>Your 2025 Wrapped is here!</strong>
-                    <span>See your year in rowing</span>
-                  </div>
-                </div>
-                <div className="wrapped-banner-actions">
-                  <button 
-                    className="wrapped-banner-view"
-                    onClick={() => setShowWrapped(true)}
-                  >
-                    View
-                  </button>
-                  <button 
-                    className="wrapped-banner-dismiss"
-                    onClick={() => {
-                      setWrappedDismissed(true);
-                      localStorage.setItem('wrappedDismissed2025', 'true');
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Group Info & Challenges (when group selected) */}
-            {selectedGroupId && getSelectedGroup() && (
-              <div className="group-info-section">
-                {/* Group Header */}
-                <div className="group-header-card">
-                  <div className="group-header-top">
-                    <div className="group-header-info">
-                      <h3>{getSelectedGroup()?.name}</h3>
-                      {getSelectedGroup()?.description && (
-                        <p className="group-description">{getSelectedGroup().description}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="group-header-bottom">
-                    <div className="group-meta">
-                      <span>👥 {getSelectedGroup()?.memberIds?.length || 0} members</span>
-                      <span className="group-code">Code: {getSelectedGroup()?.inviteCode}</span>
-                    </div>
-                    <div className="group-header-actions">
-                      {isGroupAdmin(selectedGroupId) && (
-                        <>
-                          <button 
-                            className="group-action-btn"
-                            onClick={() => setShowManageMembersModal(true)}
-                            title="Manage Members"
-                          >
-                            ⚙️ Manage
-                          </button>
-                          <button 
-                            className="group-action-btn"
-                            onClick={() => setShowInviteUserModal(true)}
-                            title="Invite User"
-                          >
-                            👤+ Invite
-                          </button>
-                          <button 
-                            className="group-action-btn primary"
-                            onClick={() => setShowCreateChallengeModal(true)}
-                          >
-                            ➕ Challenge
-                          </button>
-                        </>
-                      )}
-                      <button 
-                        className="group-action-btn danger"
-                        onClick={() => {
-                          if (window.confirm('Are you sure you want to leave this group?')) {
-                            handleLeaveGroup(selectedGroupId);
-                          }
-                        }}
-                      >
-                        Leave
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Active Challenges */}
-                {challenges.length > 0 && (
-                  <div className="challenges-section">
-                    <h4>Challenges</h4>
-                    <div className="challenges-list">
-                      {challenges.map(challenge => {
-                        const status = getChallengeStatus(challenge);
-                        const progress = getChallengeProgress(challenge);
-                        
-                        return (
-                          <div 
-                            key={challenge.id} 
-                            className={`challenge-card challenge-${status}`}
-                            onClick={() => setShowChallengeDetail(challenge)}
-                          >
-                            <div className="challenge-card-header">
-                              <span className="challenge-type-icon">
-                                {challenge.type === 'collective' && '🎯'}
-                                {challenge.type === 'collective_calories' && '☄️'}
-                                {challenge.type === 'time_trial' && '🏁'}
-                                {challenge.type === 'distance_race' && '🏃'}
-                                {challenge.type === 'total_time' && '⏱️'}
-                                {challenge.type === 'calories' && '🔥'}
-                                {challenge.type === 'streak' && '📈'}
-                                {challenge.type === 'sessions' && '📅'}
-                              </span>
-                              <span className="challenge-name">{challenge.name}</span>
-                              <span className={`challenge-status-badge ${status}`}>
-                                {status === 'active' && '🟢 Active'}
-                                {status === 'upcoming' && '🟡 Upcoming'}
-                                {status === 'completed' && '✅ Done'}
-                              </span>
-                            </div>
-                            
-                            {(challenge.type === 'collective' || challenge.type === 'collective_calories') && progress && (
-                              <div className="challenge-progress">
-                                <div className="challenge-progress-bar">
-                                  <div 
-                                    className="challenge-progress-fill"
-                                    style={{ width: `${progress.percentage}%` }}
-                                  />
-                                </div>
-                                <div className="challenge-progress-text">
-                                  {challenge.type === 'collective_calories' 
-                                    ? `${progress.current.toLocaleString()} / ${progress.target.toLocaleString()} cal`
-                                    : `${formatMeters(progress.current)} / ${formatMeters(progress.target)}`
-                                  }
-                                </div>
-                              </div>
-                            )}
-
-                            {challenge.type === 'time_trial' && (
-                              <div className="challenge-time-trial-info">
-                                <span>{challenge.targetDistance}m time trial</span>
-                                {challenge.participants?.[currentUser?.uid] && (
-                                  <span className="your-time">
-                                    Your best: {formatTime(challenge.participants[currentUser.uid].bestTime)}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-
-                            {(challenge.type === 'total_time' || challenge.type === 'calories') && (
-                              <div className="challenge-type-info">
-                                {challenge.type === 'total_time' && 'Most total time rowed wins'}
-                                {challenge.type === 'calories' && 'Most calories burned wins'}
-                              </div>
-                            )}
-
-                            <div className="challenge-dates">
-                              {new Date(challenge.startDate).toLocaleDateString()} - {new Date(challenge.endDate).toLocaleDateString()}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {challenges.length === 0 && isGroupAdmin(selectedGroupId) && (
-                  <div className="no-challenges">
-                    <p>No challenges yet!</p>
-                    <button 
-                      className="create-first-challenge-btn"
-                      onClick={() => setShowCreateChallengeModal(true)}
-                    >
-                      Create First Challenge
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Search Bar */}
-            <div className="search-bar">
-              <span className="search-icon">🔍</span>
-              <input
-                type="text"
-                placeholder="Search rowers..."
-                value={feedSearchQuery}
-                onChange={(e) => { setFeedSearchQuery(e.target.value); setFeedPage(1); }}
-                className="search-input"
-              />
-              {feedSearchQuery && (
-                <button className="search-clear" onClick={() => { setFeedSearchQuery(''); setFeedPage(1); }}>✕</button>
-              )}
-            </div>
-
-            {/* Feed Type Filters */}
-            <div className="feed-filters">
-              {[
-                { key: 'all', label: 'All' },
-                { key: 'row', label: '🚣 Rows' },
-                { key: 'achievement', label: '🏆 Awards' },
-                { key: 'rank', label: '⬆️ Ranks' },
-                { key: 'join', label: '👋 Joined' },
-              ].map(f => (
-                <button
-                  key={f.key}
-                  className={`feed-filter-pill ${feedTypeFilter === f.key ? 'active' : ''}`}
-                  onClick={() => { setFeedTypeFilter(f.key); setFeedPage(1); }}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Guest Sign In Prompt */}
-            {!currentUser && (
-              <div className="guest-prompt">
-                <p>👋 Sign in to log your rows and compete!</p>
-                <button className="signin-prompt-btn" onClick={handleSignIn}>
-                  Sign in with Google
-                </button>
-              </div>
-            )}
-
-            {(() => {
-              const feedData = getActivityFeed(feedSearchQuery, feedPage, feedTypeFilter);
-              return feedData.items.length === 0 ? (
-                <div className="empty-state">
-                  {feedSearchQuery || feedTypeFilter !== 'all' ? (
-                    <p>No activity found{feedSearchQuery ? ` for "${feedSearchQuery}"` : ' for this filter'}.</p>
-                  ) : entries.length === 0 ? (
-                    <div className="skeleton-feed">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="skeleton-feed-item">
-                          <div className="skeleton skeleton-avatar" />
-                          <div className="skeleton-content">
-                            <div className="skeleton skeleton-line skeleton-line-short" />
-                            <div className="skeleton skeleton-line skeleton-line-medium" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <>
-                      <p>No activity yet!</p>
-                      <p>Be the first to log a row.</p>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <div className="activity-feed">
-                    {feedData.items.map((item) => {
-                      const itemStreak = item.user ? calculateStreak(item.user.id) : 0;
-                      const itemRank = item.user ? getUserRank(item.user.totalMeters) : null;
-                      
-                      return (
-                        <div 
-                          key={item.id} 
-                          className={`feed-item feed-item-${item.type} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
-                          onClick={() => item.user && setShowUserProfileModal(item.user)}
-                        >
-                          <div className="feed-avatar">
-                            {item.user?.photoURL ? (
-                              <img src={item.user.photoURL} alt="" />
-                            ) : (
-                              <div className="feed-avatar-placeholder">
-                                {item.user?.name?.charAt(0)?.toUpperCase() || '?'}
-                              </div>
-                            )}
-                          </div>
-                          <div className="feed-content">
-                            <div className="feed-header">
-                              <span className="feed-name">
-                                {item.user?.name}
-                                {itemRank && <span className="feed-rank-badge">{itemRank.emoji}</span>}
-                              </span>
-                              <span className="feed-time">
-                                {formatTimeAgo(new Date(item.date))}
-                              </span>
-                            </div>
-                            <div className="feed-action">
-                              {item.type === 'row' && (
-                                <>
-                                  rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span>
-                                  {item.time && (
-                                    <span className="feed-time-cal"> in {formatTimeDisplay(item.time)}</span>
-                                  )}
-                                  {item.calories && (
-                                    <span className="feed-time-cal"> • {item.calories} cal</span>
-                                  )}
-                                  {item.verificationStatus === 'verified' && (
-                                    <span className="verification-badge verified" title="Verified with photo">✓</span>
-                                  )}
-                                  {item.verificationStatus === 'pending_review' && (
-                                    <span className="verification-badge pending" title="Pending Review">⏳</span>
-                                  )}
-                                  {(item.verificationStatus === 'unverified' || !item.verificationStatus) && (
-                                    <span className="verification-badge unverified" title="No photo - unverified">✗</span>
-                                  )}
-                                </>
-                              )}
-                              {item.type === 'achievement' && (
-                                <span className="feed-achievement">
-                                  {item.achievements && item.achievements.length > 1 ? (
-                                    <>unlocked {item.achievements.length} awards: {item.achievements.map(a => a.emoji).join(' ')}</>
-                                  ) : (
-                                    <>unlocked <span className="feed-achievement-name">{item.achievement.emoji} {item.achievement.name}</span></>
-                                  )}
-                                </span>
-                              )}
-                              {item.type === 'rank' && (
-                                <span className="feed-rank">
-                                  reached <span className="feed-rank-name">{item.rank.emoji} {item.rank.rank}</span>
-                                </span>
-                              )}
-                              {item.type === 'join' && (
-                                <span className="feed-join">
-                                  joined Row Crew! 🎉
-                                </span>
-                              )}
-                              {item.type === 'group_created' && (
-                                <span className="feed-group">
-                                  created group <span className="feed-group-name">🚣 {item.groupName}</span>
-                                </span>
-                              )}
-                              {item.type === 'group_joined' && (
-                                <span className="feed-group">
-                                  joined <span className="feed-group-name">👥 {item.groupName}</span>
-                                </span>
-                              )}
-                              {item.type === 'challenge_created' && (
-                                <span className="feed-challenge">
-                                  started challenge <span className="feed-challenge-name">🎯 {item.challengeName}</span>
-                                  {item.groupName && <span className="feed-in-group"> in {item.groupName}</span>}
-                                </span>
-                              )}
-                            </div>
-                            {/* Show streak for row entries */}
-                            {item.type === 'row' && itemStreak > 1 && (
-                              <div className="feed-streak-badge">🔥 {itemStreak} day streak</div>
-                            )}
-                          </div>
-                          {/* Photo thumbnail for row entries */}
-                          {item.type === 'row' && item.imageUrl && (
-                            <div 
-                              className="feed-photo-thumb"
-                              onClick={(e) => { e.stopPropagation(); setShowPhotoModal({ url: item.imageUrl, entry: item }); }}
-                            >
-                              <img src={item.imageUrl} alt="Row evidence" />
-                            </div>
-                          )}
-                        
-                          {/* Reactions & Comments - Compact Design */}
-                        {currentUser && (
-                          <div className="feed-interactions-compact">
-                            {/* Used reactions + add button */}
-                            <div className="reactions-row">
-                              {/* Show reactions that have counts */}
-                              {REACTION_EMOJIS.filter(emoji => getReactionCounts(item.id)[emoji] > 0).map(emoji => (
-                                <button
-                                  key={emoji}
-                                  className={`reaction-pill ${hasUserReacted(item.id, emoji) ? 'active' : ''}`}
-                                  onClick={(e) => { e.stopPropagation(); toggleReaction(item.id, emoji); }}
-                                >
-                                  {emoji} {getReactionCounts(item.id)[emoji]}
-                                </button>
-                              ))}
-                              
-                              {/* Add reaction button */}
-                              <div className="reaction-picker-wrapper">
-                                <button
-                                  className="add-reaction-btn"
-                                  onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    setShowReactionPicker(showReactionPicker === item.id ? null : item.id);
-                                  }}
-                                >
-                                  +
-                                </button>
-                                {showReactionPicker === item.id && (
-                                  <>
-                                    <div className="reaction-picker-backdrop" onClick={(e) => { e.stopPropagation(); setShowReactionPicker(null); }} />
-                                    <div className="reaction-picker" onClick={(e) => e.stopPropagation()}>
-                                      {REACTION_EMOJIS.map(emoji => (
-                                        <button
-                                          key={emoji}
-                                          className={`picker-emoji ${hasUserReacted(item.id, emoji) ? 'active' : ''}`}
-                                          onClick={() => {
-                                            toggleReaction(item.id, emoji);
-                                            setShowReactionPicker(null);
-                                          }}
-                                        >
-                                          {emoji}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                              
-                              {/* Comment toggle */}
-                              <button
-                                className={`comment-link ${expandedComments[item.id] ? 'active' : ''}`}
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  setExpandedComments(prev => ({ ...prev, [item.id]: !prev[item.id] }));
-                                }}
-                              >
-                                💬 {getItemComments(item.id).length || ''}
-                              </button>
-                            </div>
-                            
-                            {/* Compact comments section */}
-                            {expandedComments[item.id] && (
-                              <div className="comments-compact" onClick={(e) => e.stopPropagation()}>
-                                {getItemComments(item.id).map(comment => {
-                                  const commentUser = users[comment.userId];
-                                  return (
-                                    <div key={comment.id} className="comment-row">
-                                      <span className="comment-author-inline">{commentUser?.name?.split(' ')[0] || 'User'}</span>
-                                      <span className="comment-text-inline">
-                                        {comment.replyToName && (
-                                          <span className="reply-mention">@{comment.replyToName.split(' ')[0]} </span>
-                                        )}
-                                        {comment.text}
-                                      </span>
-                                      <button 
-                                        className="comment-reply-inline"
-                                        onClick={() => setReplyingTo(prev => ({ 
-                                          ...prev, 
-                                          [item.id]: { 
-                                            commentId: comment.id, 
-                                            userId: comment.userId, 
-                                            userName: commentUser?.name || 'User' 
-                                          }
-                                        }))}
-                                        title="Reply"
-                                      >
-                                        ↩
-                                      </button>
-                                      {comment.userId === currentUser?.uid && (
-                                        <button 
-                                          className="comment-delete-inline"
-                                          onClick={() => deleteComment(comment.id, comment.userId)}
-                                        >
-                                          ✕
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                                
-                                {/* Reply indicator */}
-                                {replyingTo[item.id] && (
-                                  <div className="replying-to-indicator">
-                                    <span>Replying to @{replyingTo[item.id].userName?.split(' ')[0]}</span>
-                                    <button onClick={() => setReplyingTo(prev => ({ ...prev, [item.id]: null }))}>✕</button>
-                                  </div>
-                                )}
-                                
-                                <div className="comment-add-row">
-                                  <input
-                                    type="text"
-                                    placeholder={replyingTo[item.id] ? `Reply to ${replyingTo[item.id].userName?.split(' ')[0]}...` : "Add a comment..."}
-                                    value={newComment[item.id] || ''}
-                                    onChange={(e) => setNewComment(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                    onKeyPress={(e) => {
-                                      if (e.key === 'Enter' && newComment[item.id]?.trim()) {
-                                        addComment(item.id, item.userId);
-                                      }
-                                    }}
-                                    maxLength={200}
-                                  />
-                                  <button 
-                                    onClick={() => addComment(item.id, item.userId)}
-                                    disabled={!newComment[item.id]?.trim()}
-                                  >
-                                    ↵
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  </div>
-                  
-                  {/* Load More Button */}
-                  {feedData.hasMore && (
-                    <button 
-                      className="load-more-btn"
-                      onClick={() => setFeedPage(prev => prev + 1)}
-                    >
-                      Load More ({feedData.total - feedData.items.length} remaining)
-                    </button>
-                  )}
-                </>
-              );
-            })()}
-          </section>
-        )}
-
-        {activeTab === 'leaderboard' && (
-          <section className="leaderboard-section">
-            <h2>{selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Leaderboard` : 'Leaderboard'}</h2>
-            
-            {/* Leaderboard Tabs */}
-            <div className="leaderboard-tabs">
-              <button 
-                className={`lb-tab ${leaderboardTab === 'alltime' ? 'active' : ''}`}
-                onClick={() => setLeaderboardTab('alltime')}
-              >
-                🏆 Meters
-              </button>
-              <button 
-                className={`lb-tab ${leaderboardTab === 'weekly' ? 'active' : ''}`}
-                onClick={() => setLeaderboardTab('weekly')}
-              >
-                📅 Weekly
-              </button>
-              <button 
-                className={`lb-tab ${leaderboardTab === 'streak' ? 'active' : ''}`}
-                onClick={() => setLeaderboardTab('streak')}
-              >
-                📈 Streaks
-              </button>
-              <button 
-                className={`lb-tab ${leaderboardTab === 'achievements' ? 'active' : ''}`}
-                onClick={() => setLeaderboardTab('achievements')}
-              >
-                🏅 Awards
-              </button>
-            </div>
-
-            {/* All Time Leaderboard */}
-            {leaderboardTab === 'alltime' && (
-              <>
-                {getLeaderboard.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No rowers yet!</p>
-                    <p>Be the first to log a row.</p>
-                  </div>
-                ) : (
-                  <div className="leaderboard">
-                    {getLeaderboard.map((user, index) => (
-                      <div 
-                        key={user.id} 
-                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
-                        onClick={() => setShowUserProfileModal(user)}
-                      >
-                        <div className="rank">
-                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-                        </div>
-                        <div className="user-avatar-wrapper">
-                          {user.photoURL ? (
-                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
-                          ) : (
-                            <div className="leaderboard-avatar-placeholder">
-                              {user.name?.charAt(0)?.toUpperCase() || '?'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="user-info">
-                          <span className="user-name">
-                            {user.name}
-                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
-                          </span>
-                          <span className="user-rank-label">
-                            {user.rank?.emoji} {user.rank?.title}
-                          </span>
-                          <span className="user-streak">{user.streak > 0 && `🔥 ${user.streak} day streak`}</span>
-                        </div>
-                        <div className="user-meters">
-                          <span className="meters-value">{formatMeters(user.totalMeters)}</span>
-                          <span className="meters-label">meters</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Weekly Leaderboard */}
-            {leaderboardTab === 'weekly' && (
-              <>
-                {getWeeklyLeaderboard.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No rows this week yet!</p>
-                    <p>Be the first to get on the board.</p>
-                  </div>
-                ) : (
-                  <div className="leaderboard">
-                    {getWeeklyLeaderboard.map((user, index) => (
-                      <div 
-                        key={user.id} 
-                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
-                        onClick={() => setShowUserProfileModal(user)}
-                      >
-                        <div className="rank">
-                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-                        </div>
-                        <div className="user-avatar-wrapper">
-                          {user.photoURL ? (
-                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
-                          ) : (
-                            <div className="leaderboard-avatar-placeholder">
-                              {user.name?.charAt(0)?.toUpperCase() || '?'}
-                            </div>
-                          )}
-                          {index === 0 && <span className="weekly-crown">👑</span>}
-                        </div>
-                        <div className="user-info">
-                          <span className="user-name">
-                            {user.name}
-                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
-                          </span>
-                          <span className="user-rank-label">
-                            {user.rank?.emoji} {user.rank?.title}
-                          </span>
-                        </div>
-                        <div className="user-meters">
-                          <span className="meters-value">{formatMeters(user.weeklyMeters)}</span>
-                          <span className="meters-label">this week</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Streak Leaderboard */}
-            {leaderboardTab === 'streak' && (
-              <>
-                {getStreakLeaderboard.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No active streaks!</p>
-                    <p>Row consistently to build yours.</p>
-                  </div>
-                ) : (
-                  <div className="leaderboard">
-                    {getStreakLeaderboard.map((user, index) => (
-                      <div 
-                        key={user.id} 
-                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
-                        onClick={() => setShowUserProfileModal(user)}
-                      >
-                        <div className="rank">
-                          {index === 0 ? '🔥' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-                        </div>
-                        <div className="user-avatar-wrapper">
-                          {user.photoURL ? (
-                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
-                          ) : (
-                            <div className="leaderboard-avatar-placeholder">
-                              {user.name?.charAt(0)?.toUpperCase() || '?'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="user-info">
-                          <span className="user-name">
-                            {user.name}
-                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
-                          </span>
-                          <span className="user-rank-label">
-                            Best: {user.longestStreak} days
-                          </span>
-                        </div>
-                        <div className="user-meters streak-display">
-                          <span className="meters-value">{user.streak}</span>
-                          <span className="meters-label">day streak</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Achievements Leaderboard */}
-            {leaderboardTab === 'achievements' && (
-              <>
-                {getAchievementsLeaderboard.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No achievements unlocked yet!</p>
-                    <p>Start rowing to earn badges.</p>
-                  </div>
-                ) : (
-                  <div className="leaderboard">
-                    {getAchievementsLeaderboard.map((user, index) => (
-                      <div 
-                        key={user.id} 
-                        className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`}
-                        onClick={() => setShowUserProfileModal(user)}
-                      >
-                        <div className="rank">
-                          {index === 0 ? '🏅' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-                        </div>
-                        <div className="user-avatar-wrapper">
-                          {user.photoURL ? (
-                            <img src={user.photoURL} alt="" className="leaderboard-avatar" />
-                          ) : (
-                            <div className="leaderboard-avatar-placeholder">
-                              {user.name?.charAt(0)?.toUpperCase() || '?'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="user-info">
-                          <span className="user-name">
-                            {user.name}
-                            {user.id === currentUser?.uid && <span className="you-badge">YOU</span>}
-                          </span>
-                          <span className="user-rank-label">
-                            {user.rank?.emoji} {user.rank?.title}
-                          </span>
-                        </div>
-                        <div className="user-meters">
-                          <span className="meters-value">{user.achievementCount}/{ACHIEVEMENTS.length}</span>
-                          <span className="meters-label">badges</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </section>
-        )}
-
-
-        {activeTab === 'more' && (
-          <section className="more-section">
-            <h2>Achievements & More</h2>
-            
-            {/* Achievements Section */}
-            <div className="achievements-full-section">
-              <h3>🏅 {currentUser ? 'Your Achievements' : 'Achievements'}
-                {currentUser && (
-                  <span className="achievements-count-inline"> {getUserAchievements(currentUser.uid).length}/{ACHIEVEMENTS.length}</span>
-                )}
-              </h3>
-              <div className="achievements-grid-full">
-                {ACHIEVEMENTS.slice(achievementsPage * ACHIEVEMENTS_PAGE_SIZE, (achievementsPage + 1) * ACHIEVEMENTS_PAGE_SIZE).map((achievement) => {
-                  const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
-                  const progress = currentUser ? getAchievementProgress(currentUser.uid, achievement) : { current: 0, target: 1 };
-                  const unlockedAchievement = currentUser ? getUserAchievements(currentUser.uid).find(a => a.id === achievement.id) : null;
-                  const progressPercent = Math.min((progress.current / progress.target) * 100, 100);
-
-                  return (
-                    <div
-                      key={achievement.id}
-                      className={`achievement-card ${unlocked ? 'unlocked' : 'locked'}`}
-                      onClick={() => setShowAchievementModal({ ...achievement, progress, unlockedDate: unlockedAchievement?.unlockedDate })}
-                    >
-                      <span className="achievement-card-emoji">{achievement.emoji}</span>
-                      <span className="achievement-card-name">{achievement.name}</span>
-                      {!unlocked && currentUser && (
-                        <div className="achievement-card-progress">
-                          <div className="achievement-progress-bar">
-                            <div className="achievement-progress-fill" style={{ width: `${progressPercent}%` }} />
-                          </div>
-                          <span className="achievement-progress-text">
-                            {progress.target >= 1000 ? `${formatMeters(progress.current)}/${formatMeters(progress.target)}` : `${progress.current}/${progress.target}`}
-                          </span>
-                        </div>
-                      )}
-                      {unlocked && <span className="achievement-card-check">✓ Unlocked</span>}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="achievements-pagination">
-                <button
-                  className="achievements-page-btn"
-                  onClick={() => setAchievementsPage(p => p - 1)}
-                  disabled={achievementsPage === 0}
-                >
-                  ← Prev
-                </button>
-                <span className="achievements-page-info">
-                  {achievementsPage + 1} / {Math.ceil(ACHIEVEMENTS.length / ACHIEVEMENTS_PAGE_SIZE)}
-                </span>
-                <button
-                  className="achievements-page-btn"
-                  onClick={() => setAchievementsPage(p => p + 1)}
-                  disabled={(achievementsPage + 1) * ACHIEVEMENTS_PAGE_SIZE >= ACHIEVEMENTS.length}
-                >
-                  Next →
-                </button>
-              </div>
-            </div>
-
-            {/* Rank Progression */}
-            <div className="ranks-section">
-              <h3>🎖️ Rank Progression</h3>
-              <div className="ranks-list">
-                {RANKS.map((rank, index) => {
-                  const userMeters = userProfile?.totalMeters || 0;
-                  const isCurrentRank = getUserRank(userMeters).title === rank.title;
-                  const isUnlocked = userMeters >= rank.minMeters;
-                  const nextRank = RANKS[index + 1];
-                  const progressToNext = nextRank 
-                    ? Math.min(((userMeters - rank.minMeters) / (nextRank.minMeters - rank.minMeters)) * 100, 100)
-                    : 100;
-                  
-                  return (
-                    <div key={rank.title} className={`rank-item ${isCurrentRank ? 'current' : ''} ${isUnlocked ? 'unlocked' : 'locked'}`}>
-                      <span className="rank-item-emoji">{rank.emoji}</span>
-                      <div className="rank-item-info">
-                        <span className="rank-item-title">{rank.title}</span>
-                        <span className="rank-item-meters">{formatMeters(rank.minMeters)}m</span>
-                        {isCurrentRank && nextRank && (
-                          <div className="rank-progress-bar">
-                            <div className="rank-progress-fill" style={{ width: `${progressToNext}%` }} />
-                          </div>
-                        )}
-                      </div>
-                      {isCurrentRank && <span className="rank-current-badge">YOU</span>}
-                      {isUnlocked && !isCurrentRank && <span className="rank-unlocked-check">✓</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Account Section */}
-            {currentUser && (
-              <div className="account-section">
-                <h3>👤 Account</h3>
-                <div className="account-buttons">
-                  <button className="account-btn" onClick={() => setShowSessionHistory(true)}>
-                    <span className="account-btn-icon">📋</span>
-                    <span className="account-btn-text">Session History</span>
-                    <span className="account-btn-arrow">→</span>
-                  </button>
-                  <button className="account-btn" onClick={() => setShowRankProgressModal(true)}>
-                    <span className="account-btn-icon">🎖️</span>
-                    <span className="account-btn-text">Rank Progress</span>
-                    <span className="account-btn-arrow">→</span>
-                  </button>
-                  {isAdmin && (
-                    <button className="account-btn admin" onClick={() => { setShowAdminPanel(true); loadPendingReviews(); }}>
-                      <span className="account-btn-icon">🛡️</span>
-                      <span className="account-btn-text">Admin Panel</span>
-                      <span className="account-btn-arrow">→</span>
-                    </button>
-                  )}
-                  <button className="account-btn danger" onClick={handleSignOut}>
-                    <span className="account-btn-icon">🚪</span>
-                    <span className="account-btn-text">Sign Out</span>
-                    <span className="account-btn-arrow">→</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Session History */}
-            {currentUser && (
-              <div className="session-history-section">
-                <h3>📋 Your Session History</h3>
-                <div className="session-history-list">
-                  {entries
-                    .filter(e => e.userId === currentUser.uid)
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
-                    .slice(0, 20)
-                    .map((entry, index) => (
-                      <div key={entry.id || index} className="session-history-item">
-                        <div className="session-history-date">
-                          {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </div>
-                        <div className="session-history-main">
-                          <div className="session-history-meters">
-                            {entry.meters.toLocaleString()}m
-                          </div>
-                          {(entry.time || entry.calories) && (
-                            <div className="session-history-extra">
-                              {entry.time && <span>{formatTimeDisplay(entry.time)}</span>}
-                              {entry.calories && <span>{entry.calories} cal</span>}
-                              {entry.time && entry.meters && (
-                                <span className="session-pace">{calculatePace(entry.meters, entry.time)}/500m</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className={`session-history-status ${entry.verificationStatus || 'unverified'}`}>
-                          {entry.verificationStatus === 'verified' ? '✓' :
-                           entry.verificationStatus === 'pending_review' ? '⏳' : '✗'}
-                        </div>
-                        <button
-                          className="session-delete-btn"
-                          onClick={() => handleDeleteEntry(entry.id, entry.meters)}
-                          disabled={deletingEntryId === entry.id}
-                          title="Delete entry"
-                        >
-                          {deletingEntryId === entry.id ? '...' : '🗑️'}
-                        </button>
-                      </div>
-                    ))}
-                  {entries.filter(e => e.userId === currentUser.uid).length === 0 && (
-                    <p className="empty-history">No sessions yet. Start rowing!</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Changelog */}
-            <div className="changelog-section">
-              <h3>📝 App Updates</h3>
-              <div className="changelog">
-                {CHANGELOG.map((release, index) => (
-                  <div key={release.version} className={`changelog-entry ${index === 0 ? 'latest' : ''}`}>
-                    <div className="changelog-header">
-                      <span className="changelog-version">v{release.version}</span>
-                      <span className="changelog-date">{new Date(release.date + 'T12:00:00-08:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' })}</span>
-                      {index === 0 && <span className="latest-badge">LATEST</span>}
-                    </div>
-                    <ul className="changelog-changes">
-                      {release.changes.map((change, i) => (
-                        <li key={i}>{change}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+        {activeTab === 'upload' && <EntryForm />}
+        {activeTab === 'feed' && <ActivityFeed />}
+        {activeTab === 'leaderboard' && <Leaderboard />}
+        {activeTab === 'more' && <StatsTab />}
       </main>
 
-      {/* Confirm Modal */}
-      {showConfirmModal && (
-        <div className="modal-overlay" onClick={() => { setShowConfirmModal(false); setValidationError(''); setAiMachineType(''); }}>
-          <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Confirm Your Row</h2>
-            
-            {capturedImage && (
-              <div className="captured-image-preview">
-                <img src={capturedImage.data || capturedImage} alt="Captured rowing screen" />
-              </div>
-            )}
-
-            {/* AI Status Summary */}
-            {capturedImage?.claudeResult && (
-              <div className={`ai-status-bar ${capturedImage.claudeResult.confidence >= 60 ? 'high-confidence' : 'low-confidence'}`}>
-                <span className="ai-status-icon">🤖</span>
-                <span className="ai-status-text">
-                  {capturedImage.claudeResult.extractedMeters ? (
-                    <>AI read your display {capturedImage.claudeResult.confidence >= 60 ? '✓' : '(uncertain)'}</>
-                  ) : capturedImage.claudeResult.isRowingMachineDisplay === false ? (
-                    <>Doesn't look like a rowing display</>
-                  ) : (
-                    <>Couldn't read display - enter manually</>
-                  )}
-                </span>
-              </div>
-            )}
-
-            {capturedImage?.photoDate && (
-              <div className="photo-date-info">
-                <span>📅 Photo taken: {capturedImage.photoDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
-              </div>
-            )}
-
-            <div className="confirm-entry-form">
-              {/* Meters - Required */}
-              <div className="confirm-field confirm-field-main">
-                <label className="confirm-label-with-ai">
-                  <span>Meters *</span>
-                  {detectedMeters && (
-                    <span className={`ai-field-indicator ${editableMeters !== detectedMeters ? 'edited' : ''}`}>
-                      {editableMeters !== detectedMeters ? '✏️ edited' : '🤖 AI'}
-                    </span>
-                  )}
-                </label>
-                <input
-                  type="number"
-                  value={editableMeters}
-                  onChange={(e) => { setEditableMeters(e.target.value); setValidationError(''); }}
-                  className={`confirm-input-large ${detectedMeters && editableMeters !== detectedMeters ? 'user-edited' : ''}`}
-                  placeholder="0"
-                  autoFocus
-                  min={MIN_METERS}
-                  max={MAX_METERS}
-                />
-              </div>
-
-              {/* Time & Calories - Optional */}
-              <div className="confirm-field-row">
-                <div className="confirm-field">
-                  <label className="confirm-label-with-ai">
-                    <span>Time</span>
-                    {detectedTime ? (
-                      <span className={`ai-field-indicator ${editableTime !== detectedTime ? 'edited' : ''}`}>
-                        {editableTime !== detectedTime ? '✏️' : '🤖'}
-                      </span>
-                    ) : (
-                      <span className="optional-label">(optional)</span>
-                    )}
-                  </label>
-                  <input
-                    type="text"
-                    value={editableTime}
-                    onChange={(e) => setEditableTime(e.target.value)}
-                    className={`confirm-input ${detectedTime && editableTime !== detectedTime ? 'user-edited' : ''}`}
-                    placeholder="23:45"
-                  />
-                </div>
-                <div className="confirm-field">
-                  <label className="confirm-label-with-ai">
-                    <span>Calories</span>
-                    {detectedCalories ? (
-                      <span className={`ai-field-indicator ${editableCalories !== detectedCalories ? 'edited' : ''}`}>
-                        {editableCalories !== detectedCalories ? '✏️' : '🤖'}
-                      </span>
-                    ) : (
-                      <span className="optional-label">(optional)</span>
-                    )}
-                  </label>
-                  <input
-                    type="number"
-                    value={editableCalories}
-                    onChange={(e) => setEditableCalories(e.target.value)}
-                    className={`confirm-input ${detectedCalories && editableCalories !== detectedCalories ? 'user-edited' : ''}`}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              {/* Pace display if time entered */}
-              {editableMeters && editableTime && parseTimeInput(editableTime) && (
-                <div className="confirm-pace-display">
-                  <span>⚡ Pace: {calculatePace(parseInt(editableMeters, 10), parseTimeInput(editableTime))}/500m</span>
-                </div>
-              )}
-
-              {/* Machine Type Section - Always show */}
-              <div className="confirm-machine-section">
-                <div className="confirm-machine-header">
-                  <span className="confirm-machine-label">🚣 Machine</span>
-                  {(userProfile?.defaultMachine || userProfile?.lastUsedMachine) && !aiMachineType && (
-                    <span className="confirm-machine-default">
-                      Using: {getMachineName(
-                        userProfile.defaultMachine || userProfile.lastUsedMachine, 
-                        userProfile.customMachineName || userProfile.lastUsedMachineCustomName
-                      )}
-                    </span>
-                  )}
-                </div>
-                
-                {/* Show selector if: no default/lastUsed, AI confidence low, user corrected values, or user wants to change */}
-                {(!(userProfile?.defaultMachine || userProfile?.lastUsedMachine) || 
-                  (capturedImage?.claudeResult && capturedImage.claudeResult.confidence < 60) || 
-                  (detectedMeters && editableMeters !== detectedMeters) ||
-                  aiMachineType) ? (
-                  <div className="confirm-machine-select-wrapper">
-                    <select 
-                      className="machine-type-select"
-                      value={aiMachineType || userProfile?.defaultMachine || userProfile?.lastUsedMachine || ''}
-                      onChange={(e) => {
-                        setAiMachineType(e.target.value);
-                        setCustomMachineName('');
-                      }}
-                    >
-                      <option value="">Select machine...</option>
-                      <optgroup label="Popular">
-                        {ROWING_MACHINES.filter(m => m.popular && m.id !== 'other').map(machine => (
-                          <option key={machine.id} value={machine.id}>{machine.name}</option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Other">
-                        {ROWING_MACHINES.filter(m => !m.popular).map(machine => (
-                          <option key={machine.id} value={machine.id}>{machine.name}</option>
-                        ))}
-                      </optgroup>
-                    </select>
-                    
-                    {/* Custom machine input */}
-                    {(aiMachineType === 'other' || 
-                      (!aiMachineType && (userProfile?.defaultMachine === 'other' || userProfile?.lastUsedMachine === 'other'))) && (
-                      <input
-                        type="text"
-                        className="custom-machine-inline"
-                        placeholder="Machine name..."
-                        value={customMachineName || userProfile?.customMachineName || userProfile?.lastUsedMachineCustomName || ''}
-                        onChange={(e) => setCustomMachineName(e.target.value)}
-                        maxLength={50}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <button 
-                    className="confirm-machine-change-btn"
-                    onClick={() => setAiMachineType(userProfile?.defaultMachine || userProfile?.lastUsedMachine || 'change')}
-                  >
-                    Change machine
-                  </button>
-                )}
-                
-                {!(userProfile?.defaultMachine || userProfile?.lastUsedMachine) && (
-                  <small className="confirm-machine-hint">
-                    💡 Set a default in Settings to skip this next time
-                  </small>
-                )}
-              </div>
-            </div>
-
-            {validationError && (
-              <div className="validation-error">
-                ⚠️ {validationError}
-              </div>
-            )}
-
-            <p className="confirm-user">Logging as <strong>{userProfile?.name}</strong></p>
-
-            <div className="modal-actions">
-              <button className="cancel-button" onClick={() => { setShowConfirmModal(false); setCapturedImage(null); setValidationError(''); setAiMachineType(''); setCustomMachineName(''); }}>
-                Cancel
-              </button>
-              <button
-                className="confirm-button"
-                onClick={handleConfirmEntry}
-                disabled={!editableMeters || parseInt(editableMeters, 10) <= 0}
-              >
-                Log {editableMeters ? `${parseInt(editableMeters, 10).toLocaleString()}m` : 'Row'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modals */}
+      <ConfirmEntryModal />
 
       {/* AI Feedback Toast */}
       {showAiFeedbackToast && (
@@ -4853,2098 +3524,110 @@ function App() {
           <div className="modal setup-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Welcome to Row Crew!</h2>
             <p>Set up your profile to start tracking</p>
-
             {currentUser?.photoURL && (
               <img src={currentUser.photoURL} alt="" className="setup-avatar" />
             )}
-
             <div className="setup-form">
               <div className="form-group">
                 <label>Display Name</label>
-                <input
-                  type="text"
-                  placeholder="How should we call you?"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="name-input"
-                  autoFocus
-                />
+                <input type="text" placeholder="How should we call you?" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="name-input" autoFocus />
                 {displayName.trim() && (
-                  <small className="username-preview">
-                    Your username will be: @{generateUsernameFromName(displayName.trim()) || 'your_name'}
-                  </small>
+                  <small className="username-preview">Your username will be: @{generateUsernameFromName(displayName.trim()) || 'your_name'}</small>
                 )}
               </div>
             </div>
-
             <div className="modal-actions">
-              <button className="cancel-button" onClick={handleSignOut}>
-                Cancel
-              </button>
-              <button
-                className="confirm-button"
-                onClick={handleCreateProfile}
-                disabled={!displayName.trim()}
-              >
-                Join Crew
-              </button>
+              <button className="cancel-button" onClick={handleSignOut}>Cancel</button>
+              <button className="confirm-button" onClick={handleCreateProfile} disabled={!displayName.trim()}>Join Crew</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Share Card Modal */}
-      {showShareModal && (
-        <div className="modal-overlay" onClick={handleCloseShare}>
-          <div className="share-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="share-close-btn" onClick={handleCloseShare}>✕</button>
-            
-            <div className="share-card" ref={shareCardRef}>
-              <div className="share-card-header">
-                <div className="share-card-brand">
-                  <span className="share-brand-icon">🚣</span>
-                  <span className="share-brand-text">ROW CREW</span>
-                </div>
-                <div className="share-card-date">
-                  {new Date().toLocaleDateString('en-US', { 
-                    weekday: 'short',
-                    month: 'short', 
-                    day: 'numeric',
-                    year: 'numeric',
-                    timeZone: 'America/Los_Angeles'
-                  })}
-                </div>
-              </div>
-
-              <div className="share-card-user">
-                {userProfile?.photoURL ? (
-                  <img src={userProfile.photoURL} alt="" className="share-user-avatar" crossOrigin="anonymous" />
-                ) : (
-                  <div className="share-user-avatar-placeholder">
-                    {userProfile?.name?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                )}
-                <span className="share-user-name">{userProfile?.name}</span>
-              </div>
-
-              {shareImageUrl && (
-                <div className="share-card-image">
-                  <img src={shareImageUrl} alt="Rowing session" crossOrigin="anonymous" />
-                </div>
-              )}
-
-              <div className="share-card-session">
-                <span className="share-session-label">Just rowed</span>
-                <span className="share-session-meters">{lastSessionMeters.toLocaleString()}m</span>
-              </div>
-
-              <div className="share-card-stats">
-                <div className="share-stat">
-                  <span className="share-stat-icon">🔥</span>
-                  <span className="share-stat-value">{calculateStreak(currentUser?.uid)}</span>
-                  <span className="share-stat-label">day streak</span>
-                </div>
-                <div className="share-stat-divider"></div>
-                <div className="share-stat">
-                  <span className="share-stat-icon">📊</span>
-                  <span className="share-stat-value">{formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)}</span>
-                  <span className="share-stat-label">total meters</span>
-                </div>
-              </div>
-
-              <div className="share-card-footer">
-                <span>Join us rowing around the world! 🌍</span>
-                <a 
-                  href="https://rowcrew.netlify.app" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="share-card-url"
-                >
-                  rowcrew.netlify.app
-                </a>
-              </div>
-            </div>
-
-            <div className="share-actions">
-              <button 
-                className={`share-copy-btn ${linkCopied ? 'copied' : ''} ${isCopying ? 'copying' : ''}`} 
-                onClick={handleCopyLink}
-                disabled={isCopying}
-              >
-                {isCopying ? '⏳ Working...' : linkCopied ? '✓ Done!' : '📤 Share'}
-              </button>
-              <button className="share-done-btn" onClick={handleCloseShare}>
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Personal Record Modal */}
-      {showPRModal && (
-        <div className="modal-overlay pr-overlay" onClick={() => setShowPRModal(null)}>
-          <div className="pr-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="pr-fireworks">🎆</div>
-            <h2 className="pr-title">NEW PR! 🏆</h2>
-            <p className="pr-meters">{showPRModal?.toLocaleString()}m</p>
-            <p className="pr-subtitle">Personal Record Smashed!</p>
-            <div className="pr-message">
-              <p>You just beat your previous best!</p>
-              <p>Keep pushing those limits! 💪</p>
-            </div>
-            <button className="pr-btn" onClick={() => setShowPRModal(null)}>
-              Let's Go! 🚀
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Busted Modal - Nice try Chinh! */}
-      {showBustedModal && (
-        <div className="modal-overlay busted-overlay" onClick={() => setShowBustedModal(false)}>
-          <div className="busted-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="busted-emoji">🚨</div>
-            <h2 className="busted-title">BUSTED!</h2>
-            <p className="busted-subtitle">Nice try, Chinh 😏</p>
-            <div className="busted-message">
-              <p>We see you trying to mess with the database...</p>
-              <p>Your sneaky activities have been logged 📝</p>
-            </div>
-            <div className="busted-gif">
-              🕵️ Database Integrity Police 🚔
-            </div>
-            <button className="busted-btn" onClick={() => setShowBustedModal(false)}>
-              I'll behave now 😇
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Settings Modal */}
-      {showSettingsModal && (
-        <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
-          <div className="modal settings-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowSettingsModal(false)}>✕</button>
-            <h2>Settings</h2>
-            
-            {userProfile && (
-              <>
-                {/* Profile Picture */}
-                <div className="settings-section">
-                  <h3>Profile Picture</h3>
-                  <div className="settings-photo-section">
-                    <div className="settings-photo-preview">
-                      {userProfile.photoURL ? (
-                        <img src={userProfile.photoURL} alt="" />
-                      ) : (
-                        <div className="settings-photo-placeholder">
-                          {userProfile.name?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                      )}
-                    </div>
-                    <label className="settings-photo-upload">
-                      <input
-                        ref={profilePicInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleProfilePicUpload}
-                        disabled={isUploadingPhoto}
-                      />
-                      {isUploadingPhoto ? 'Uploading...' : 'Change Photo'}
-                    </label>
-                  </div>
-                </div>
-
-                {/* Account Info */}
-                <div className="settings-section">
-                  <h3>Account</h3>
-                  <div className="settings-info-row">
-                    <span>Name</span>
-                    <span>{userProfile.name}</span>
-                  </div>
-                  <div className="settings-info-row">
-                    <span>Username</span>
-                    <span className="settings-username">@{userProfile.username || 'not set'}</span>
-                  </div>
-                  <div className="settings-info-row">
-                    <span>Email</span>
-                    <span>{currentUser?.email}</span>
-                  </div>
-                  <div className="settings-info-row">
-                    <span>Total Meters</span>
-                    <span>{userProfile.totalMeters?.toLocaleString() || 0}m</span>
-                  </div>
-                  <div className="settings-info-row">
-                    <span>Sessions</span>
-                    <span>{userProfile.uploadCount || 0}</span>
-                  </div>
-                </div>
-
-                {/* Change Username */}
-                <div className="settings-section">
-                  <h3>Change Username</h3>
-                  <div className="username-change-form">
-                    <div className="username-input-wrapper">
-                      <span className="username-prefix">@</span>
-                      <input
-                        type="text"
-                        placeholder={userProfile.username || 'new_username'}
-                        value={newUsername}
-                        onChange={(e) => handleUsernameChange(e.target.value)}
-                        className="username-input"
-                        maxLength={20}
-                      />
-                      <span className="username-status">
-                        {usernameStatus === 'checking' && '⏳'}
-                        {usernameStatus === 'available' && '✓'}
-                        {usernameStatus === 'taken' && '✗'}
-                        {usernameStatus === 'invalid' && '⚠️'}
-                      </span>
-                    </div>
-                    <button 
-                      className="username-save-btn"
-                      onClick={async () => {
-                        if (usernameStatus !== 'available' || !newUsername) return;
-                        try {
-                          await updateDoc(doc(db, 'users', currentUser.uid), {
-                            username: newUsername.toLowerCase()
-                          });
-                          setNewUsername('');
-                          setUsernameStatus(null);
-                        } catch (error) {
-                          console.error('Error updating username:', error);
-                        }
-                      }}
-                      disabled={usernameStatus !== 'available'}
-                    >
-                      Save
-                    </button>
-                  </div>
-                  <small className="username-hint">
-                    {!usernameStatus && 'Enter a new username (3-20 chars, a-z, 0-9, _)'}
-                    {usernameStatus === 'checking' && 'Checking availability...'}
-                    {usernameStatus === 'available' && 'Username is available!'}
-                    {usernameStatus === 'taken' && 'Username is already taken'}
-                    {usernameStatus === 'invalid' && 'Invalid format'}
-                  </small>
-                </div>
-
-                {/* Default Rowing Machine */}
-                <div className="settings-section">
-                  <h3>🚣 My Rower</h3>
-                  <p className="settings-section-desc">Set your default machine to help our AI learn</p>
-                  <div className="rower-select-wrapper">
-                    <select
-                      className="rower-select"
-                      value={userProfile.defaultMachine || ''}
-                      onChange={async (e) => {
-                        const newMachine = e.target.value;
-                        try {
-                          await updateDoc(doc(db, 'users', currentUser.uid), {
-                            defaultMachine: newMachine,
-                            customMachineName: newMachine === 'other' ? userProfile.customMachineName : null
-                          });
-                        } catch (error) {
-                          console.error('Error updating default machine:', error);
-                        }
-                      }}
-                    >
-                      <option value="">Select your machine...</option>
-                      <optgroup label="Popular">
-                        {ROWING_MACHINES.filter(m => m.popular && m.id !== 'other').map(machine => (
-                          <option key={machine.id} value={machine.id}>{machine.name}</option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Other Machines">
-                        {ROWING_MACHINES.filter(m => !m.popular && m.id !== 'other').map(machine => (
-                          <option key={machine.id} value={machine.id}>{machine.name}</option>
-                        ))}
-                      </optgroup>
-                      <option value="other">Other / Custom...</option>
-                    </select>
-                  </div>
-                  
-                  {/* Custom machine name input */}
-                  {userProfile.defaultMachine === 'other' && (
-                    <div className="custom-machine-input">
-                      <input
-                        type="text"
-                        placeholder="Enter your machine name..."
-                        value={userProfile.customMachineName || ''}
-                        onChange={async (e) => {
-                          const inputValue = e.target.value;
-                          try {
-                            await updateDoc(doc(db, 'users', currentUser.uid), {
-                              customMachineName: inputValue
-                            });
-                          } catch (error) {
-                            console.error('Error updating custom machine name:', error);
-                          }
-                        }}
-                        maxLength={50}
-                      />
-                      {/* Smart suggestion if input matches a known machine */}
-                      {userProfile.customMachineName && (() => {
-                        const matchedId = normalizeMachineName(userProfile.customMachineName);
-                        if (matchedId && matchedId !== 'other') {
-                          const matchedMachine = ROWING_MACHINES.find(m => m.id === matchedId);
-                          return (
-                            <div className="machine-suggestion">
-                              <span>Did you mean <strong>{matchedMachine?.name}</strong>?</span>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  try {
-                                    await updateDoc(doc(db, 'users', currentUser.uid), {
-                                      defaultMachine: matchedId,
-                                      customMachineName: null
-                                    });
-                                  } catch (error) {
-                                    console.error('Error updating machine:', error);
-                                  }
-                                }}
-                              >
-                                Use {matchedMachine?.name}
-                              </button>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                      <small>e.g., "Planet Fitness Rower", "Hotel Gym LifeSpan"</small>
-                    </div>
-                  )}
-                  
-                  {userProfile.defaultMachine && (
-                    <div className="rower-current">
-                      ✓ Default: <strong>{getMachineName(userProfile.defaultMachine, userProfile.customMachineName)}</strong>
-                    </div>
-                  )}
-                  
-                  {/* Show last used machine if no default set */}
-                  {!userProfile.defaultMachine && userProfile.lastUsedMachine && (
-                    <div className="rower-last-used">
-                      <div className="rower-last-used-info">
-                        <span>Last used: <strong>{getMachineName(userProfile.lastUsedMachine, userProfile.lastUsedMachineCustomName)}</strong></span>
-                      </div>
-                      <button
-                        className="rower-make-default-btn"
-                        onClick={async () => {
-                          try {
-                            await updateDoc(doc(db, 'users', currentUser.uid), {
-                              defaultMachine: userProfile.lastUsedMachine,
-                              customMachineName: userProfile.lastUsedMachineCustomName || null
-                            });
-                          } catch (error) {
-                            console.error('Error setting default machine:', error);
-                          }
-                        }}
-                      >
-                        Make Default
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Theme Selector */}
-                <div className="settings-section">
-                  <h3>🎨 Theme</h3>
-                  <div className="theme-selector">
-                    {THEME_LIST.map((theme) => (
-                      <button
-                        key={theme.id}
-                        className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
-                        onClick={() => setCurrentTheme(theme.id)}
-                        data-theme-preview={theme.id}
-                      >
-                        <span className="theme-emoji">{theme.emoji}</span>
-                        <span className="theme-name">{theme.name}</span>
-                        {currentTheme === theme.id && <span className="theme-check">✓</span>}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="settings-section-desc">{THEMES[currentTheme]?.description}</p>
-                </div>
-
-                {/* Session History Button */}
-                <div className="settings-section">
-                  <h3>History</h3>
-                  <button 
-                    className="settings-history-btn" 
-                    onClick={() => { setShowSessionHistory(true); setShowSettingsModal(false); }}
-                  >
-                    📋 View Session History
-                  </button>
-                </div>
-
-                {/* 2025 Wrapped */}
-                {getWrappedStats(currentUser?.uid) && (
-                  <div className="settings-section">
-                    <h3>Year in Review</h3>
-                    <button 
-                      className="settings-wrapped-btn" 
-                      onClick={() => { setShowWrapped(true); setShowSettingsModal(false); setWrappedSlide(0); }}
-                    >
-                      🎁 View 2025 Wrapped
-                    </button>
-                  </div>
-                )}
-
-                {/* Sign Out */}
-                <button className="settings-signout-btn" onClick={() => { handleSignOut(); setShowSettingsModal(false); }}>
-                  Sign Out
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Journey Modal */}
-      {showJourneyModal && (() => {
-        const milestoneIdx = getMilestoneIndex(totalMeters);
-        const checkpoints = getNearestCheckpoints(totalMeters);
-        return (
-          <div className="modal-overlay" onClick={() => setShowJourneyModal(false)}>
-            <div className="modal journey-modal" onClick={(e) => e.stopPropagation()}>
-              <button className="modal-close" onClick={() => setShowJourneyModal(false)}>✕</button>
-              <h2>🌍 Journey Around the World</h2>
-              <p className="journey-subtitle">Starting from Seattle, WA</p>
-
-              <div className="journey-location-banner">
-                <span className="journey-location-pin">📍</span>
-                <div className="journey-location-info">
-                  {checkpoints.prev ? (
-                    <span className="journey-location-text">
-                      Passed {checkpoints.prev.checkpoint}
-                    </span>
-                  ) : (
-                    <span className="journey-location-text">Just departed Seattle!</span>
-                  )}
-                  {checkpoints.next && (
-                    <span className="journey-location-next">
-                      {formatMeters(checkpoints.next.meters - totalMeters)} to {checkpoints.next.checkpoint}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="journey-list">
-                {/* Start marker */}
-                <div className="journey-item completed checkpoint">
-                  <div className="journey-indicator">📍</div>
-                  <div className="journey-item-content">
-                    <span className="journey-item-label">Start</span>
-                    <span className="journey-checkpoint-name">Seattle, WA</span>
-                  </div>
-                  <span className="journey-item-check">✅</span>
-                </div>
-
-                {MILESTONES.map((m, i) => {
-                  const isCompleted = totalMeters >= m.meters;
-                  const isCurrent = i === milestoneIdx;
-                  const isCheckpoint = !!m.checkpoint;
-
-                  return (
-                    <div
-                      key={m.meters}
-                      className={`journey-item ${isCompleted ? 'completed' : 'upcoming'} ${isCurrent ? 'current' : ''} ${isCheckpoint ? 'checkpoint' : ''}`}
-                      ref={isCurrent ? (el) => el?.scrollIntoView({ block: 'center', behavior: 'smooth' }) : undefined}
-                    >
-                      <div className="journey-indicator">
-                        {isCheckpoint ? '📍' : isCompleted ? '✅' : m.emoji}
-                      </div>
-                      <div className="journey-item-content">
-                        <span className="journey-item-label">{m.label}</span>
-                        {isCheckpoint && <span className="journey-checkpoint-name">{m.checkpoint}</span>}
-                        <span className="journey-item-comparison">{m.comparison}</span>
-                      </div>
-                      {isCompleted && !isCheckpoint && <span className="journey-item-check">✅</span>}
-                      {!isCompleted && isCurrent && (
-                        <span className="journey-item-distance">{formatMeters(m.meters - totalMeters)}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <button className="journey-close-btn" onClick={() => setShowJourneyModal(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Achievement Detail Modal */}
-      {showAchievementModal && (
-        <div className="modal-overlay" onClick={() => setShowAchievementModal(null)}>
-          <div className="modal achievement-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowAchievementModal(null)}>✕</button>
-            
-            <div className="achievement-modal-content">
-              <span className="achievement-modal-emoji">{showAchievementModal.emoji}</span>
-              <h2>{showAchievementModal.name}</h2>
-              <p className="achievement-modal-desc">{showAchievementModal.desc}</p>
-              
-              {currentUser && (() => {
-                const isUnlocked = getUserAchievements(currentUser.uid).some(a => a.id === showAchievementModal.id);
-                const progress = showAchievementModal.progress || getAchievementProgress(currentUser.uid, showAchievementModal);
-                const progressPercent = Math.min((progress.current / progress.target) * 100, 100);
-                
-                return (
-                  <>
-                    {/* Progress Bar */}
-                    <div className="achievement-modal-progress">
-                      <div className="achievement-modal-progress-bar">
-                        <div 
-                          className={`achievement-modal-progress-fill ${isUnlocked ? 'complete' : ''}`} 
-                          style={{ width: `${progressPercent}%` }} 
-                        />
-                      </div>
-                      <span className="achievement-modal-progress-text">
-                        {progress.target >= 1000 
-                          ? `${formatMeters(progress.current)} / ${formatMeters(progress.target)}`
-                          : `${progress.current} / ${progress.target}`
-                        }
-                      </span>
-                    </div>
-
-                    {/* Status */}
-                    <div className={`achievement-modal-status ${isUnlocked ? 'unlocked' : 'locked'}`}>
-                      {isUnlocked ? (
-                        <>
-                          <span className="status-icon">✓</span>
-                          <span>Unlocked!</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="status-icon">🔒</span>
-                          <span>Keep rowing to unlock!</span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Date Completed */}
-                    {isUnlocked && showAchievementModal.unlockedDate && (
-                      <p className="achievement-modal-date">
-                        Completed on {new Date(showAchievementModal.unlockedDate).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric' 
-                        })}
-                      </p>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-            
-            <button className="achievement-modal-close-btn" onClick={() => setShowAchievementModal(null)}>
-              Got it!
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Photo Enlargement Modal */}
-      {showPhotoModal && (
-        <div className="modal-overlay" onClick={() => setShowPhotoModal(null)}>
-          <div className="modal photo-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowPhotoModal(null)}>✕</button>
-            
-            <div className="photo-modal-content">
-              <img src={showPhotoModal.url} alt="Row evidence" className="photo-modal-image" />
-              
-              <div className="photo-modal-details">
-                <p><strong>{showPhotoModal.entry?.user?.name}</strong></p>
-                <p>{showPhotoModal.entry?.meters?.toLocaleString()}m</p>
-                <p className="photo-modal-date">
-                  {new Date(showPhotoModal.entry?.date).toLocaleString()}
-                </p>
-                
-                {showPhotoModal.entry?.verificationDetails && (
-                  <div className="photo-modal-verification">
-                    <p>
-                      <span className={`verification-status-badge ${showPhotoModal.entry.verificationStatus}`}>
-                        {showPhotoModal.entry.verificationStatus === 'verified' ? '✓ Verified' : 
-                         showPhotoModal.entry.verificationStatus === 'pending_review' ? '⏳ Pending Review' : 
-                         '? Unverified'}
-                      </span>
-                    </p>
-                    {showPhotoModal.entry.verificationDetails.displayType && (
-                      <p className="photo-modal-detail">Machine: {showPhotoModal.entry.verificationDetails.displayType}</p>
-                    )}
-                    {showPhotoModal.entry.verificationDetails.confidence > 0 && (
-                      <p className="photo-modal-detail">Confidence: {showPhotoModal.entry.verificationDetails.confidence}%</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Panel Modal */}
-      {showAdminPanel && isAdmin && (
-        <div className="modal-overlay" onClick={() => setShowAdminPanel(false)}>
-          <div className="modal admin-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowAdminPanel(false)}>✕</button>
-            
-            <h2>🛡️ Admin Panel</h2>
-            
-            {/* Stats */}
-            {adminStats && (
-              <div className="admin-stats">
-                <div className="admin-stat">
-                  <span className="admin-stat-value">{adminStats.verified}</span>
-                  <span className="admin-stat-label">Verified</span>
-                </div>
-                <div className="admin-stat pending">
-                  <span className="admin-stat-value">{adminStats.pending}</span>
-                  <span className="admin-stat-label">Pending</span>
-                </div>
-                <div className="admin-stat rejected">
-                  <span className="admin-stat-value">{adminStats.rejected}</span>
-                  <span className="admin-stat-label">Rejected</span>
-                </div>
-              </div>
-            )}
-            
-            <button className="admin-refresh-btn" onClick={loadPendingReviews}>
-              🔄 Refresh
-            </button>
-            
-            <h3>Pending Reviews ({pendingReviews.length})</h3>
-            
-            {pendingReviews.length === 0 ? (
-              <p className="admin-empty">No entries pending review 🎉</p>
-            ) : (
-              <div className="admin-review-list">
-                {pendingReviews.map((entry) => (
-                  <div key={entry.id} className="admin-review-item">
-                    <div className="admin-review-header">
-                      <span className="admin-review-user">{entry.userName}</span>
-                      <span className="admin-review-meters">{entry.meters?.toLocaleString()}m</span>
-                    </div>
-                    
-                    {entry.imageUrl && (
-                      <img 
-                        src={entry.imageUrl} 
-                        alt="Evidence" 
-                        className="admin-review-image"
-                        onClick={() => setShowPhotoModal({ url: entry.imageUrl, entry })}
-                      />
-                    )}
-                    
-                    <div className="admin-review-details">
-                      <p><strong>Reason:</strong> {entry.verificationDetails?.reason}</p>
-                      {entry.verificationDetails?.extractedMeters && (
-                        <p><strong>AI Saw:</strong> {entry.verificationDetails.extractedMeters}m</p>
-                      )}
-                      {entry.verificationDetails?.flags?.length > 0 && (
-                        <p><strong>Flags:</strong> {entry.verificationDetails.flags.join(', ')}</p>
-                      )}
-                      <p><strong>Date:</strong> {new Date(entry.date).toLocaleString()}</p>
-                    </div>
-                    
-                    {reviewingEntry === entry.id ? (
-                      <div className="admin-review-actions-expanded">
-                        <input
-                          type="number"
-                          placeholder="Adjusted meters (optional)"
-                          value={adjustedMeters}
-                          onChange={(e) => setAdjustedMeters(e.target.value)}
-                          className="admin-input"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Review note (optional)"
-                          value={reviewNote}
-                          onChange={(e) => setReviewNote(e.target.value)}
-                          className="admin-input"
-                        />
-                        <div className="admin-review-buttons">
-                          <button 
-                            className="admin-btn approve"
-                            onClick={() => handleReviewEntry(entry.id, 'approve')}
-                          >
-                            ✓ Approve
-                          </button>
-                          <button 
-                            className="admin-btn reject"
-                            onClick={() => handleReviewEntry(entry.id, 'reject')}
-                          >
-                            ✕ Reject
-                          </button>
-                          <button 
-                            className="admin-btn cancel"
-                            onClick={() => { setReviewingEntry(null); setAdjustedMeters(''); setReviewNote(''); }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button 
-                        className="admin-review-btn"
-                        onClick={() => setReviewingEntry(entry.id)}
-                      >
-                        Review
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* User Profile Modal */}
-      {showUserProfileModal && (
-        <div className="modal-overlay" onClick={() => setShowUserProfileModal(null)}>
-          <div className="modal user-profile-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowUserProfileModal(null)}>✕</button>
-            
-            {(() => {
-              const user = showUserProfileModal;
-              const userAchievements = getUserAchievements(user.id);
-              const longestStreak = calculateLongestStreak(user.id);
-              const personalRecord = getPersonalRecord(user.id);
-              const totalDays = getTotalDaysRowed(user.id);
-              const firstRow = getFirstRowDate(user.id);
-              const streak = calculateStreak(user.id);
-              const rank = getUserRank(user.totalMeters);
-              const weeklyAvg = calculateWeeklyAverage(user.id);
-              const avgPerUpload = user.uploadCount > 0 ? Math.round(user.totalMeters / user.uploadCount) : 0;
-              
-              return (
-                <>
-                  {/* Header */}
-                  <div className="profile-modal-header">
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt="" className="profile-modal-avatar" />
-                    ) : (
-                      <div className="profile-modal-avatar-placeholder">
-                        {user.name?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
-                    )}
-                    <div className="profile-modal-info">
-                      <h2>{user.name}</h2>
-                      {user.username && <span className="profile-modal-username">@{user.username}</span>}
-                      <span className="profile-modal-rank">{rank?.emoji} {rank?.title}</span>
-                      {streak > 0 && <span className="profile-modal-streak">🔥 {streak} day streak</span>}
-                      {user.defaultMachine && (
-                        <span className="profile-modal-machine">
-                          🚣 {getMachineName(user.defaultMachine, user.customMachineName)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Main Stats */}
-                  <div className="profile-stats-grid">
-                    <div className="profile-stat-box">
-                      <span className="profile-stat-value">{formatMeters(user.totalMeters)}</span>
-                      <span className="profile-stat-label">Total Meters</span>
-                    </div>
-                    <div className="profile-stat-box">
-                      <span className="profile-stat-value">{user.uploadCount || 0}</span>
-                      <span className="profile-stat-label">Sessions</span>
-                    </div>
-                    <div className="profile-stat-box highlight">
-                      <span className="profile-stat-value">{formatMeters(personalRecord)}</span>
-                      <span className="profile-stat-label">🏆 Best Row</span>
-                    </div>
-                    <div className="profile-stat-box highlight">
-                      <span className="profile-stat-value">{longestStreak}</span>
-                      <span className="profile-stat-label">🔥 Best Streak</span>
-                    </div>
-                  </div>
-
-                  {/* Time & Calorie Stats */}
-                  {(user.totalTime > 0 || user.totalCalories > 0) && (
-                    <div className="profile-extra-stats">
-                      {user.totalTime > 0 && (
-                        <div className="profile-extra-stat">
-                          <span className="profile-extra-icon">⏱️</span>
-                          <span className="profile-extra-value">{formatTimeDisplay(user.totalTime)}</span>
-                          <span className="profile-extra-label">Total Time</span>
-                        </div>
-                      )}
-                      {user.totalCalories > 0 && (
-                        <div className="profile-extra-stat">
-                          <span className="profile-extra-icon">🔥</span>
-                          <span className="profile-extra-value">{user.totalCalories.toLocaleString()}</span>
-                          <span className="profile-extra-label">Calories</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Secondary Stats */}
-                  <div className="profile-secondary-stats">
-                    <div className="profile-stat-row">
-                      <span>Avg/Session</span>
-                      <span>{formatMeters(avgPerUpload)}m</span>
-                    </div>
-                    <div className="profile-stat-row">
-                      <span>Sessions/Week</span>
-                      <span>{weeklyAvg}x</span>
-                    </div>
-                    <div className="profile-stat-row">
-                      <span>Days Rowed</span>
-                      <span>{totalDays}</span>
-                    </div>
-                    {firstRow && (
-                      <div className="profile-stat-row">
-                        <span>Member Since</span>
-                        <span>{firstRow.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Achievements */}
-                  <div className="profile-achievements">
-                    <div className="profile-achievements-header">
-                      <span>Achievements</span>
-                      <span>{userAchievements.length}/{ACHIEVEMENTS.length}</span>
-                    </div>
-                    <div className="profile-badges">
-                      {ACHIEVEMENTS.map((achievement) => {
-                        const unlocked = userAchievements.some(a => a.id === achievement.id);
-                        return (
-                          <div 
-                            key={achievement.id} 
-                            className={`profile-badge ${unlocked ? 'unlocked' : 'locked'}`}
-                            title={`${achievement.name}: ${achievement.desc}`}
-                          >
-                            {achievement.emoji}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
+      <ShareCardModal />
+      <PRModal />
+      <BustedModal />
+      <SettingsModal />
+      <JourneyModal />
+      <AchievementModal />
+      <PhotoModal />
+      <AdminPanel />
+      <UserProfileModal />
 
       {/* Rank Progress Modal */}
-      {showRankProgressModal && currentUser && userProfile && (
-        <div className="modal-overlay" onClick={() => setShowRankProgressModal(false)}>
-          <div className="modal rank-progress-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowRankProgressModal(false)}>✕</button>
-            
-            <h2>🎖️ Rank Progress</h2>
-            
-            {(() => {
-              const currentRank = getUserRank(userProfile.totalMeters);
-              const nextRank = getNextRank(userProfile.totalMeters);
-              const metersToNext = nextRank ? nextRank.minMeters - userProfile.totalMeters : 0;
-              const progressPercent = nextRank 
-                ? ((userProfile.totalMeters - currentRank.minMeters) / (nextRank.minMeters - currentRank.minMeters)) * 100
-                : 100;
-              
-              return (
-                <>
-                  {/* Current Rank */}
-                  <div className="current-rank-display">
-                    <span className="current-rank-emoji">{currentRank.emoji}</span>
-                    <div className="current-rank-info">
-                      <span className="current-rank-title">{currentRank.title}</span>
-                      <span className="current-rank-meters">{formatMeters(userProfile.totalMeters)}m total</span>
-                    </div>
-                  </div>
-
-                  {/* Progress to Next */}
-                  {nextRank && (
-                    <div className="next-rank-progress">
-                      <div className="progress-header">
-                        <span>Next: {nextRank.emoji} {nextRank.title}</span>
-                        <span>{formatMeters(metersToNext)}m to go</span>
-                      </div>
-                      <div className="rank-progress-bar">
-                        <div className="rank-progress-fill" style={{ width: `${progressPercent}%` }} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* All Ranks */}
-                  <div className="all-ranks">
-                    <h3>All Ranks</h3>
-                    <div className="ranks-list">
-                      {RANKS.map((rank, index) => {
-                        const isCurrentRank = currentRank.title === rank.title;
-                        const isUnlocked = userProfile.totalMeters >= rank.minMeters;
-                        return (
-                          <div key={rank.title} className={`rank-item ${isCurrentRank ? 'current' : ''} ${isUnlocked ? 'unlocked' : 'locked'}`}>
-                            <span className="rank-item-emoji">{rank.emoji}</span>
-                            <div className="rank-item-info">
-                              <span className="rank-item-title">{rank.title}</span>
-                              <span className="rank-item-req">{formatMeters(rank.minMeters)}m</span>
-                            </div>
-                            {isCurrentRank && <span className="rank-current-badge">YOU</span>}
-                            {isUnlocked && !isCurrentRank && <span className="rank-check">✓</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* Create Group Modal */}
-      {showCreateGroupModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateGroupModal(false)}>
-          <div className="modal group-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowCreateGroupModal(false)}>✕</button>
-            
-            <h2>Create Group</h2>
-            <p>Create a private group for your crew</p>
-
-            <div className="form-group">
-              <label>Group Name</label>
-              <input
-                type="text"
-                placeholder="e.g., Redeemer Rowers"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                maxLength={30}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Description (optional)</label>
-              <textarea
-                placeholder="What's this group about?"
-                value={newGroupDescription}
-                onChange={(e) => setNewGroupDescription(e.target.value)}
-                maxLength={100}
-                rows={2}
-              />
-            </div>
-
-            {groupError && <div className="form-error">{groupError}</div>}
-
-            <button 
-              className="primary-btn"
-              onClick={handleCreateGroup}
-              disabled={!newGroupName.trim() || isCreatingGroup}
-            >
-              {isCreatingGroup ? 'Creating...' : 'Create Group'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Join Group Modal */}
-      {showJoinGroupModal && (
-        <div className="modal-overlay" onClick={() => setShowJoinGroupModal(false)}>
-          <div className="modal group-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowJoinGroupModal(false)}>✕</button>
-            
-            <h2>Join Group</h2>
-            <p>Enter the invite code to join a group</p>
-
-            <div className="form-group">
-              <label>Invite Code</label>
-              <input
-                type="text"
-                placeholder="e.g., ABC123"
-                value={joinGroupCode}
-                onChange={(e) => setJoinGroupCode(e.target.value.toUpperCase())}
-                maxLength={6}
-                style={{ textTransform: 'uppercase', letterSpacing: '0.2em', textAlign: 'center', fontSize: '1.25rem' }}
-              />
-            </div>
-
-            {groupError && <div className="form-error">{groupError}</div>}
-
-            <button 
-              className="primary-btn"
-              onClick={handleJoinGroup}
-              disabled={joinGroupCode.length < 6 || isJoiningGroup}
-            >
-              {isJoiningGroup ? 'Joining...' : 'Join Group'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Invite User Modal */}
-      {showInviteUserModal && selectedGroupId && (
-        <div className="modal-overlay" onClick={() => { setShowInviteUserModal(false); setInviteUsername(''); }}>
-          <div className="modal group-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => { setShowInviteUserModal(false); setInviteUsername(''); }}>✕</button>
-            
-            <h2>Invite User</h2>
-            <p>Add someone to {getSelectedGroup()?.name}</p>
-
-            <div className="form-group">
-              <label>Search by name or username</label>
-              <input
-                type="text"
-                placeholder="Start typing..."
-                value={inviteUsername}
-                onChange={(e) => setInviteUsername(e.target.value)}
-                className="search-input-full"
-                autoFocus
-              />
-            </div>
-
-            {/* Search Results */}
-            <div className="invite-search-results">
-              {inviteUsername.length === 0 && (
-                <div className="invite-search-hint">Type to search for users</div>
-              )}
-              
-              {inviteUsername.length > 0 && searchUsers(inviteUsername).length === 0 && (
-                <div className="invite-search-status">No users found</div>
-              )}
-
-              {searchUsers(inviteUsername).map(user => (
-                <div 
-                  key={user.id}
-                  className={`invite-user-found ${user.isAlreadyMember ? 'already-member' : ''}`}
-                >
-                  <div className="invite-user-info">
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt="" className="invite-user-avatar" />
-                    ) : (
-                      <div className="invite-user-avatar-placeholder">{user.name?.charAt(0)}</div>
-                    )}
-                    <div>
-                      <div className="invite-user-name">{user.name}</div>
-                      {user.username && <div className="invite-user-username">@{user.username}</div>}
-                    </div>
-                  </div>
-                  {user.isAlreadyMember ? (
-                    <span className="already-member-badge">Member</span>
-                  ) : (
-                    <button 
-                      className="invite-add-btn" 
-                      onClick={async () => {
-                        try {
-                          await updateDoc(doc(db, 'groups', selectedGroupId), {
-                            memberIds: arrayUnion(user.id)
-                          });
-                          setInviteUsername('');
-                        } catch (error) {
-                          console.error('Error inviting user:', error);
-                        }
-                      }}
-                    >
-                      Add
-                    </button>
-                  )}
+      {showRankProgressModal && currentUser && userProfile && (() => {
+        const currentRank = getUserRank(userProfile.totalMeters);
+        const nextRank = getNextRank(userProfile.totalMeters);
+        const metersToNext = nextRank ? nextRank.minMeters - userProfile.totalMeters : 0;
+        const progressPercent = nextRank
+          ? ((userProfile.totalMeters - currentRank.minMeters) / (nextRank.minMeters - currentRank.minMeters)) * 100
+          : 100;
+        return (
+          <div className="modal-overlay" onClick={() => setShowRankProgressModal(false)}>
+            <div className="modal rank-progress-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-close" onClick={() => setShowRankProgressModal(false)}>✕</button>
+              <h2>🎖️ Rank Progress</h2>
+              <div className="current-rank-display">
+                <span className="current-rank-emoji">{currentRank.emoji}</span>
+                <div className="current-rank-info">
+                  <span className="current-rank-title">{currentRank.title}</span>
+                  <span className="current-rank-meters">{formatMeters(userProfile.totalMeters)}m total</span>
                 </div>
-              ))}
-            </div>
-
-            {groupError && <div className="form-error">{groupError}</div>}
-          </div>
-        </div>
-      )}
-
-      {/* Manage Members Modal */}
-      {showManageMembersModal && selectedGroupId && isGroupAdmin(selectedGroupId) && (
-        <div className="modal-overlay" onClick={() => setShowManageMembersModal(false)}>
-          <div className="modal manage-members-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowManageMembersModal(false)}>✕</button>
-            
-            <h2>Manage Members</h2>
-            <p>{getSelectedGroup()?.name}</p>
-
-            <div className="members-list">
-              {getSelectedGroup()?.memberIds?.map(memberId => {
-                const member = users[memberId];
-                if (!member) return null;
-                
-                const isAdmin = getSelectedGroup()?.adminIds?.includes(memberId);
-                const isCurrentUser = memberId === currentUser?.uid;
-                
-                return (
-                  <div key={memberId} className="member-row">
-                    <div className="member-info">
-                      {member.photoURL ? (
-                        <img src={member.photoURL} alt="" className="member-avatar" />
-                      ) : (
-                        <div className="member-avatar-placeholder">{member.name?.charAt(0)}</div>
-                      )}
-                      <div className="member-details">
-                        <div className="member-name">
-                          {member.name}
-                          {isCurrentUser && <span className="member-you">(you)</span>}
-                        </div>
-                        {member.username && <div className="member-username">@{member.username}</div>}
-                      </div>
-                    </div>
-                    <div className="member-actions">
-                      {isAdmin ? (
-                        <>
-                          <span className="admin-badge">Admin</span>
-                          {!isCurrentUser && getSelectedGroup()?.adminIds?.length > 1 && (
-                            <button 
-                              className="member-action-btn"
-                              onClick={() => {
-                                if (window.confirm(`Remove admin role from ${member.name}?`)) {
-                                  handleRemoveAdmin(selectedGroupId, memberId);
-                                }
-                              }}
-                              title="Remove admin role"
-                            >
-                              Remove Admin
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <button 
-                            className="member-action-btn promote"
-                            onClick={() => {
-                              if (window.confirm(`Make ${member.name} an admin?`)) {
-                                handleTransferAdmin(selectedGroupId, memberId);
-                              }
-                            }}
-                            title="Make admin"
-                          >
-                            Make Admin
-                          </button>
-                          <button 
-                            className="member-action-btn remove"
-                            onClick={() => {
-                              if (window.confirm(`Remove ${member.name} from the group?`)) {
-                                handleRemoveMember(selectedGroupId, memberId);
-                              }
-                            }}
-                            title="Remove from group"
-                          >
-                            Remove
-                          </button>
-                        </>
-                      )}
-                    </div>
+              </div>
+              {nextRank && (
+                <div className="next-rank-progress">
+                  <div className="progress-header">
+                    <span>Next: {nextRank.emoji} {nextRank.title}</span>
+                    <span>{formatMeters(metersToNext)}m to go</span>
                   </div>
-                );
-              })}
-            </div>
-
-            <div className="modal-footer">
-              <button className="modal-close-btn" onClick={() => setShowManageMembersModal(false)}>
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Challenge Modal */}
-      {showCreateChallengeModal && selectedGroupId && (
-        <div className="modal-overlay" onClick={() => setShowCreateChallengeModal(false)}>
-          <div className="modal challenge-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowCreateChallengeModal(false)}>✕</button>
-            
-            <h2>Create Challenge</h2>
-            <p>Set a challenge for {getSelectedGroup()?.name}</p>
-
-            <div className="form-group">
-              <label>Challenge Name</label>
-              <input
-                type="text"
-                placeholder="e.g., January Distance Challenge"
-                value={newChallengeName}
-                onChange={(e) => setNewChallengeName(e.target.value)}
-                maxLength={40}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Challenge Type</label>
-              <div className="challenge-type-options">
-                <button 
-                  className={`challenge-type-btn ${newChallengeType === 'collective' ? 'active' : ''}`}
-                  onClick={() => setNewChallengeType('collective')}
-                >
-                  <span>🎯</span>
-                  <span>Collective Goal</span>
-                  <small>Team reaches target meters</small>
-                </button>
-                <button 
-                  className={`challenge-type-btn ${newChallengeType === 'distance_race' ? 'active' : ''}`}
-                  onClick={() => setNewChallengeType('distance_race')}
-                >
-                  <span>🏃</span>
-                  <span>Distance Race</span>
-                  <small>Most meters wins</small>
-                </button>
-                <button 
-                  className={`challenge-type-btn ${newChallengeType === 'total_time' ? 'active' : ''}`}
-                  onClick={() => setNewChallengeType('total_time')}
-                >
-                  <span>⏱️</span>
-                  <span>Total Time</span>
-                  <small>Most time rowed wins</small>
-                </button>
-                <button 
-                  className={`challenge-type-btn ${newChallengeType === 'calories' ? 'active' : ''}`}
-                  onClick={() => setNewChallengeType('calories')}
-                >
-                  <span>🔥</span>
-                  <span>Calorie Burn</span>
-                  <small>Most calories wins</small>
-                </button>
-                <button 
-                  className={`challenge-type-btn ${newChallengeType === 'collective_calories' ? 'active' : ''}`}
-                  onClick={() => setNewChallengeType('collective_calories')}
-                >
-                  <span>☄️</span>
-                  <span>Team Calories</span>
-                  <small>Team burns target cals</small>
-                </button>
-                <button 
-                  className={`challenge-type-btn ${newChallengeType === 'time_trial' ? 'active' : ''}`}
-                  onClick={() => setNewChallengeType('time_trial')}
-                >
-                  <span>🏁</span>
-                  <span>Time Trial</span>
-                  <small>Fastest time for distance</small>
-                </button>
-                <button 
-                  className={`challenge-type-btn ${newChallengeType === 'streak' ? 'active' : ''}`}
-                  onClick={() => setNewChallengeType('streak')}
-                >
-                  <span>📈</span>
-                  <span>Streak Battle</span>
-                  <small>Longest streak wins</small>
-                </button>
-                <button 
-                  className={`challenge-type-btn ${newChallengeType === 'sessions' ? 'active' : ''}`}
-                  onClick={() => setNewChallengeType('sessions')}
-                >
-                  <span>📅</span>
-                  <span>Session Count</span>
-                  <small>Most sessions wins</small>
-                </button>
-              </div>
-            </div>
-
-            {(newChallengeType === 'collective' || newChallengeType === 'time_trial') && (
-              <div className="form-group">
-                <label>
-                  {newChallengeType === 'collective' ? 'Target Meters' : 'Distance (meters)'}
-                </label>
-                <input
-                  type="number"
-                  placeholder={newChallengeType === 'collective' ? 'e.g., 100000' : 'e.g., 500'}
-                  value={newChallengeTarget}
-                  onChange={(e) => setNewChallengeTarget(e.target.value)}
-                />
-                {newChallengeType === 'collective' && newChallengeTarget && (
-                  <small className="form-hint">
-                    That's {formatMeters(parseInt(newChallengeTarget, 10))} for the team
-                  </small>
-                )}
-              </div>
-            )}
-
-            {newChallengeType === 'collective_calories' && (
-              <div className="form-group">
-                <label>Target Calories</label>
-                <input
-                  type="number"
-                  placeholder="e.g., 50000"
-                  value={newChallengeTarget}
-                  onChange={(e) => setNewChallengeTarget(e.target.value)}
-                />
-                {newChallengeTarget && (
-                  <small className="form-hint">
-                    That's {parseInt(newChallengeTarget, 10).toLocaleString()} calories for the team
-                  </small>
-                )}
-              </div>
-            )}
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Start Date</label>
-                <input
-                  type="date"
-                  value={newChallengeStartDate}
-                  onChange={(e) => setNewChallengeStartDate(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label>End Date</label>
-                <input
-                  type="date"
-                  value={newChallengeEndDate}
-                  onChange={(e) => setNewChallengeEndDate(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {groupError && <div className="form-error">{groupError}</div>}
-
-            <button 
-              className="primary-btn"
-              onClick={handleCreateChallenge}
-              disabled={!newChallengeName.trim() || !newChallengeStartDate || !newChallengeEndDate || isCreatingChallenge}
-            >
-              {isCreatingChallenge ? 'Creating...' : 'Create Challenge'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Challenge Detail Modal */}
-      {showChallengeDetail && (
-        <div className="modal-overlay" onClick={() => setShowChallengeDetail(null)}>
-          <div className="modal challenge-detail-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowChallengeDetail(null)}>✕</button>
-            
-            {(() => {
-              const challenge = showChallengeDetail;
-              const status = getChallengeStatus(challenge);
-              const progress = getChallengeProgress(challenge);
-              const leaderboard = getChallengeLeaderboard(challenge);
-
-              return (
-                <>
-                  <div className="challenge-detail-header">
-                    <span className="challenge-type-icon-lg">
-                      {challenge.type === 'collective' && '🎯'}
-                      {challenge.type === 'collective_calories' && '☄️'}
-                      {challenge.type === 'time_trial' && '🏁'}
-                      {challenge.type === 'distance_race' && '🏃'}
-                      {challenge.type === 'total_time' && '⏱️'}
-                      {challenge.type === 'calories' && '🔥'}
-                      {challenge.type === 'streak' && '📈'}
-                      {challenge.type === 'sessions' && '📅'}
-                    </span>
-                    <div>
-                      <h2>{challenge.name}</h2>
-                      <span className={`challenge-status-badge ${status}`}>
-                        {status === 'active' && '🟢 Active'}
-                        {status === 'upcoming' && '🟡 Starts ' + new Date(challenge.startDate).toLocaleDateString()}
-                        {status === 'completed' && '✅ Completed'}
-                      </span>
-                    </div>
+                  <div className="rank-progress-bar">
+                    <div className="rank-progress-fill" style={{ width: `${progressPercent}%` }} />
                   </div>
-
-                  <div className="challenge-detail-dates">
-                    📅 {new Date(challenge.startDate).toLocaleDateString()} - {new Date(challenge.endDate).toLocaleDateString()}
-                  </div>
-
-                  {/* Collective Progress (meters or calories) */}
-                  {(challenge.type === 'collective' || challenge.type === 'collective_calories') && progress && (
-                    <div className="challenge-collective-progress">
-                      <div className="collective-progress-visual">
-                        <div 
-                          className="collective-progress-fill"
-                          style={{ width: `${progress.percentage}%` }}
-                        />
-                      </div>
-                      <div className="collective-progress-stats">
-                        <div className="collective-current">
-                          <span className="big-number">
-                            {challenge.type === 'collective_calories' 
-                              ? progress.current.toLocaleString()
-                              : formatMeters(progress.current)
-                            }
-                          </span>
-                          <span>{challenge.type === 'collective_calories' ? 'calories burned' : 'rowed'}</span>
-                        </div>
-                        <div className="collective-target">
-                          <span>of {challenge.type === 'collective_calories' 
-                            ? progress.target.toLocaleString() + ' cal'
-                            : formatMeters(progress.target)
-                          } goal</span>
-                          <span className="percentage">{progress.percentage.toFixed(1)}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Time Trial - Submit Button */}
-                  {challenge.type === 'time_trial' && status === 'active' && (
-                    <div className="time-trial-submit-section">
-                      <p>🏁 {challenge.targetDistance}m Time Trial</p>
-                      {challenge.participants?.[currentUser?.uid] && (
-                        <p className="your-best-time">
-                          Your best: <strong>{formatTime(challenge.participants[currentUser.uid].bestTime)}</strong>
-                          {challenge.participants[currentUser.uid].verified && ' ✓'}
-                        </p>
-                      )}
-                      <button 
-                        className="submit-time-btn"
-                        onClick={() => setShowTimeTrialModal(challenge)}
-                      >
-                        {challenge.participants?.[currentUser?.uid] ? 'Submit New Time' : 'Submit Time'}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Leaderboard */}
-                  <div className="challenge-leaderboard">
-                    <h3>
-                      {challenge.type === 'time_trial' ? 'Best Times' : 'Leaderboard'}
-                    </h3>
-                    {leaderboard.length === 0 ? (
-                      <p className="no-entries">No entries yet. Be the first!</p>
-                    ) : (
-                      <div className="challenge-leaderboard-list">
-                        {leaderboard.map((entry, index) => (
-                          <div 
-                            key={entry.userId || entry.user?.id} 
-                            className={`challenge-lb-item ${entry.userId === currentUser?.uid || entry.user?.id === currentUser?.uid ? 'is-you' : ''}`}
-                          >
-                            <span className="challenge-lb-rank">
-                              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-                            </span>
-                            <div className="challenge-lb-user">
-                              {entry.user?.photoURL ? (
-                                <img src={entry.user.photoURL} alt="" className="challenge-lb-avatar" />
-                              ) : (
-                                <div className="challenge-lb-avatar-placeholder">
-                                  {entry.user?.name?.charAt(0) || '?'}
-                                </div>
-                              )}
-                              <span>{entry.user?.name}</span>
-                            </div>
-                            <span className="challenge-lb-value">
-                              {challenge.type === 'time_trial' && formatTime(entry.time)}
-                              {challenge.type === 'time_trial' && entry.verified && ' ✓'}
-                              {(challenge.type === 'distance_race' || challenge.type === 'collective') && formatMeters(entry.totalMeters)}
-                              {challenge.type === 'total_time' && formatTimeDisplay(entry.totalTime)}
-                              {(challenge.type === 'calories' || challenge.type === 'collective_calories') && `${entry.totalCalories.toLocaleString()} cal`}
-                              {challenge.type === 'streak' && `${entry.bestStreak} days`}
-                              {challenge.type === 'sessions' && `${entry.sessionCount} sessions`}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* Time Trial Submission Modal */}
-      {showTimeTrialModal && (
-        <div className="modal-overlay" onClick={() => setShowTimeTrialModal(null)}>
-          <div className="modal time-trial-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowTimeTrialModal(null)}>✕</button>
-            
-            <h2>Submit {showTimeTrialModal.targetDistance}m Time</h2>
-            <p>Enter your time for the {showTimeTrialModal.name}</p>
-
-            <div className="form-group">
-              <label>Your Time</label>
-              <input
-                type="text"
-                placeholder="e.g., 1:45.3 or 105.3"
-                value={timeTrialTime}
-                onChange={(e) => setTimeTrialTime(e.target.value)}
-                className="time-input"
-              />
-              <small className="form-hint">Format: M:SS.s or just seconds</small>
-            </div>
-
-            <div className="form-group">
-              <label>Photo (optional - for verification)</label>
-              <label className="photo-upload-btn">
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (ev) => setTimeTrialImage(ev.target.result);
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-                📷 {timeTrialImage ? 'Photo Added ✓' : 'Add Photo'}
-              </label>
-              {!timeTrialImage && (
-                <small className="form-hint">Times without photos are marked unverified</small>
+                </div>
               )}
-            </div>
-
-            {groupError && <div className="form-error">{groupError}</div>}
-
-            <button 
-              className="primary-btn"
-              onClick={handleSubmitTimeTrial}
-              disabled={!timeTrialTime || isSubmittingTimeTrial}
-            >
-              {isSubmittingTimeTrial ? 'Submitting...' : 'Submit Time'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Session History Modal */}
-      {showSessionHistory && currentUser && (
-        <div className="modal-overlay" onClick={() => setShowSessionHistory(false)}>
-          <div className="modal session-history-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowSessionHistory(false)}>✕</button>
-            
-            <h2>📋 Session History</h2>
-            
-            {(() => {
-              const sessions = getUserSessionHistory(currentUser.uid);
-              
-              if (sessions.length === 0) {
-                return <div className="empty-state"><p>No sessions yet!</p></div>;
-              }
-              
-              return (
-                <div className="session-list">
-                  {sessions.map((session, index) => {
-                    const date = new Date(session.date);
+              <div className="all-ranks">
+                <h3>All Ranks</h3>
+                <div className="ranks-list">
+                  {RANKS.map((rank) => {
+                    const isCurrentRank = currentRank.title === rank.title;
+                    const isUnlocked = userProfile.totalMeters >= rank.minMeters;
                     return (
-                      <div key={session.id || index} className="session-item">
-                        <div className="session-date">
-                          <span className="session-day">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                          <span className="session-full-date">{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      <div key={rank.title} className={`rank-item ${isCurrentRank ? 'current' : ''} ${isUnlocked ? 'unlocked' : 'locked'}`}>
+                        <span className="rank-item-emoji">{rank.emoji}</span>
+                        <div className="rank-item-info">
+                          <span className="rank-item-title">{rank.title}</span>
+                          <span className="rank-item-req">{formatMeters(rank.minMeters)}m</span>
                         </div>
-                        <div className="session-meters">
-                          <span className="session-meters-value">{session.meters.toLocaleString()}m</span>
-                          {session.verificationStatus === 'verified' && <span className="session-verified">✓</span>}
-                          {session.verificationStatus === 'pending_review' && <span className="session-pending">⏳</span>}
-                          {(session.verificationStatus === 'unverified' || !session.verificationStatus) && <span className="session-unverified">✗</span>}
-                        </div>
-                        <button
-                          className="session-delete-btn"
-                          onClick={() => handleDeleteEntry(session.id, session.meters)}
-                          disabled={deletingEntryId === session.id}
-                          title="Delete entry"
-                        >
-                          {deletingEntryId === session.id ? '...' : '🗑️'}
-                        </button>
+                        {isCurrentRank && <span className="rank-current-badge">YOU</span>}
+                        {isUnlocked && !isCurrentRank && <span className="rank-check">✓</span>}
                       </div>
                     );
                   })}
                 </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* 2025 Wrapped Modal */}
-      {showWrapped && currentUser && (() => {
-        const stats = getWrappedStats(currentUser.uid);
-        if (!stats) return null;
-        
-        // Different slides for users with no data
-        const noDataSlides = [
-          {
-            type: 'intro',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            content: (
-              <div className="wrapped-slide-content intro">
-                <div className="wrapped-year">2025</div>
-                <div className="wrapped-logo">🚣 ROW CREW</div>
-                <h1>Your Year Awaits!</h1>
-                <p>Let's make it count...</p>
-                <div className="wrapped-tap-hint">Tap to continue →</div>
               </div>
-            )
-          },
-          {
-            type: 'no-data',
-            background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-            content: (
-              <div className="wrapped-slide-content">
-                <div className="wrapped-big-text">🚣</div>
-                <h2 style={{ marginTop: '1rem' }}>Your rowing journey starts now!</h2>
-                <div className="wrapped-fun-fact">
-                  Log your first row and start building your 2025 story
-                </div>
-              </div>
-            )
-          },
-          {
-            type: 'cta',
-            background: 'linear-gradient(135deg, #0a0e17 0%, #1a1f2e 100%)',
-            content: (
-              <div className="wrapped-slide-content summary">
-                <div className="wrapped-summary-header">
-                  <span>🚣</span> ROW CREW 2025
-                </div>
-                <div className="wrapped-summary-name">{userProfile?.name}</div>
-                <div style={{ padding: '2rem 0', fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
-                  Your story is waiting to be written.<br/>Start rowing today!
-                </div>
-                <div className="wrapped-summary-rank">
-                  {stats.currentRank.emoji} {stats.currentRank.title}
-                </div>
-                <div className="wrapped-summary-footer">
-                  rowcrew.netlify.app
-                </div>
-              </div>
-            )
-          }
-        ];
-
-        const slides = stats.hasData ? [
-          // Slide 0: Intro
-          {
-            type: 'intro',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            content: (
-              <div className="wrapped-slide-content intro">
-                <div className="wrapped-year">2025</div>
-                <div className="wrapped-logo">🚣 ROW CREW</div>
-                <h1>Your Year in Rowing</h1>
-                <p>Let's see what you accomplished...</p>
-                <div className="wrapped-tap-hint">Tap to continue →</div>
-              </div>
-            )
-          },
-          // Slide 1: Total Meters
-          {
-            type: 'meters',
-            background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-            content: (
-              <div className="wrapped-slide-content">
-                <div className="wrapped-small-label">This year, you rowed</div>
-                <div className="wrapped-big-number">{stats.totalMeters.toLocaleString()}</div>
-                <div className="wrapped-unit">meters</div>
-                <div className="wrapped-fun-fact">
-                  That's {stats.bridgeCrossings} trips across the Golden Gate Bridge! 🌉
-                </div>
-              </div>
-            )
-          },
-          // Slide 2: Sessions
-          {
-            type: 'sessions',
-            background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-            content: (
-              <div className="wrapped-slide-content">
-                <div className="wrapped-small-label">You showed up</div>
-                <div className="wrapped-big-number">{stats.sessionCount}</div>
-                <div className="wrapped-unit">times</div>
-                <div className="wrapped-fun-fact">
-                  That's {stats.daysRowed} unique days on the rower! 💪
-                </div>
-              </div>
-            )
-          },
-          // Slide 3: Best Day
-          {
-            type: 'favorite-day',
-            background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-            content: (
-              <div className="wrapped-slide-content">
-                <div className="wrapped-small-label">Your favorite day to row was</div>
-                <div className="wrapped-big-text">{stats.favoriteDay}</div>
-                <div className="wrapped-fun-fact">
-                  You rowed on {stats.favoriteDay}s {stats.favoriteDayCount} times!
-                </div>
-              </div>
-            )
-          },
-          // Slide 4: Best Month
-          {
-            type: 'best-month',
-            background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-            content: (
-              <div className="wrapped-slide-content dark-text">
-                <div className="wrapped-small-label">Your most active month was</div>
-                <div className="wrapped-big-text">{stats.bestMonth}</div>
-                <div className="wrapped-fun-fact">
-                  You crushed {stats.bestMonthMeters.toLocaleString()}m that month! 📈
-                </div>
-              </div>
-            )
-          },
-          // Slide 5: Beast Mode (Best Row)
-          {
-            type: 'beast-mode',
-            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-            content: (
-              <div className="wrapped-slide-content">
-                <div className="wrapped-small-label">Your beast mode moment 🏆</div>
-                <div className="wrapped-big-number">{stats.bestRow.toLocaleString()}</div>
-                <div className="wrapped-unit">meters in one session</div>
-                {stats.bestRowDate && (
-                  <div className="wrapped-fun-fact">
-                    On {stats.bestRowDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                  </div>
-                )}
-              </div>
-            )
-          },
-          // Slide 6: Best Streak
-          {
-            type: 'streak',
-            background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-            content: (
-              <div className="wrapped-slide-content dark-text">
-                <div className="wrapped-small-label">Your longest streak</div>
-                <div className="wrapped-big-number">{stats.bestStreak}</div>
-                <div className="wrapped-unit">days in a row 🔥</div>
-                <div className="wrapped-fun-fact">
-                  Consistency is key!
-                </div>
-              </div>
-            )
-          },
-          // Slide 7: Rank Journey (if improved)
-          ...(stats.rankImproved ? [{
-            type: 'rank',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            content: (
-              <div className="wrapped-slide-content">
-                <div className="wrapped-small-label">You leveled up!</div>
-                <div className="wrapped-rank-journey">
-                  <div className="wrapped-rank-from">
-                    <span className="wrapped-rank-emoji">{stats.startRank.emoji}</span>
-                    <span>{stats.startRank.title}</span>
-                  </div>
-                  <div className="wrapped-rank-arrow">→</div>
-                  <div className="wrapped-rank-to">
-                    <span className="wrapped-rank-emoji">{stats.currentRank.emoji}</span>
-                    <span>{stats.currentRank.title}</span>
-                  </div>
-                </div>
-              </div>
-            )
-          }] : []),
-          // Slide 8: Achievements
-          ...(stats.achievementsUnlocked.length > 0 ? [{
-            type: 'achievements',
-            background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-            content: (
-              <div className="wrapped-slide-content dark-text">
-                <div className="wrapped-small-label">You unlocked</div>
-                <div className="wrapped-big-number">{stats.achievementsUnlocked.length}</div>
-                <div className="wrapped-unit">achievements</div>
-                <div className="wrapped-badges">
-                  {stats.achievementsUnlocked.slice(0, 6).map((a, i) => (
-                    <span key={i} className="wrapped-badge">{a.emoji}</span>
-                  ))}
-                </div>
-              </div>
-            )
-          }] : []),
-          // Slide 9: Top Percentage
-          {
-            type: 'top-percent',
-            background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
-            content: (
-              <div className="wrapped-slide-content">
-                <div className="wrapped-small-label">You're in the</div>
-                <div className="wrapped-big-number">Top {stats.topPercentage}%</div>
-                <div className="wrapped-unit">of all Row Crew rowers</div>
-                <div className="wrapped-fun-fact">
-                  {stats.topPercentage <= 10 ? "Elite status! 👑" : 
-                   stats.topPercentage <= 25 ? "Outstanding! 🌟" : 
-                   stats.topPercentage <= 50 ? "Great work! 💪" : "Keep rowing! 🚣"}
-                </div>
-              </div>
-            )
-          },
-          // Slide 10: Summary (shareable)
-          {
-            type: 'summary',
-            background: 'linear-gradient(135deg, #0a0e17 0%, #1a1f2e 100%)',
-            content: (
-              <div className="wrapped-slide-content summary" ref={wrappedCardRef}>
-                <div className="wrapped-summary-header">
-                  <span>🚣</span> ROW CREW 2025
-                </div>
-                <div className="wrapped-summary-name">{userProfile?.name}</div>
-                <div className="wrapped-summary-stats">
-                  <div className="wrapped-summary-stat">
-                    <span className="wrapped-summary-value">{formatMeters(stats.totalMeters)}</span>
-                    <span className="wrapped-summary-label">meters</span>
-                  </div>
-                  <div className="wrapped-summary-stat">
-                    <span className="wrapped-summary-value">{stats.sessionCount}</span>
-                    <span className="wrapped-summary-label">sessions</span>
-                  </div>
-                  <div className="wrapped-summary-stat">
-                    <span className="wrapped-summary-value">{stats.bestStreak}</span>
-                    <span className="wrapped-summary-label">day streak</span>
-                  </div>
-                </div>
-                <div className="wrapped-summary-rank">
-                  {stats.currentRank.emoji} {stats.currentRank.title}
-                </div>
-                <div className="wrapped-summary-footer">
-                  rowcrew.netlify.app
-                </div>
-              </div>
-            )
-          }
-        ] : noDataSlides;
-        
-        const currentSlideData = slides[wrappedSlide];
-        const isLastSlide = wrappedSlide === slides.length - 1;
-        
-        const handleSlideClick = (e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const isLeftSide = x < rect.width / 3;
-          
-          if (isLeftSide && wrappedSlide > 0) {
-            setWrappedSlide(prev => prev - 1);
-          } else if (!isLeftSide && wrappedSlide < slides.length - 1) {
-            setWrappedSlide(prev => prev + 1);
-          }
-        };
-        
-        const handleShareWrapped = async () => {
-          if (!wrappedCardRef.current) return;
-          
-          try {
-            const canvas = await html2canvas(wrappedCardRef.current, {
-              backgroundColor: '#0a0e17',
-              scale: 2,
-            });
-            
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            const file = new File([blob], 'row-crew-wrapped-2025.png', { type: 'image/png' });
-            
-            if (navigator.share && navigator.canShare({ files: [file] })) {
-              await navigator.share({
-                files: [file],
-                title: 'My Row Crew 2025 Wrapped',
-                text: `🚣 My 2025 Row Crew Wrapped! I rowed ${stats.totalMeters.toLocaleString()}m this year!`,
-              });
-            } else if (navigator.clipboard?.write) {
-              await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-              showToast('Copied to clipboard!', 'success', 2000);
-            }
-          } catch (err) {
-            console.error('Share failed:', err);
-          }
-        };
-        
-        return (
-          <div 
-            className="wrapped-overlay"
-            onClick={handleSlideClick}
-            style={{ background: currentSlideData.background }}
-          >
-            {/* Progress bar */}
-            <div className="wrapped-progress">
-              {slides.map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`wrapped-progress-bar ${i <= wrappedSlide ? 'active' : ''} ${i === wrappedSlide ? 'current' : ''}`}
-                />
-              ))}
             </div>
-            
-            {/* Close button */}
-            <button 
-              className="wrapped-close"
-              onClick={(e) => { e.stopPropagation(); setShowWrapped(false); setWrappedSlide(0); }}
-            >
-              ✕
-            </button>
-            
-            {/* Slide content */}
-            <div className={`wrapped-slide wrapped-slide-${currentSlideData.type}`}>
-              {currentSlideData.content}
-            </div>
-            
-            {/* Navigation hint */}
-            <div className="wrapped-nav-hint">
-              {wrappedSlide > 0 && <span className="nav-left">‹</span>}
-              <span className="nav-dots">
-                {wrappedSlide + 1} / {slides.length}
-              </span>
-              {!isLastSlide && <span className="nav-right">›</span>}
-            </div>
-            
-            {/* Share button on last slide */}
-            {isLastSlide && (
-              <div className="wrapped-share-actions" onClick={(e) => e.stopPropagation()}>
-                <button className="wrapped-share-btn" onClick={handleShareWrapped}>
-                  📤 Share Your Wrapped
-                </button>
-                <button 
-                  className="wrapped-done-btn"
-                  onClick={() => { setShowWrapped(false); setWrappedSlide(0); }}
-                >
-                  Done
-                </button>
-              </div>
-            )}
           </div>
         );
       })()}
 
-      {/* Install App Prompt */}
-      {showInstallPrompt && !isStandalone && (
-        <div className="install-prompt">
-          <div className="install-prompt-content">
-            <span className="install-prompt-icon">📱</span>
-            <div className="install-prompt-text">
-              <strong>Install Row Crew</strong>
-              <p>Add to your home screen for quick access!</p>
-            </div>
-          </div>
-          
-          {isIOS ? (
-            <div className="install-prompt-ios">
-              <p>1. Tap the Share button <span className="ios-share-icon">⬆️</span></p>
-              <p>2. Scroll down and tap "Add to Home Screen"</p>
-              <button className="install-prompt-dismiss" onClick={dismissInstallPrompt}>Got it!</button>
-            </div>
-          ) : deferredPrompt ? (
-            <div className="install-prompt-actions">
-              <button className="install-prompt-btn" onClick={handleInstallClick}>Install</button>
-              <button className="install-prompt-dismiss" onClick={dismissInstallPrompt}>Maybe Later</button>
-            </div>
-          ) : (
-            <div className="install-prompt-ios">
-              <p>Open browser menu and select "Add to Home Screen"</p>
-              <button className="install-prompt-dismiss" onClick={dismissInstallPrompt}>Got it!</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Welcome Modal - First Time Visitors */}
-      {showWelcomeModal && (
-        <div className="modal-overlay" onClick={() => setShowWelcomeModal(false)}>
-          <div className="modal welcome-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowWelcomeModal(false)}>✕</button>
-            
-            <div className="welcome-header">
-              <span className="welcome-logo">🚣</span>
-              <h2>Welcome to Row Crew!</h2>
-              <p className="welcome-tagline">The social rowing tracker that makes every meter count</p>
-            </div>
-
-            <div className="welcome-features">
-              <div className="welcome-feature">
-                <span className="welcome-feature-icon">🌍</span>
-                <div>
-                  <h4>Row Around The World</h4>
-                  <p>Join our global community goal to row 40,075km together</p>
-                </div>
-              </div>
-              
-              <div className="welcome-feature">
-                <span className="welcome-feature-icon">📸</span>
-                <div>
-                  <h4>AI-Verified Rows</h4>
-                  <p>Snap a photo of your machine - our AI reads your meters automatically</p>
-                </div>
-              </div>
-              
-              <div className="welcome-feature">
-                <span className="welcome-feature-icon">👥</span>
-                <div>
-                  <h4>Private Groups</h4>
-                  <p>Create crews with friends, family, or gym buddies</p>
-                </div>
-              </div>
-              
-              <div className="welcome-feature">
-                <span className="welcome-feature-icon">🎯</span>
-                <div>
-                  <h4>Challenges</h4>
-                  <p>Compete in distance races, time trials, and team goals</p>
-                </div>
-              </div>
-              
-              <div className="welcome-feature">
-                <span className="welcome-feature-icon">🏆</span>
-                <div>
-                  <h4>Ranks & Achievements</h4>
-                  <p>Level up from Landlubber to Captain as you progress</p>
-                </div>
-              </div>
-              
-              <div className="welcome-feature">
-                <span className="welcome-feature-icon">🔥</span>
-                <div>
-                  <h4>Streaks & Stats</h4>
-                  <p>Track your consistency and see detailed analytics</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="welcome-cta">
-              {!currentUser ? (
-                <button className="welcome-signin-btn" onClick={() => { setShowWelcomeModal(false); handleSignIn(); }}>
-                  Sign In to Start Rowing
-                </button>
-              ) : (
-                <button className="welcome-close-btn" onClick={() => setShowWelcomeModal(false)}>
-                  Let's Go! 🚣
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Changelog Modal - New Version Updates */}
-      {showChangelogModal && (
-        <div className="modal-overlay" onClick={() => setShowChangelogModal(false)}>
-          <div className="modal changelog-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowChangelogModal(false)}>✕</button>
-            
-            <div className="changelog-header">
-              <span className="changelog-icon">🎉</span>
-              <h2>What's New!</h2>
-              <p className="changelog-version">Version {APP_VERSION}</p>
-            </div>
-
-            <div className="changelog-content">
-              {CHANGELOG.slice(0, 2).map((release, index) => (
-                <div key={release.version} className={`changelog-release ${index === 0 ? 'latest' : ''}`}>
-                  <div className="changelog-release-header">
-                    <span className="changelog-release-version">v{release.version}</span>
-                    <span className="changelog-release-date">{release.date}</span>
-                  </div>
-                  <ul className="changelog-changes">
-                    {release.changes.map((change, i) => (
-                      <li key={i}>{change}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-
-            <button className="changelog-close-btn" onClick={() => setShowChangelogModal(false)}>
-              Got it!
-            </button>
-          </div>
-        </div>
-      )}
+      <CreateGroupModal />
+      <JoinGroupModal />
+      <InviteUserModal />
+      <ManageMembersModal />
+      <CreateChallengeModal />
+      <ChallengeDetailModal />
+      <WrappedModal />
+      <InstallPrompt />
+      <WelcomeModal />
+      <ChangelogModal />
 
       <footer className="footer" onClick={handleFooterTap}>
         <p>🌍 Goal: Row {formatMeters(WORLD_CIRCUMFERENCE)}m around the world!</p>
       </footer>
     </div>
+    </AppContext.Provider>
   );
 }
 
 export default App;
+/* END OF FILE - old JSX removed, components used instead */

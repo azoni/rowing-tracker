@@ -443,8 +443,9 @@ exports.forwardActivity = functions.firestore
   .onCreate((snap) => {
     const data = snap.data();
     const type = data.type;
+    // row_completed is handled by the client-side log-activity Netlify function
+    if (type === 'row_completed') return null;
     const titles = {
-      row_completed: `Rowed ${data.meters || '?'}m`,
       group_created: `Group created: ${data.groupName || 'group'}`,
       group_joined: `Joined group: ${data.groupName || 'group'}`,
       challenge_created: `Challenge created: ${data.challengeName || 'challenge'}`,

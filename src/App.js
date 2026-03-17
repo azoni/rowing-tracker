@@ -40,6 +40,7 @@ import {
   getMachineName,
   QUOTES,
   MILESTONES,
+  getMilestoneIndex,
   THEMES,
   DEFAULT_THEME,
   STANDARD_DISTANCES,
@@ -57,7 +58,6 @@ import { AppContext } from './context/AppContext';
 
 // Import components
 import Header from './components/Header';
-import WorldProgress from './components/WorldProgress';
 import EntryForm from './components/EntryForm';
 import HomeTab from './components/HomeTab';
 import ActivityFeed from './components/ActivityFeed';
@@ -72,6 +72,7 @@ import ChallengeDetailModal from './components/ChallengeDetailModal';
 import WrappedModal from './components/WrappedModal';
 import { CreateGroupModal, JoinGroupModal, InviteUserModal, ManageMembersModal, CreateChallengeModal } from './components/GroupModals';
 import { PRModal, BustedModal, JourneyModal, AchievementModal, PhotoModal, InstallPrompt, WelcomeModal, ChangelogModal } from './components/SmallModals';
+import MilestoneCelebration from './components/MilestoneCelebration';
 import Icon from './components/Icon';
 
 function App() {
@@ -109,6 +110,7 @@ function App() {
   const [newUsername, setNewUsername] = useState('');
   const [usernameStatus, setUsernameStatus] = useState(null); // null, 'checking', 'available', 'taken', 'invalid'
   const [recentMilestone, setRecentMilestone] = useState(null);
+  const [showMilestoneCelebration, setShowMilestoneCelebration] = useState(null);
   const [activeTab, setActiveTab] = useState('feed'); // Will be set to 'home' after auth
   const [showLogModal, setShowLogModal] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
@@ -651,6 +653,7 @@ function App() {
 
       if (newMilestone) {
         setRecentMilestone(newMilestone);
+        localStorage.setItem('rowcrew_lastSeenMilestone', getMilestoneIndex(currentTotal).toString());
         setTimeout(() => setRecentMilestone(null), 5000);
       }
     }
@@ -677,6 +680,24 @@ function App() {
       localStorage.setItem('rowcrew_version', APP_VERSION);
     }
   }, []);
+
+  // Check if user missed a milestone celebration (shows on next visit)
+  useEffect(() => {
+    if (isLoading || authLoading) return;
+    const total = getTotalMeters();
+    if (total === 0) return;
+
+    const currentMilestoneIdx = getMilestoneIndex(total);
+    const lastSeen = parseInt(localStorage.getItem('rowcrew_lastSeenMilestone') || '0', 10);
+
+    if (currentMilestoneIdx > lastSeen && currentMilestoneIdx > 0) {
+      // User missed a milestone — show celebration for the latest one
+      const achievedMilestone = MILESTONES[currentMilestoneIdx - 1]; // -1 because getMilestoneIndex returns count
+      if (achievedMilestone) {
+        setShowMilestoneCelebration(achievedMilestone);
+      }
+    }
+  }, [isLoading, authLoading, getTotalMeters]);
 
   // Apply theme to document
   useEffect(() => {
@@ -3307,6 +3328,77 @@ function App() {
   const totalMeters = getTotalMeters();
   const worldProgress = (totalMeters / WORLD_CIRCUMFERENCE) * 100;
 
+  const milestoneSegmentData = useMemo(() => {
+    if (!showMilestoneCelebration) return null;
+    const milestone = showMilestoneCelebration;
+    const milestoneIdx = MILESTONES.indexOf(milestone);
+    const prevMilestone = milestoneIdx > 0 ? MILESTONES[milestoneIdx - 1] : { meters: 0 };
+    const segmentMeters = milestone.meters - prevMilestone.meters;
+
+    // Find entries that contributed to this segment
+    // Sort oldest first, track cumulative total to find date range
+    const allSorted = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+    let cumulative = 0;
+    let segmentStartDate = null;
+    let segmentEndDate = null;
+    const segmentEntries = [];
+
+    for (const entry of allSorted) {
+      const prevCum = cumulative;
+      cumulative += entry.meters;
+
+      // This entry is in the segment if cumulative was between prev and current milestone
+      if (prevCum < milestone.meters && cumulative >= prevMilestone.meters) {
+        if (!segmentStartDate && prevCum >= prevMilestone.meters) {
+          segmentStartDate = new Date(entry.date);
+        }
+        if (prevCum >= prevMilestone.meters) {
+          segmentEntries.push(entry);
+        }
+        if (cumulative >= milestone.meters && !segmentEndDate) {
+          segmentEndDate = new Date(entry.date);
+        }
+      } else if (prevCum >= prevMilestone.meters && prevCum < milestone.meters) {
+        if (!segmentStartDate) segmentStartDate = new Date(entry.date);
+        segmentEntries.push(entry);
+        if (cumulative >= milestone.meters && !segmentEndDate) {
+          segmentEndDate = new Date(entry.date);
+        }
+      }
+    }
+
+    // Top rowers in segment
+    const rowerMap = {};
+    segmentEntries.forEach(e => {
+      if (!rowerMap[e.userId]) rowerMap[e.userId] = { meters: 0, sessions: 0 };
+      rowerMap[e.userId].meters += e.meters;
+      rowerMap[e.userId].sessions += 1;
+    });
+
+    const topRowers = Object.entries(rowerMap)
+      .map(([userId, data]) => ({
+        userId,
+        name: users[userId]?.name || 'Unknown',
+        meters: data.meters,
+        sessions: data.sessions,
+      }))
+      .sort((a, b) => b.meters - a.meters)
+      .slice(0, 3);
+
+    // Duration
+    let duration = null;
+    if (segmentStartDate && segmentEndDate) {
+      const days = Math.round((segmentEndDate - segmentStartDate) / 86400000);
+      if (days < 1) duration = 'less than a day';
+      else if (days === 1) duration = '1 day';
+      else if (days < 7) duration = `${days} days`;
+      else if (days < 30) duration = `${Math.round(days / 7)} weeks`;
+      else duration = `${Math.round(days / 30)} months`;
+    }
+
+    return { topRowers, duration, segmentMeters };
+  }, [showMilestoneCelebration, entries, users]);
+
   // Build context value with all state and handlers
   const contextValue = {
     // Auth
@@ -3453,6 +3545,8 @@ function App() {
     totalMeters, milestoneProgress, worldProgress,
     showAiFeedbackToast, toasts, setToasts,
     recentMilestone, setRecentMilestone,
+    showMilestoneCelebration, setShowMilestoneCelebration,
+    milestoneSegmentData,
     handleFooterTap,
   };
 
@@ -3497,6 +3591,8 @@ function App() {
           </div>
         </div>
       )}
+
+      <MilestoneCelebration />
 
       <Header />
 

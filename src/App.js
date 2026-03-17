@@ -2389,33 +2389,37 @@ function App() {
   const deleteActivity = async (itemId, itemType) => {
     if (!isAdmin) return;
     try {
+      // Row entries — delete from entries collection
       if (itemType === 'row') {
-        // Row items come from entries collection
         const entry = entries.find(e => e.id === itemId);
         if (entry) {
           await handleDeleteEntry(itemId, entry.meters);
+          showToast('Entry deleted.', 'success');
           return;
         }
       }
-      // Try activities collection first (covers most feed items)
-      try {
-        await deleteDoc(doc(db, 'activities', itemId));
+
+      // Activities (group/challenge/row_completed/distance_record) — check if doc exists first
+      const activityRef = doc(db, 'activities', itemId);
+      const activitySnap = await getDoc(activityRef);
+      if (activitySnap.exists()) {
+        await deleteDoc(activityRef);
+        showToast('Activity deleted.', 'success');
         return;
-      } catch (e) {
-        // Not in activities — might be in entries or another collection
       }
-      // Try entries collection as fallback
-      try {
-        const entryRef = doc(db, 'entries', itemId);
-        const entrySnap = await getDoc(entryRef);
-        if (entrySnap.exists()) {
-          await handleDeleteEntry(itemId, entrySnap.data().meters);
-          return;
-        }
-      } catch (e) {
-        // Not in entries either
+
+      // Entries fallback (in case ID matches an entry)
+      const entryRef = doc(db, 'entries', itemId);
+      const entrySnap = await getDoc(entryRef);
+      if (entrySnap.exists()) {
+        await handleDeleteEntry(itemId, entrySnap.data().meters);
+        showToast('Entry deleted.', 'success');
+        return;
       }
-      showToast('Item removed from feed.', 'success');
+
+      // Profile-derived items (achievements, ranks, joins) — these have synthetic IDs
+      // and are built from user profile data, not deletable as individual documents
+      showToast('This item comes from user profile data. Remove it from the user\'s profile in Firebase Console.', 'info', 6000);
     } catch (error) {
       console.error('Error deleting activity:', error);
       showToast('Failed to delete. Try again.');

@@ -1,7 +1,9 @@
 import React from 'react';
 import { ICONS } from '../constants/iconMap';
 
-function Icon({ name, size = 20, className = '', color = 'currentColor', style = {} }) {
+function Icon({ name, size = 20, className = '', color, style = {} }) {
+  // Default to theme accent color via CSS variable, fallback to teal
+  const resolvedColor = color || 'var(--accent-primary, #00d4aa)';
   const icon = ICONS[name];
 
   // Fallback: render the key string (graceful degradation for unmapped icons)
@@ -22,9 +24,9 @@ function Icon({ name, size = 20, className = '', color = 'currentColor', style =
       aria-hidden="true"
     >
       {typeof icon === 'string' ? (
-        <path d={icon} fill={color} />
+        <path d={icon} fill={resolvedColor} />
       ) : (
-        icon(color)
+        icon(resolvedColor)
       )}
     </svg>
   );

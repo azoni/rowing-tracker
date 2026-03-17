@@ -859,6 +859,10 @@ export const ICONS = {
   // Ocean Crew - anchor
   theme_ocean_crew: 'M12 2a3 3 0 0 0-3 3c0 1.3.8 2.4 2 2.82V11H8v2h3v6.95A5 5 0 0 1 7 15H5a7 7 0 0 0 14 0h-2a5 5 0 0 1-4 4.95V13h3v-2h-3V7.82A3 3 0 0 0 12 2zm0 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2z',
 
+  // Missing UI icons
+  ui_search: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+  ui_comment: 'M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z',
+
   // Theme aliases (short keys used in themes.js)
   get theme_boathouse() { return this.theme_boathouse_classic; },
   get theme_sunrise() { return this.theme_morning_lake; },

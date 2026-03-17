@@ -2,7 +2,7 @@ import React from 'react';
 import Icon from './Icon';
 import WorldProgress from './WorldProgress';
 import { useApp } from '../context/AppContext';
-import { formatMeters, formatTimeDisplay, calculatePace } from '../utils';
+import { formatMeters, formatTimeDisplay } from '../utils';
 import { getUserRank, getNextRank, ACHIEVEMENTS, TIER_COLORS } from '../constants';
 
 // Monthly competitive challenges — top 3 get reward badges

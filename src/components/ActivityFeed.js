@@ -54,59 +54,6 @@ function ActivityFeed() {
         {selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Feed` : 'Activity Feed'}
       </h2>
 
-      {/* Monthly Throwdown */}
-      {currentUser && !selectedGroupId && (() => {
-        const now = new Date();
-        const month = now.getMonth();
-        const monthName = now.toLocaleDateString('en-US', { month: 'long' });
-        const daysLeft = new Date(now.getFullYear(), month + 1, 0).getDate() - now.getDate();
-
-        // Different challenge each month (deterministic from month number)
-        const throwdowns = [
-          { type: 'distance', target: 50000, label: 'Row 50K', unit: 'm', field: 'meters' },
-          { type: 'streak', target: 14, label: '14-Day Streak', unit: ' days', field: 'streak' },
-          { type: 'sessions', target: 20, label: '20 Sessions', unit: '', field: 'sessions' },
-          { type: 'distance', target: 75000, label: 'Row 75K', unit: 'm', field: 'meters' },
-          { type: 'calories', target: 10000, label: 'Burn 10K Cal', unit: ' cal', field: 'calories' },
-          { type: 'distance', target: 100000, label: 'Row 100K', unit: 'm', field: 'meters' },
-          { type: 'sessions', target: 25, label: '25 Sessions', unit: '', field: 'sessions' },
-          { type: 'streak', target: 21, label: '21-Day Streak', unit: ' days', field: 'streak' },
-          { type: 'distance', target: 60000, label: 'Row 60K', unit: 'm', field: 'meters' },
-          { type: 'calories', target: 15000, label: 'Burn 15K Cal', unit: ' cal', field: 'calories' },
-          { type: 'sessions', target: 22, label: '22 Sessions', unit: '', field: 'sessions' },
-          { type: 'distance', target: 80000, label: 'Row 80K', unit: 'm', field: 'meters' },
-        ];
-        const throwdown = throwdowns[month];
-
-        // Calculate progress this month
-        const monthStart = new Date(now.getFullYear(), month, 1);
-        const monthEntries = entries.filter(e => e.userId === currentUser.uid && new Date(e.date) >= monthStart);
-        let current = 0;
-        if (throwdown.field === 'meters') current = monthEntries.reduce((s, e) => s + e.meters, 0);
-        else if (throwdown.field === 'sessions') current = monthEntries.length;
-        else if (throwdown.field === 'calories') current = monthEntries.reduce((s, e) => s + (e.calories || 0), 0);
-        else if (throwdown.field === 'streak') current = calculateStreak(currentUser.uid);
-        const pct = Math.min((current / throwdown.target) * 100, 100);
-        const complete = current >= throwdown.target;
-
-        return (
-          <div className={`throwdown-banner ${complete ? 'complete' : ''}`}>
-            <div className="throwdown-header">
-              <span className="throwdown-title"><Icon name="ui_fire" size={14} /> {monthName} Throwdown</span>
-              <span className="throwdown-days">{daysLeft}d left</span>
-            </div>
-            <div className="throwdown-goal">
-              {complete ? <><Icon name="ui_check" size={14} /> Completed!</> : throwdown.label}
-            </div>
-            <div className="throwdown-bar">
-              <div className="throwdown-fill" style={{ width: `${pct}%` }} />
-            </div>
-            <div className="throwdown-progress">
-              {throwdown.field === 'meters' ? formatMeters(current) : current.toLocaleString()}{throwdown.unit} / {throwdown.field === 'meters' ? formatMeters(throwdown.target) : throwdown.target.toLocaleString()}{throwdown.unit}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* 2025 Wrapped Banner */}
       {currentUser && !wrappedDismissed && !selectedGroupId && getWrappedStats(currentUser.uid) && (
@@ -391,6 +338,11 @@ function ActivityFeed() {
                           <span className="feed-challenge">
                             started challenge <span className="feed-challenge-name"><Icon name="ui_target" size={14} /> {item.challengeName}</span>
                             {item.groupName && <span className="feed-in-group"> in {item.groupName}</span>}
+                          </span>
+                        )}
+                        {item.type === 'throwdown_completed' && (
+                          <span className="feed-throwdown">
+                            completed the <span className="feed-throwdown-name"><Icon name="ui_fire" size={14} /> {item.monthName} Throwdown</span> — {item.throwdownLabel}
                           </span>
                         )}
                         {item.type === 'distance_record' && (

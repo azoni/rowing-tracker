@@ -3041,9 +3041,66 @@ function App() {
       });
     });
 
+    // Detect monthly throwdown completions
+    const now = new Date();
+    const throwdowns = [
+      { target: 50000, label: 'Row 50K', field: 'meters' },
+      { target: 14, label: '14-Day Streak', field: 'streak' },
+      { target: 20, label: '20 Sessions', field: 'sessions' },
+      { target: 75000, label: 'Row 75K', field: 'meters' },
+      { target: 10000, label: 'Burn 10K Cal', field: 'calories' },
+      { target: 100000, label: 'Row 100K', field: 'meters' },
+      { target: 25, label: '25 Sessions', field: 'sessions' },
+      { target: 21, label: '21-Day Streak', field: 'streak' },
+      { target: 60000, label: 'Row 60K', field: 'meters' },
+      { target: 15000, label: 'Burn 15K Cal', field: 'calories' },
+      { target: 22, label: '22 Sessions', field: 'sessions' },
+      { target: 80000, label: 'Row 80K', field: 'meters' },
+    ];
+    const currentMonth = now.getMonth();
+    const throwdown = throwdowns[currentMonth];
+    const monthStart = new Date(now.getFullYear(), currentMonth, 1);
+    const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+
+    Object.values(filteredUsers).forEach(user => {
+      const userMonthEntries = filteredEntries.filter(e => e.userId === user.id && new Date(e.date) >= monthStart);
+      if (userMonthEntries.length === 0) return;
+      let current = 0;
+      if (throwdown.field === 'meters') current = userMonthEntries.reduce((s, e) => s + e.meters, 0);
+      else if (throwdown.field === 'sessions') current = userMonthEntries.length;
+      else if (throwdown.field === 'calories') current = userMonthEntries.reduce((s, e) => s + (e.calories || 0), 0);
+      else if (throwdown.field === 'streak') current = calculateStreak(user.id);
+      if (current >= throwdown.target) {
+        // Find the entry that pushed them over
+        let runningTotal = 0;
+        let completionDate = null;
+        if (throwdown.field === 'meters' || throwdown.field === 'calories') {
+          const sorted = [...userMonthEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
+          for (const e of sorted) {
+            runningTotal += throwdown.field === 'meters' ? e.meters : (e.calories || 0);
+            if (runningTotal >= throwdown.target) { completionDate = new Date(e.date); break; }
+          }
+        } else if (throwdown.field === 'sessions') {
+          const sorted = [...userMonthEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
+          if (sorted.length >= throwdown.target) completionDate = new Date(sorted[throwdown.target - 1].date);
+        }
+        if (!completionDate) completionDate = new Date(userMonthEntries[userMonthEntries.length - 1].date);
+        feedItems.push({
+          id: `throwdown-${user.id}-${currentMonth}`,
+          type: 'throwdown_completed',
+          userId: user.id,
+          user,
+          throwdownLabel: throwdown.label,
+          monthName,
+          date: completionDate.toISOString(),
+          sortDate: completionDate,
+        });
+      }
+    });
+
     feedItems.sort((a, b) => b.sortDate - a.sortDate);
     return feedItems;
-  }, [filteredEntries, filteredUsers, activities, users, selectedGroupId]);
+  }, [filteredEntries, filteredUsers, activities, users, selectedGroupId, calculateStreak]);
 
   // Lightweight filter/paginate on the memoized base
   const getActivityFeed = useCallback((filterQuery = '', page = 1, typeFilter = 'all') => {
@@ -3060,7 +3117,7 @@ function App() {
 
     if (typeFilter && typeFilter !== 'all') {
       if (typeFilter === 'milestone') {
-        feedItems = feedItems.filter(item => ['achievement', 'rank', 'distance_record', 'join', 'group_created', 'group_joined', 'challenge_created'].includes(item.type));
+        feedItems = feedItems.filter(item => ['achievement', 'rank', 'distance_record', 'join', 'group_created', 'group_joined', 'challenge_created', 'throwdown_completed'].includes(item.type));
       } else {
         feedItems = feedItems.filter(item => item.type === typeFilter);
       }

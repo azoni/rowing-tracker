@@ -967,8 +967,8 @@ body {
   position: fixed;
   bottom: 24px;
   right: 20px;
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: var(--accent-primary, #00d4aa);
   border: none;
@@ -4458,6 +4458,58 @@ input[type="number"] {
   padding: 2rem;
 }
 
+.admin-throwdowns {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.admin-throwdown-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.admin-throwdown-row.current {
+  background: rgba(201, 162, 39, 0.1);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.admin-throwdown-month {
+  width: 32px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.admin-throwdown-row.current .admin-throwdown-month {
+  color: var(--accent-primary);
+}
+
+.admin-throwdown-label {
+  flex: 1;
+}
+
+.admin-throwdown-target {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.admin-throwdown-badge {
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 /* Admin Review List */
 .admin-review-list {
   display: flex;
@@ -5220,6 +5272,46 @@ input[type="number"] {
   border-bottom: none;
 }
 
+.profile-rewards {
+  background: var(--bg-card);
+  border-radius: 10px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.profile-rewards-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.profile-rewards-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-reward-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: rgba(255, 107, 53, 0.15);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  border-radius: 8px;
+  cursor: default;
+}
+
+.profile-reward-month {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #ff6b35;
+  text-transform: uppercase;
+}
+
 .profile-achievements {
   background: var(--bg-card);
   border-radius: 10px;
@@ -5597,6 +5689,129 @@ input[type="number"] {
 }
 
 /* Account Section */
+/* Fun Stats */
+.fun-stats-section {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.fun-stats-section h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: 0.03em;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fun-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 1.25rem;
+}
+
+.fun-stat-card {
+  background: var(--bg-dark);
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fun-stat-card.highlight {
+  border: 1px solid var(--accent-primary);
+}
+
+.fun-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fun-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.fun-stat-sub {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.fun-stats-dow {
+  background: var(--bg-dark);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.fun-stats-dow h4 {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.dow-bars {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+}
+
+.dow-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.dow-bar-wrapper {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.dow-bar-fill {
+  width: 100%;
+  min-height: 2px;
+  background: var(--accent-primary);
+  border-radius: 3px 3px 0 0;
+  opacity: 0.6;
+  transition: height 0.3s ease;
+}
+
+.dow-bar-col.best .dow-bar-fill {
+  opacity: 1;
+}
+
+.dow-bar-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.dow-bar-count {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.dow-bar-col.best .dow-bar-label,
+.dow-bar-col.best .dow-bar-count {
+  color: var(--accent-primary);
+}
+
 .account-section {
   background: var(--bg-card);
   border-radius: 16px;
@@ -7926,6 +8141,19 @@ input[type="number"] {
 .feed-record-first {
   color: var(--accent-gold, #ffd700);
   font-weight: 600;
+}
+
+.feed-throwdown {
+  color: var(--text-secondary);
+}
+
+.feed-throwdown-name {
+  font-weight: 700;
+  color: #ff6b35;
+}
+
+.feed-item-throwdown_completed {
+  border-left: 3px solid #ff6b35;
 }
 
 /* Monthly Throwdown Banner */

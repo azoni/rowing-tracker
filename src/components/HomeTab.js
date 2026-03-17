@@ -5,10 +5,25 @@ import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import { getUserRank, getNextRank, ACHIEVEMENTS, TIER_COLORS } from '../constants';
 
+const THROWDOWNS = [
+  { type: 'distance', target: 50000, label: 'Row 50K', unit: 'm', field: 'meters' },
+  { type: 'streak', target: 14, label: '14-Day Streak', unit: ' days', field: 'streak' },
+  { type: 'sessions', target: 20, label: '20 Sessions', unit: '', field: 'sessions' },
+  { type: 'distance', target: 75000, label: 'Row 75K', unit: 'm', field: 'meters' },
+  { type: 'calories', target: 10000, label: 'Burn 10K Cal', unit: ' cal', field: 'calories' },
+  { type: 'distance', target: 100000, label: 'Row 100K', unit: 'm', field: 'meters' },
+  { type: 'sessions', target: 25, label: '25 Sessions', unit: '', field: 'sessions' },
+  { type: 'streak', target: 21, label: '21-Day Streak', unit: ' days', field: 'streak' },
+  { type: 'distance', target: 60000, label: 'Row 60K', unit: 'm', field: 'meters' },
+  { type: 'calories', target: 15000, label: 'Burn 15K Cal', unit: ' cal', field: 'calories' },
+  { type: 'sessions', target: 22, label: '22 Sessions', unit: '', field: 'sessions' },
+  { type: 'distance', target: 80000, label: 'Row 80K', unit: 'm', field: 'meters' },
+];
+
 function HomeTab() {
   const {
     currentUser, userProfile, entries,
-    dailyQuote, calculateStreak, getPersonalRecord,
+    calculateStreak, getPersonalRecord,
     getUserAchievements, getAchievementProgress,
     setShowRankProgressModal, setShowAchievementModal,
   } = useApp();
@@ -43,13 +58,42 @@ function HomeTab() {
     <section className="home-section">
       <WorldProgress />
 
-      {/* Daily Quote */}
-      {dailyQuote && (
-        <div className="daily-quote">
-          <p className="quote-text">"{dailyQuote.text}"</p>
-          <p className="quote-author">— {dailyQuote.author}</p>
-        </div>
-      )}
+      {/* Monthly Throwdown */}
+      {(() => {
+        const now = new Date();
+        const month = now.getMonth();
+        const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+        const daysLeft = new Date(now.getFullYear(), month + 1, 0).getDate() - now.getDate();
+        const throwdown = THROWDOWNS[month];
+
+        const monthStart = new Date(now.getFullYear(), month, 1);
+        const monthEntries = entries.filter(e => e.userId === currentUser.uid && new Date(e.date) >= monthStart);
+        let current = 0;
+        if (throwdown.field === 'meters') current = monthEntries.reduce((s, e) => s + e.meters, 0);
+        else if (throwdown.field === 'sessions') current = monthEntries.length;
+        else if (throwdown.field === 'calories') current = monthEntries.reduce((s, e) => s + (e.calories || 0), 0);
+        else if (throwdown.field === 'streak') current = calculateStreak(currentUser.uid);
+        const pct = Math.min((current / throwdown.target) * 100, 100);
+        const complete = current >= throwdown.target;
+
+        return (
+          <div className={`throwdown-banner ${complete ? 'complete' : ''}`}>
+            <div className="throwdown-header">
+              <span className="throwdown-title"><Icon name="ui_fire" size={14} /> {monthName} Throwdown</span>
+              <span className="throwdown-days">{daysLeft}d left</span>
+            </div>
+            <div className="throwdown-goal">
+              {complete ? <><Icon name="ui_check" size={14} /> Completed!</> : throwdown.label}
+            </div>
+            <div className="throwdown-bar">
+              <div className="throwdown-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="throwdown-progress">
+              {throwdown.field === 'meters' ? formatMeters(current) : current.toLocaleString()}{throwdown.unit} / {throwdown.field === 'meters' ? formatMeters(throwdown.target) : throwdown.target.toLocaleString()}{throwdown.unit}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Rank Card */}
       <div className="home-rank-card" style={{ borderColor: tierColor }} onClick={() => setShowRankProgressModal(true)}>
@@ -97,10 +141,16 @@ function HomeTab() {
         const userEntries = entries.filter(e => e.userId === currentUser.uid);
         if (userEntries.length === 0) return null;
 
+        // Local date key to avoid UTC timezone shift
+        const toLocalKey = (d) => {
+          const date = new Date(d);
+          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        };
+
         // Build day → meters map for last 3 months
         const dayMap = {};
         userEntries.forEach(e => {
-          const key = new Date(e.date).toISOString().split('T')[0];
+          const key = toLocalKey(e.date);
           dayMap[key] = (dayMap[key] || 0) + e.meters;
         });
 
@@ -116,7 +166,7 @@ function HomeTab() {
           for (let d = 0; d < 7; d++) {
             const date = new Date(startDate);
             date.setDate(startDate.getDate() + w * 7 + d);
-            const key = date.toISOString().split('T')[0];
+            const key = toLocalKey(date);
             const meters = dayMap[key] || 0;
             const isFuture = date > today;
             week.push({ date, key, meters, isFuture });

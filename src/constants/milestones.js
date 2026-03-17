@@ -38,26 +38,16 @@ export const MILESTONES = [
   { meters: 90000, label: '90 km', emoji: 'milestone_train', comparison: 'Longer than the Channel Tunnel... three times!' },
   { meters: 100000, label: '100 km', emoji: 'milestone_sailboat', comparison: 'Length of the Panama Canal!' },
 
-  // 100-250km: every 25km
-  { meters: 125000, label: '125 km', emoji: 'milestone_ski', comparison: 'You\'ve out-skied every resort on Earth!' },
-  { meters: 150000, label: '150 km', emoji: 'milestone_hotdog', comparison: 'That\'s 750,000 hot dogs end-to-end!' },
-  { meters: 175000, label: '175 km', emoji: 'milestone_snail', comparison: 'A snail would take 7 years to go this far!' },
+  // 100-500km: every 100km — heading south from Seattle
   { meters: 200000, label: '200 km', emoji: 'milestone_banana', comparison: 'About 1 million bananas laid end-to-end!' },
-  { meters: 225000, label: '225 km', emoji: 'milestone_racecar', comparison: 'Almost a full NASCAR race distance!' },
-  { meters: 250000, label: '250 km', emoji: 'milestone_statue', comparison: 'NYC to Washington DC!' },
-
-  // 250-500km: every 50km — heading south from Seattle
   { meters: 300000, label: '300 km', emoji: 'milestone_trees', comparison: 'Keep Portland weird!', checkpoint: 'Portland, OR' },
-  { meters: 350000, label: '350 km', emoji: 'milestone_gamepad', comparison: 'Across the entire map in GTA V... 14 times!' },
   { meters: 400000, label: '400 km', emoji: 'milestone_rocket', comparison: 'ISS orbit altitude — you\'re in space!' },
   { meters: 420000, label: '420 km', emoji: 'milestone_leaf', comparison: 'Blaze it... in kilometers.' },
-  { meters: 450000, label: '450 km', emoji: 'milestone_cheese', comparison: 'Length of Switzerland. Grab some cheese.' },
   { meters: 500000, label: '500 km', emoji: 'milestone_wave', comparison: 'Length of the California coastline!' },
 
-  // 500-1000km: every 100km — down the coast
+  // 500-1000km: every 100-200km — down the coast
   { meters: 600000, label: '600 km', emoji: 'milestone_burger', comparison: 'NYC to Cleveland. Stop for a burger.' },
   { meters: 700000, label: '700 km', emoji: 'milestone_kangaroo', comparison: 'A kangaroo hops about 25km/day. This is a month of hopping.' },
-  { meters: 750000, label: '750 km', emoji: 'milestone_music', comparison: 'You\'d listen to "Never Gonna Give You Up" 9,615 times.' },
   { meters: 800000, label: '800 km', emoji: 'milestone_bear', comparison: 'A grizzly bear\'s entire territory... twice!' },
   { meters: 900000, label: '900 km', emoji: 'milestone_waffle', comparison: 'Length of Belgium back and forth 3 times!' },
   { meters: 1000000, label: '1,000 km', emoji: 'milestone_city', comparison: 'Fog, sourdough, and tech bros!', checkpoint: 'San Francisco, CA' },

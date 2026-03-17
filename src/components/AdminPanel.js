@@ -2,6 +2,22 @@ import React from 'react';
 import Icon from './Icon';
 import { useApp } from '../context/AppContext';
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const THROWDOWNS = [
+  { label: 'Row 50K', target: '50,000m' },
+  { label: '14-Day Streak', target: '14 days' },
+  { label: '20 Sessions', target: '20 sessions' },
+  { label: 'Row 75K', target: '75,000m' },
+  { label: 'Burn 10K Cal', target: '10,000 cal' },
+  { label: 'Row 100K', target: '100,000m' },
+  { label: '25 Sessions', target: '25 sessions' },
+  { label: '21-Day Streak', target: '21 days' },
+  { label: 'Row 60K', target: '60,000m' },
+  { label: 'Burn 15K Cal', target: '15,000 cal' },
+  { label: '22 Sessions', target: '22 sessions' },
+  { label: 'Row 80K', target: '80,000m' },
+];
+
 function AdminPanel() {
   const {
     showAdminPanel, setShowAdminPanel,
@@ -39,6 +55,22 @@ function AdminPanel() {
             </div>
           </div>
         )}
+
+        {/* Monthly Throwdowns */}
+        <h3><Icon name="ui_fire" size={16} /> Monthly Throwdowns</h3>
+        <div className="admin-throwdowns">
+          {THROWDOWNS.map((t, i) => {
+            const isCurrent = i === new Date().getMonth();
+            return (
+              <div key={i} className={`admin-throwdown-row ${isCurrent ? 'current' : ''}`}>
+                <span className="admin-throwdown-month">{MONTH_NAMES[i]}</span>
+                <span className="admin-throwdown-label">{t.label}</span>
+                <span className="admin-throwdown-target">{t.target}</span>
+                {isCurrent && <span className="admin-throwdown-badge">Active</span>}
+              </div>
+            );
+          })}
+        </div>
 
         <button className="admin-refresh-btn" onClick={loadPendingReviews}>
           <Icon name="ui_refresh" size={16} /> Refresh

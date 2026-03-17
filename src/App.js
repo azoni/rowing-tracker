@@ -46,6 +46,7 @@ import {
   DEFAULT_THEME,
   STANDARD_DISTANCES,
   getDistanceCategory,
+  getActiveHoliday,
 } from './constants';
 
 // Import utilities
@@ -701,35 +702,41 @@ function App() {
     }
   }, [isLoading, authLoading, getTotalMeters]);
 
-  // Apply theme to document
+  // Apply theme to document (with holiday override)
   useEffect(() => {
     const theme = THEMES[currentTheme];
     if (!theme) return;
-    
+
+    const holiday = getActiveHoliday();
+    const colors = holiday
+      ? { ...theme.colors, ...holiday.colorOverrides }
+      : theme.colors;
+
     const root = document.documentElement;
     root.setAttribute('data-theme', currentTheme);
-    
+    root.setAttribute('data-holiday', holiday?.id || '');
+
     // Apply CSS variables
-    root.style.setProperty('--bg-dark', theme.colors.bgDark);
-    root.style.setProperty('--bg-card', theme.colors.bgCard);
-    root.style.setProperty('--bg-card-hover', theme.colors.bgCardHover);
-    root.style.setProperty('--accent-primary', theme.colors.accentPrimary);
-    root.style.setProperty('--accent-secondary', theme.colors.accentSecondary);
-    root.style.setProperty('--accent-gold', theme.colors.accentGold);
-    root.style.setProperty('--text-primary', theme.colors.textPrimary);
-    root.style.setProperty('--text-secondary', theme.colors.textSecondary);
-    root.style.setProperty('--text-muted', theme.colors.textMuted);
-    root.style.setProperty('--border-color', theme.colors.borderColor);
-    root.style.setProperty('--success', theme.colors.success);
-    root.style.setProperty('--error', theme.colors.error || '#ef4444');
-    root.style.setProperty('--warning', theme.colors.warning || '#ffc107');
-    root.style.setProperty('--shadow-glow', theme.colors.shadowGlow);
-    root.style.setProperty('--gradient-start', theme.colors.gradientStart);
-    root.style.setProperty('--gradient-end', theme.colors.gradientEnd);
-    root.style.setProperty('--header-glow', theme.colors.headerGlow);
-    root.style.setProperty('--progress-gradient', theme.colors.progressGradient);
-    root.style.setProperty('--progress-glow', theme.colors.progressGlow);
-    
+    root.style.setProperty('--bg-dark', colors.bgDark);
+    root.style.setProperty('--bg-card', colors.bgCard);
+    root.style.setProperty('--bg-card-hover', colors.bgCardHover);
+    root.style.setProperty('--accent-primary', colors.accentPrimary);
+    root.style.setProperty('--accent-secondary', colors.accentSecondary);
+    root.style.setProperty('--accent-gold', colors.accentGold);
+    root.style.setProperty('--text-primary', colors.textPrimary);
+    root.style.setProperty('--text-secondary', colors.textSecondary);
+    root.style.setProperty('--text-muted', colors.textMuted);
+    root.style.setProperty('--border-color', colors.borderColor);
+    root.style.setProperty('--success', colors.success);
+    root.style.setProperty('--error', colors.error || '#ef4444');
+    root.style.setProperty('--warning', colors.warning || '#ffc107');
+    root.style.setProperty('--shadow-glow', colors.shadowGlow);
+    root.style.setProperty('--gradient-start', colors.gradientStart);
+    root.style.setProperty('--gradient-end', colors.gradientEnd);
+    root.style.setProperty('--header-glow', colors.headerGlow);
+    root.style.setProperty('--progress-gradient', colors.progressGradient);
+    root.style.setProperty('--progress-glow', colors.progressGlow);
+
     // Save preference
     localStorage.setItem('rowcrew_theme', currentTheme);
   }, [currentTheme]);

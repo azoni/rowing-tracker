@@ -8,3 +8,4 @@ export * from './milestones';
 export * from './changelog';
 export * from './themes';
 export * from './distances';
+export * from './holidays';

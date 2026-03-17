@@ -105,6 +105,19 @@ body {
   text-transform: uppercase;
 }
 
+.holiday-banner {
+  text-align: center;
+  padding: 6px 12px;
+  margin-top: 8px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: linear-gradient(135deg, rgba(var(--accent-primary-rgb, 46, 139, 87), 0.15), transparent);
+  border: 1px solid var(--accent-primary);
+  color: var(--accent-primary);
+}
+
 /* World Progress */
 .world-progress {
   padding: 1rem 1.25rem 1.25rem;

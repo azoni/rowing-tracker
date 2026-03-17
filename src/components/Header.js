@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { formatTimeAgo } from '../utils';
+import { getActiveHoliday } from '../constants';
 import Icon from './Icon';
 
 function Header() {
@@ -107,6 +108,11 @@ function Header() {
         </div>
       </div>
       <p className="subtitle">Row Around The World Together</p>
+      {(() => {
+        const holiday = getActiveHoliday();
+        if (!holiday) return null;
+        return <div className="holiday-banner">{holiday.banner}</div>;
+      })()}
     </header>
   );
 }

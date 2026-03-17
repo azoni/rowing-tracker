@@ -3,7 +3,8 @@ import Tesseract from 'tesseract.js';
 import html2canvas from 'html2canvas';
 import confetti from 'canvas-confetti';
 import exifr from 'exifr';
-import { db, auth, googleProvider, functions } from './firebase';
+import { db, auth, googleProvider, functions, storage } from './firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import {
   collection,
   doc,
@@ -2111,6 +2112,18 @@ function App() {
       setProcessingStatus('Saving entry...');
       const entryRef = doc(db, 'entries', entryId);
 
+      // Upload photo to Firebase Storage if present
+      let imageUrl = null;
+      if (imageData?.data) {
+        try {
+          const imageRef = ref(storage, `row-images/${currentUser.uid}/${entryId}.jpg`);
+          await uploadString(imageRef, imageData.data, 'data_url');
+          imageUrl = await getDownloadURL(imageRef);
+        } catch (uploadErr) {
+          console.error('Image upload error:', uploadErr);
+        }
+      }
+
       await setDoc(entryRef, {
         userId: currentUser.uid,
         meters: meters,
@@ -2127,7 +2140,7 @@ function App() {
           reason: verification.reason || null,
           imageHash: imageHash,
         },
-        // Store machine info with entry for future analytics
+        imageUrl: imageUrl,
         machineType: machineInfo?.type || null,
         machineCustomName: machineInfo?.customName || null,
       });

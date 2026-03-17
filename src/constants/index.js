@@ -7,3 +7,4 @@ export * from './quotes';
 export * from './milestones';
 export * from './changelog';
 export * from './themes';
+export * from './distances';

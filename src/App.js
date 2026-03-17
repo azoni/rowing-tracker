@@ -42,6 +42,8 @@ import {
   MILESTONES,
   THEMES,
   DEFAULT_THEME,
+  STANDARD_DISTANCES,
+  getDistanceCategory,
 } from './constants';
 
 // Import utilities
@@ -69,6 +71,7 @@ import ChallengeDetailModal from './components/ChallengeDetailModal';
 import WrappedModal from './components/WrappedModal';
 import { CreateGroupModal, JoinGroupModal, InviteUserModal, ManageMembersModal, CreateChallengeModal } from './components/GroupModals';
 import { PRModal, BustedModal, JourneyModal, AchievementModal, PhotoModal, InstallPrompt, WelcomeModal, ChangelogModal } from './components/SmallModals';
+import Icon from './components/Icon';
 
 function App() {
   // Log visit once per session
@@ -2716,6 +2719,42 @@ function App() {
       .sort((a, b) => b.achievementCount - a.achievementCount);
   }, [filteredUsers, achievementCountCache]);
 
+  const getDistanceRecords = useMemo(() => {
+    const records = {};
+    STANDARD_DISTANCES.forEach(dist => { records[dist.meters] = []; });
+
+    const qualifyingEntries = filteredEntries.filter(entry =>
+      entry.time && entry.time > 0 &&
+      ['verified', 'pending_review'].includes(entry.verificationStatus) &&
+      getDistanceCategory(entry.meters)
+    );
+
+    qualifyingEntries.forEach(entry => {
+      const category = getDistanceCategory(entry.meters);
+      if (category) {
+        records[category.meters].push({
+          ...entry,
+          user: filteredUsers[entry.userId],
+          pace: entry.time && entry.meters ? (entry.time / entry.meters) * 500 : null,
+        });
+      }
+    });
+
+    // Keep only best time per user per distance, sort fastest first
+    Object.keys(records).forEach(dist => {
+      const bestByUser = {};
+      records[dist].forEach(entry => {
+        if (!bestByUser[entry.userId] || entry.time < bestByUser[entry.userId].time) {
+          bestByUser[entry.userId] = entry;
+        }
+      });
+      records[dist] = Object.values(bestByUser)
+        .filter(e => e.user)
+        .sort((a, b) => a.time - b.time);
+    });
+
+    return records;
+  }, [filteredEntries, filteredUsers]);
 
   // Get user's session history
   const getUserSessionHistory = (userId) => {
@@ -2907,6 +2946,8 @@ function App() {
     });
 
     activities.forEach(activity => {
+      // Skip row_completed — already shown from entries collection as 'row' type
+      if (activity.type === 'row_completed') return;
       const activityUser = users[activity.userId];
       if (!activityUser) return;
       if (selectedGroupId && activity.groupId && activity.groupId !== selectedGroupId) return;
@@ -3318,7 +3359,7 @@ function App() {
 
     // Leaderboards & Stats
     leaderboardTab, setLeaderboardTab,
-    getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard, getAchievementsLeaderboard,
+    getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard, getAchievementsLeaderboard, getDistanceRecords,
     calculateStreak, calculateLongestStreak, calculateWeeklyAverage,
     getPersonalRecord, getTotalDaysRowed, getFirstRowDate,
     getUserAchievements, getAchievementProgress,
@@ -3390,7 +3431,7 @@ function App() {
       {recentMilestone && (
         <div className="milestone-celebration" onClick={() => setRecentMilestone(null)}>
           <div className="milestone-content">
-            <span className="milestone-icon">🏆</span>
+            <span className="milestone-icon"><Icon name="ui_trophy" size={32} /></span>
             <h2>MILESTONE ACHIEVED!</h2>
             <p className="milestone-label">{recentMilestone.label}</p>
             <p className="milestone-comparison">{recentMilestone.comparison}</p>
@@ -3405,17 +3446,17 @@ function App() {
       <nav className="tabs">
         {currentUser && userProfile && (
           <button className={`tab ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>
-            📸 Log
+            <Icon name="ui_camera" size={14} /> Log
           </button>
         )}
         <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
-          📣 Feed
+          <Icon name="ui_feed" size={14} /> Feed
         </button>
         <button className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
-          🏆 Board
+          <Icon name="ui_trophy" size={14} /> Board
         </button>
         <button className={`tab ${activeTab === 'more' ? 'active' : ''}`} onClick={() => setActiveTab('more')}>
-          📊 Stats
+          <Icon name="ui_chart" size={14} /> Stats
         </button>
       </nav>
 
@@ -3427,7 +3468,7 @@ function App() {
             onClick={() => setShowGroupSelector(!showGroupSelector)}
           >
             <span className="group-selector-icon">
-              {selectedGroupId ? '👥' : '🌍'}
+              {selectedGroupId ? <Icon name="ui_users" size={14} /> : <Icon name="ui_globe" size={14} />}
             </span>
             <span className="group-selector-name">
               {selectedGroupId ? getSelectedGroup()?.name || 'Group' : 'Everyone'}
@@ -3446,7 +3487,7 @@ function App() {
                 className={`group-option ${!selectedGroupId ? 'active' : ''}`}
                 onClick={() => { setSelectedGroupId(null); setShowGroupSelector(false); }}
               >
-                <span>🌍</span>
+                <span><Icon name="ui_globe" size={14} /></span>
                 <span>Everyone</span>
                 {!selectedGroupId && <span className="check">✓</span>}
               </button>
@@ -3457,7 +3498,7 @@ function App() {
                   className={`group-option ${selectedGroupId === group.id ? 'active' : ''}`}
                   onClick={() => { setSelectedGroupId(group.id); setShowGroupSelector(false); }}
                 >
-                  <span>👥</span>
+                  <span><Icon name="ui_users" size={14} /></span>
                   <span>{group.name}</span>
                   <span className="group-member-count">{group.memberIds?.length || 0}</span>
                   {selectedGroupId === group.id && <span className="check">✓</span>}
@@ -3469,13 +3510,13 @@ function App() {
                   className="group-action-btn"
                   onClick={() => { setShowCreateGroupModal(true); setShowGroupSelector(false); }}
                 >
-                  ➕ Create Group
+                  <Icon name="ui_plus" size={14} /> Create Group
                 </button>
                 <button
                   className="group-action-btn"
                   onClick={() => { setShowJoinGroupModal(true); setShowGroupSelector(false); }}
                 >
-                  🔗 Join Group
+                  <Icon name="ui_link" size={14} /> Join Group
                 </button>
               </div>
             </div>
@@ -3498,7 +3539,7 @@ function App() {
       {/* AI Feedback Toast */}
       {showAiFeedbackToast && (
         <div className="ai-feedback-toast">
-          <span>🤖</span>
+          <span><Icon name="ui_robot" size={16} /></span>
           <span>Thanks! Your correction helps our AI improve</span>
         </div>
       )}
@@ -3512,7 +3553,7 @@ function App() {
           onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
         >
           <span className="toast-icon">
-            {toast.type === 'error' ? '⚠️' : toast.type === 'success' ? '✅' : 'ℹ️'}
+            {toast.type === 'error' ? <Icon name="ui_warning" size={16} /> : toast.type === 'success' ? <Icon name="ui_success" size={16} /> : <Icon name="ui_info" size={16} />}
           </span>
           <span>{toast.message}</span>
         </div>
@@ -3566,9 +3607,9 @@ function App() {
           <div className="modal-overlay" onClick={() => setShowRankProgressModal(false)}>
             <div className="modal rank-progress-modal" onClick={(e) => e.stopPropagation()}>
               <button className="modal-close" onClick={() => setShowRankProgressModal(false)}>✕</button>
-              <h2>🎖️ Rank Progress</h2>
+              <h2><Icon name="ui_medal" size={20} /> Rank Progress</h2>
               <div className="current-rank-display">
-                <span className="current-rank-emoji">{currentRank.emoji}</span>
+                <span className="current-rank-emoji"><Icon name={currentRank.emoji} /></span>
                 <div className="current-rank-info">
                   <span className="current-rank-title">{currentRank.title}</span>
                   <span className="current-rank-meters">{formatMeters(userProfile.totalMeters)}m total</span>
@@ -3577,7 +3618,7 @@ function App() {
               {nextRank && (
                 <div className="next-rank-progress">
                   <div className="progress-header">
-                    <span>Next: {nextRank.emoji} {nextRank.title}</span>
+                    <span>Next: <Icon name={nextRank.emoji} /> {nextRank.title}</span>
                     <span>{formatMeters(metersToNext)}m to go</span>
                   </div>
                   <div className="rank-progress-bar">
@@ -3593,7 +3634,7 @@ function App() {
                     const isUnlocked = userProfile.totalMeters >= rank.minMeters;
                     return (
                       <div key={rank.title} className={`rank-item ${isCurrentRank ? 'current' : ''} ${isUnlocked ? 'unlocked' : 'locked'}`}>
-                        <span className="rank-item-emoji">{rank.emoji}</span>
+                        <span className="rank-item-emoji"><Icon name={rank.emoji} /></span>
                         <div className="rank-item-info">
                           <span className="rank-item-title">{rank.title}</span>
                           <span className="rank-item-req">{formatMeters(rank.minMeters)}m</span>
@@ -3622,7 +3663,7 @@ function App() {
       <ChangelogModal />
 
       <footer className="footer" onClick={handleFooterTap}>
-        <p>🌍 Goal: Row {formatMeters(WORLD_CIRCUMFERENCE)}m around the world!</p>
+        <p><Icon name="ui_globe" size={14} /> Goal: Row {formatMeters(WORLD_CIRCUMFERENCE)}m around the world!</p>
       </footer>
     </div>
     </AppContext.Provider>

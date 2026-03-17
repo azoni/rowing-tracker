@@ -94,33 +94,75 @@ const verifyWithClaude = async (imageBase64, claimedMeters) => {
   }
 
   const isExtractionMode = !claimedMeters || claimedMeters === 0;
-  
-  const prompt = isExtractionMode 
-    ? `You are analyzing a rowing machine display photo. Extract the distance in meters shown on the display.
+
+  // Query past AI corrections for learning context
+  let learningContext = '';
+  try {
+    const feedbackQuery = admin.firestore()
+      .collection('ai_feedback')
+      .where('corrections.meters', '==', true)
+      .orderBy('createdAt', 'desc')
+      .limit(10);
+    const feedbackSnap = await feedbackQuery.get();
+
+    if (!feedbackSnap.empty) {
+      const corrections = feedbackSnap.docs.map(doc => {
+        const d = doc.data();
+        return `- Display type "${d.aiExtracted?.displayType || 'unknown'}", machine "${d.machine?.displayName || 'unknown'}": AI read ${d.aiExtracted?.meters}m but correct was ${d.userConfirmed?.meters}m` +
+          (d.userConfirmed?.time ? `, time was ${d.userConfirmed.time}s` : '') +
+          (d.userConfirmed?.calories ? `, calories was ${d.userConfirmed.calories}` : '');
+      });
+      learningContext = `\n\nLearning from past corrections (use these to improve accuracy):\n${corrections.join('\n')}`;
+    }
+  } catch (e) {
+    console.log('Could not load feedback:', e.message);
+  }
+
+  const extractionHints = `
+Display-specific extraction hints:
+- For Concept2 PM5 displays, distance is the large center number. Time is usually top-left. Calories labeled 'Cal'. Split pace shown as /500m.
+- For WaterRower S4, the display shows distance, time, and intensity. Look for total meters and elapsed time.
+- Convert time to total seconds (e.g., '25:30.0' = 1530 seconds). Convert minutes:seconds format.
+- Stroke rate is strokes per minute (s/m or SPM). Split pace is time per 500m (e.g., '2:05.0').`;
+
+  const prompt = isExtractionMode
+    ? `You are analyzing a rowing machine display photo. Extract ALL visible display data.
+${extractionHints}
 
 Respond in this EXACT JSON format only:
 {
   "isRowingMachineDisplay": true/false,
-  "displayType": "Concept2 PM5" or "WaterRower" or "Generic" or "Unknown" or "Not a rowing machine",
+  "displayType": "Concept2 PM5" or "WaterRower S4" or "Generic" or "Unknown" or "Not a rowing machine",
   "extractedMeters": number or null,
+  "extractedTime": number in total seconds or null,
+  "extractedCalories": number or null,
+  "extractedSplitPace": "M:SS.s" string per 500m or null,
+  "extractedStrokeRate": number (strokes per minute) or null,
+  "machineModel": specific model string (e.g. "Concept2 Model D with PM5") or null,
   "overallConfidence": 0-100,
   "reasoning": "Brief explanation"
 }
 
-Look for the main distance display (usually the largest number, 3-5 digits). Respond ONLY with JSON.`
-    : `You are verifying a rowing machine display photo. The user claims: ${claimedMeters} meters.
+Look for the main distance display (usually the largest number, 3-5 digits). Extract time, calories, split pace, and stroke rate if visible. Respond ONLY with JSON.${learningContext}`
+    : `You are verifying a rowing machine display photo. The user claims: ${claimedMeters} meters. Extract ALL visible display data.
+${extractionHints}
 
 Respond in this EXACT JSON format only:
 {
   "isRowingMachineDisplay": true/false,
-  "displayType": "Concept2 PM5" or "WaterRower" or "Generic" or "Unknown",
+  "displayType": "Concept2 PM5" or "WaterRower S4" or "Generic" or "Unknown",
   "extractedMeters": number or null,
+  "extractedTime": number in total seconds or null,
+  "extractedCalories": number or null,
+  "extractedSplitPace": "M:SS.s" string per 500m or null,
+  "extractedStrokeRate": number (strokes per minute) or null,
+  "machineModel": specific model string (e.g. "Concept2 Model D with PM5") or null,
   "matchesClaimed": true/false,
   "overallConfidence": 0-100,
   "reasoning": "Brief explanation"
 }
 
-Respond ONLY with JSON.`;
+Respond ONLY with JSON.${learningContext}`;
 
   const selectedModel = 'claude-sonnet-4-20250514';
 
@@ -262,6 +304,11 @@ exports.verifyRowEntry = functions.https.onCall(async (data, context) => {
       imageHash,
       confidence: claudeResult.overallConfidence || 0,
       extractedMeters: claudeResult.extractedMeters,
+      extractedTime: claudeResult.extractedTime || null,
+      extractedCalories: claudeResult.extractedCalories || null,
+      extractedSplitPace: claudeResult.extractedSplitPace || null,
+      extractedStrokeRate: claudeResult.extractedStrokeRate || null,
+      machineModel: claudeResult.machineModel || null,
       displayType: claudeResult.displayType,
       isRowingMachineDisplay: claudeResult.isRowingMachineDisplay,
       matchesClaimed: claudeResult.matchesClaimed,

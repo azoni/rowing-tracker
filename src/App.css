@@ -1,5 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
 
+/* Icon component styles */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.icon-fallback {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -2191,6 +2206,35 @@ input[type="number"] {
   font-weight: normal;
 }
 
+.achievement-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.achievement-filter-btn {
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.achievement-filter-btn.active {
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+  border-color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.achievement-filter-btn:hover:not(.active) {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
 .achievements-pagination {
   display: flex;
   align-items: center;
@@ -4026,6 +4070,38 @@ input[type="number"] {
   background: linear-gradient(135deg, var(--accent-primary), #00b894);
   border-color: var(--accent-primary);
   color: var(--bg-dark);
+}
+
+.distance-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 8px 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.distance-tab {
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.distance-tab.active {
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+  border-color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.distance-tab:hover:not(.active) {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .leaderboard-item {

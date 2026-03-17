@@ -6,7 +6,7 @@ export const THEMES = {
     id: 'boathouse-classic',
     name: 'Boathouse Classic',
     description: 'Navy, cream & wood tones - collegiate rowing aesthetic',
-    emoji: '🏛️',
+    emoji: 'theme_boathouse',
     colors: {
       bgDark: '#1a2744',
       bgCard: '#243352',
@@ -33,7 +33,7 @@ export const THEMES = {
     id: 'morning-lake',
     name: 'Morning Lake',
     description: 'Soft blues & greens - peaceful sunrise rowing',
-    emoji: '🌅',
+    emoji: 'theme_sunrise',
     colors: {
       bgDark: '#f0f5f9',
       bgCard: '#ffffff',
@@ -60,7 +60,7 @@ export const THEMES = {
     id: 'athletic-performance',
     name: 'Athletic Performance',
     description: 'Deep blue & coral - modern sports feel',
-    emoji: '🏋️',
+    emoji: 'theme_athletic',
     colors: {
       bgDark: '#0f172a',
       bgCard: '#1e293b',
@@ -87,7 +87,7 @@ export const THEMES = {
     id: 'ocean-crew',
     name: 'Ocean Crew',
     description: 'Rich navy & teal - maritime club aesthetic',
-    emoji: '⚓',
+    emoji: 'theme_ocean',
     colors: {
       bgDark: '#0c1929',
       bgCard: '#132337',

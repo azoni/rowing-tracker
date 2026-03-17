@@ -2,8 +2,26 @@ import React from 'react';
 import Icon from './Icon';
 import WorldProgress from './WorldProgress';
 import { useApp } from '../context/AppContext';
-import { formatMeters, formatTimeDisplay } from '../utils';
+import { formatMeters, formatTimeDisplay, calculatePace } from '../utils';
 import { getUserRank, getNextRank, ACHIEVEMENTS, TIER_COLORS } from '../constants';
+
+// Monthly competitive challenges — top 3 get reward badges
+// type: 'fastest_distance' (lowest time for X meters), 'longest_row' (most meters single session),
+//       'most_meters' (total meters in month), 'best_pace' (best /500m pace)
+const MONTHLY_CHALLENGES = [
+  { id: 'fastest-2k', label: 'Fastest 2K', description: 'Best 2,000m time', type: 'fastest_distance', distance: 2000 },       // Jan
+  { id: 'longest-row', label: 'Longest Single Row', description: 'Most meters in one session', type: 'longest_row' },           // Feb
+  { id: 'fastest-500', label: 'Fastest 500m', description: 'Best 500m time', type: 'fastest_distance', distance: 500 },         // Mar
+  { id: 'most-meters', label: 'Most Meters', description: 'Total meters this month', type: 'most_meters' },                     // Apr
+  { id: 'fastest-1k', label: 'Fastest 1K', description: 'Best 1,000m time', type: 'fastest_distance', distance: 1000 },         // May
+  { id: 'best-pace', label: 'Best Avg Pace', description: 'Fastest average /500m pace', type: 'best_pace' },                    // Jun
+  { id: 'fastest-5k', label: 'Fastest 5K', description: 'Best 5,000m time', type: 'fastest_distance', distance: 5000 },         // Jul
+  { id: 'longest-row-2', label: 'Longest Single Row', description: 'Most meters in one session', type: 'longest_row' },         // Aug
+  { id: 'fastest-2k-2', label: 'Fastest 2K', description: 'Best 2,000m time', type: 'fastest_distance', distance: 2000 },       // Sep
+  { id: 'most-meters-2', label: 'Most Meters', description: 'Total meters this month', type: 'most_meters' },                   // Oct
+  { id: 'fastest-500-2', label: 'Fastest 500m', description: 'Best 500m time', type: 'fastest_distance', distance: 500 },       // Nov
+  { id: 'best-pace-2', label: 'Best Avg Pace', description: 'Fastest average /500m pace', type: 'best_pace' },                  // Dec
+];
 
 const THROWDOWNS = [
   { type: 'distance', target: 50000, label: 'Row 50K', unit: 'm', field: 'meters' },
@@ -22,7 +40,7 @@ const THROWDOWNS = [
 
 function HomeTab() {
   const {
-    currentUser, userProfile, entries,
+    currentUser, userProfile, entries, users,
     calculateStreak, getPersonalRecord,
     getUserAchievements, getAchievementProgress,
     setShowRankProgressModal, setShowAchievementModal,
@@ -91,6 +109,99 @@ function HomeTab() {
             <div className="throwdown-progress">
               {throwdown.field === 'meters' ? formatMeters(current) : current.toLocaleString()}{throwdown.unit} / {throwdown.field === 'meters' ? formatMeters(throwdown.target) : throwdown.target.toLocaleString()}{throwdown.unit}
             </div>
+          </div>
+        );
+      })()}
+
+      {/* Monthly Challenge */}
+      {(() => {
+        const now = new Date();
+        const month = now.getMonth();
+        const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+        const challenge = MONTHLY_CHALLENGES[month];
+        const daysLeft = new Date(now.getFullYear(), month + 1, 0).getDate() - now.getDate();
+        const monthStart = new Date(now.getFullYear(), month, 1);
+
+        // Compute leaderboard for this challenge
+        const allMonthEntries = entries.filter(e => new Date(e.date) >= monthStart);
+
+        const getScore = (userId) => {
+          const userEntries = allMonthEntries.filter(e => e.userId === userId && e.time && e.time > 0 && e.meters > 0);
+          if (challenge.type === 'fastest_distance') {
+            // Find entries close to the target distance (within 10%)
+            const tolerance = challenge.distance * 0.1;
+            const qualifying = userEntries.filter(e => Math.abs(e.meters - challenge.distance) <= tolerance);
+            if (qualifying.length === 0) return null;
+            const best = qualifying.reduce((best, e) => (!best || e.time < best.time) ? e : best, null);
+            return best ? { value: best.time, display: formatTimeDisplay(best.time), sort: best.time } : null;
+          } else if (challenge.type === 'longest_row') {
+            const allUserEntries = allMonthEntries.filter(e => e.userId === userId);
+            if (allUserEntries.length === 0) return null;
+            const best = Math.max(...allUserEntries.map(e => e.meters));
+            return { value: best, display: formatMeters(best), sort: -best };
+          } else if (challenge.type === 'most_meters') {
+            const allUserEntries = allMonthEntries.filter(e => e.userId === userId);
+            const total = allUserEntries.reduce((s, e) => s + e.meters, 0);
+            if (total === 0) return null;
+            return { value: total, display: formatMeters(total), sort: -total };
+          } else if (challenge.type === 'best_pace') {
+            if (userEntries.length === 0) return null;
+            const paces = userEntries.map(e => (e.time / e.meters) * 500);
+            const bestPace = Math.min(...paces);
+            const mins = Math.floor(bestPace / 60);
+            const secs = (bestPace % 60).toFixed(1).padStart(4, '0');
+            return { value: bestPace, display: `${mins}:${secs}/500m`, sort: bestPace };
+          }
+          return null;
+        };
+
+        // Build leaderboard from all users
+        const leaderboard = Object.keys(users)
+          .map(uid => {
+            const score = getScore(uid);
+            if (!score) return null;
+            return { userId: uid, user: users[uid], ...score };
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.sort - b.sort)
+          .slice(0, 3);
+
+        // Current user's score
+        const myScore = currentUser ? getScore(currentUser.uid) : null;
+        const myRank = currentUser ? leaderboard.findIndex(l => l.userId === currentUser.uid) + 1 : 0;
+
+        return (
+          <div className="challenge-banner">
+            <div className="challenge-banner-header">
+              <span className="challenge-banner-title"><Icon name="ui_trophy" size={14} /> {monthName} Challenge</span>
+              <span className="challenge-banner-days">{daysLeft}d left</span>
+            </div>
+            <div className="challenge-banner-name">{challenge.label}</div>
+            <div className="challenge-banner-desc">{challenge.description}</div>
+
+            {myScore && (
+              <div className="challenge-banner-my-score">
+                Your best: <strong>{myScore.display}</strong>
+                {myRank > 0 && <span className="challenge-banner-my-rank"> (#{myRank})</span>}
+              </div>
+            )}
+            {!myScore && (
+              <div className="challenge-banner-my-score muted">No qualifying entries yet</div>
+            )}
+
+            {leaderboard.length > 0 && (
+              <div className="challenge-banner-leaders">
+                {leaderboard.map((entry, i) => (
+                  <div key={entry.userId} className={`challenge-leader ${entry.userId === currentUser?.uid ? 'is-you' : ''}`}>
+                    <span className="challenge-leader-rank">
+                      {i === 0 ? <Icon name="ui_gold" size={14} /> : i === 1 ? <Icon name="ui_silver" size={14} /> : <Icon name="ui_bronze" size={14} />}
+                    </span>
+                    <span className="challenge-leader-name">{entry.user?.name?.split(' ')[0] || 'User'}</span>
+                    <span className="challenge-leader-score">{entry.display}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })()}

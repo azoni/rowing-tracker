@@ -4,6 +4,21 @@ import { ACHIEVEMENTS, getUserRank, getMachineName } from '../constants';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import Icon from './Icon';
 
+const MONTHLY_CHALLENGES = [
+  { label: 'Fastest 2K', type: 'fastest_distance', distance: 2000 },
+  { label: 'Longest Row', type: 'longest_row' },
+  { label: 'Fastest 500m', type: 'fastest_distance', distance: 500 },
+  { label: 'Most Meters', type: 'most_meters' },
+  { label: 'Fastest 1K', type: 'fastest_distance', distance: 1000 },
+  { label: 'Best Pace', type: 'best_pace' },
+  { label: 'Fastest 5K', type: 'fastest_distance', distance: 5000 },
+  { label: 'Longest Row', type: 'longest_row' },
+  { label: 'Fastest 2K', type: 'fastest_distance', distance: 2000 },
+  { label: 'Most Meters', type: 'most_meters' },
+  { label: 'Fastest 500m', type: 'fastest_distance', distance: 500 },
+  { label: 'Best Pace', type: 'best_pace' },
+];
+
 const THROWDOWNS = [
   { target: 50000, label: 'Row 50K', field: 'meters', icon: 'ui_fire' },
   { target: 14, label: '14-Day Streak', field: 'streak', icon: 'ui_fire' },
@@ -26,7 +41,7 @@ function UserProfileModal() {
     getUserAchievements, calculateLongestStreak,
     getPersonalRecord, getTotalDaysRowed,
     getFirstRowDate, calculateStreak,
-    calculateWeeklyAverage, entries,
+    calculateWeeklyAverage, entries, users,
   } = useApp();
 
   if (!showUserProfileModal) return null;
@@ -134,11 +149,12 @@ function UserProfileModal() {
                 )}
               </div>
 
-              {/* Rewards — Monthly Throwdown Completions */}
+              {/* Rewards — Throwdown Completions + Challenge Placements */}
               {(() => {
                 const now = new Date();
                 const rewards = [];
-                // Check each month up to current
+
+                // Throwdown completions
                 for (let m = 0; m <= Math.min(now.getMonth(), 11); m++) {
                   const yr = now.getFullYear();
                   const mStart = new Date(yr, m, 1);
@@ -151,9 +167,64 @@ function UserProfileModal() {
                   else if (td.field === 'calories') val = mEntries.reduce((s, e) => s + (e.calories || 0), 0);
                   else if (td.field === 'streak') val = calculateStreak(user.id);
                   if (val >= td.target) {
-                    rewards.push({ month: m, label: td.label, monthName: MONTH_NAMES[m], year: yr });
+                    rewards.push({ key: `td-${m}`, month: m, type: 'throwdown', label: td.label, monthName: MONTH_NAMES[m], year: yr });
                   }
                 }
+
+                // Challenge placements (only completed months)
+                const lastCompletedMonth = now.getMonth() - 1;
+                for (let m = 0; m <= lastCompletedMonth && m < 12; m++) {
+                  const yr = now.getFullYear();
+                  const mStart = new Date(yr, m, 1);
+                  const mEnd = new Date(yr, m + 1, 0, 23, 59, 59);
+                  const challenge = MONTHLY_CHALLENGES[m];
+                  const mEntries = entries.filter(e => new Date(e.date) >= mStart && new Date(e.date) <= mEnd);
+
+                  const getScore = (uid) => {
+                    const ue = mEntries.filter(e => e.userId === uid && e.time && e.time > 0 && e.meters > 0);
+                    if (challenge.type === 'fastest_distance') {
+                      const tol = challenge.distance * 0.1;
+                      const q = ue.filter(e => Math.abs(e.meters - challenge.distance) <= tol);
+                      if (!q.length) return null;
+                      return Math.min(...q.map(e => e.time));
+                    } else if (challenge.type === 'longest_row') {
+                      const all = mEntries.filter(e => e.userId === uid);
+                      if (!all.length) return null;
+                      return -Math.max(...all.map(e => e.meters));
+                    } else if (challenge.type === 'most_meters') {
+                      const all = mEntries.filter(e => e.userId === uid);
+                      const total = all.reduce((s, e) => s + e.meters, 0);
+                      return total > 0 ? -total : null;
+                    } else if (challenge.type === 'best_pace') {
+                      if (!ue.length) return null;
+                      return Math.min(...ue.map(e => (e.time / e.meters) * 500));
+                    }
+                    return null;
+                  };
+
+                  const lb = Object.keys(users)
+                    .map(uid => ({ uid, score: getScore(uid) }))
+                    .filter(x => x.score !== null)
+                    .sort((a, b) => a.score - b.score)
+                    .slice(0, 3);
+
+                  const place = lb.findIndex(x => x.uid === user.id);
+                  if (place >= 0) {
+                    const icons = ['ui_gold', 'ui_silver', 'ui_bronze'];
+                    const placeLabels = ['1st', '2nd', '3rd'];
+                    rewards.push({
+                      key: `ch-${m}`,
+                      month: m,
+                      type: 'challenge',
+                      place: place + 1,
+                      icon: icons[place],
+                      label: `${placeLabels[place]} — ${challenge.label}`,
+                      monthName: MONTH_NAMES[m],
+                      year: yr,
+                    });
+                  }
+                }
+
                 if (rewards.length === 0) return null;
                 return (
                   <div className="profile-rewards">
@@ -164,11 +235,11 @@ function UserProfileModal() {
                     <div className="profile-rewards-grid">
                       {rewards.map(r => (
                         <div
-                          key={r.month}
-                          className="profile-reward-badge"
+                          key={r.key}
+                          className={`profile-reward-badge ${r.type === 'challenge' ? 'challenge' : ''}`}
                           title={`${r.monthName} ${r.year} — ${r.label}`}
                         >
-                          <Icon name="ui_fire" size={16} />
+                          <Icon name={r.type === 'challenge' ? r.icon : 'ui_fire'} size={16} />
                           <span className="profile-reward-month">{r.monthName}</span>
                         </div>
                       ))}

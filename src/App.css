@@ -5363,6 +5363,15 @@ input[type="number"] {
   text-transform: uppercase;
 }
 
+.profile-reward-badge.challenge {
+  background: rgba(65, 105, 225, 0.15);
+  border-color: rgba(65, 105, 225, 0.3);
+}
+
+.profile-reward-badge.challenge .profile-reward-month {
+  color: #4169E1;
+}
+
 .profile-achievements {
   background: var(--bg-card);
   border-radius: 10px;
@@ -8287,6 +8296,103 @@ input[type="number"] {
 .throwdown-progress {
   font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+/* Monthly Challenge Banner */
+.challenge-banner {
+  background: linear-gradient(135deg, rgba(65, 105, 225, 0.12) 0%, rgba(255, 215, 0, 0.08) 100%);
+  border: 1px solid rgba(65, 105, 225, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.challenge-banner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.challenge-banner-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.challenge-banner-days {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.challenge-banner-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.challenge-banner-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.challenge-banner-my-score {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+}
+
+.challenge-banner-my-score.muted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.challenge-banner-my-rank {
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.challenge-banner-leaders {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.challenge-leader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.challenge-leader.is-you {
+  background: rgba(0, 212, 170, 0.08);
+}
+
+.challenge-leader-rank {
+  width: 20px;
+  text-align: center;
+}
+
+.challenge-leader-name {
+  flex: 1;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.challenge-leader-score {
+  font-weight: 700;
+  color: var(--accent-primary);
+  font-family: 'DM Sans', monospace;
 }
 
 .feed-item-distance_record {

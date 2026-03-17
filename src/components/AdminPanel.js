@@ -17,6 +17,20 @@ const THROWDOWNS = [
   { label: '22 Sessions', target: '22 sessions' },
   { label: 'Row 80K', target: '80,000m' },
 ];
+const CHALLENGES = [
+  { label: 'Fastest 2K', desc: 'Best 2,000m time' },
+  { label: 'Longest Single Row', desc: 'Most meters in one session' },
+  { label: 'Fastest 500m', desc: 'Best 500m time' },
+  { label: 'Most Meters', desc: 'Total meters this month' },
+  { label: 'Fastest 1K', desc: 'Best 1,000m time' },
+  { label: 'Best Avg Pace', desc: 'Fastest /500m pace' },
+  { label: 'Fastest 5K', desc: 'Best 5,000m time' },
+  { label: 'Longest Single Row', desc: 'Most meters in one session' },
+  { label: 'Fastest 2K', desc: 'Best 2,000m time' },
+  { label: 'Most Meters', desc: 'Total meters this month' },
+  { label: 'Fastest 500m', desc: 'Best 500m time' },
+  { label: 'Best Avg Pace', desc: 'Fastest /500m pace' },
+];
 
 function AdminPanel() {
   const {
@@ -66,6 +80,22 @@ function AdminPanel() {
                 <span className="admin-throwdown-month">{MONTH_NAMES[i]}</span>
                 <span className="admin-throwdown-label">{t.label}</span>
                 <span className="admin-throwdown-target">{t.target}</span>
+                {isCurrent && <span className="admin-throwdown-badge">Active</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Monthly Challenges */}
+        <h3><Icon name="ui_trophy" size={16} /> Monthly Challenges</h3>
+        <div className="admin-throwdowns">
+          {CHALLENGES.map((c, i) => {
+            const isCurrent = i === new Date().getMonth();
+            return (
+              <div key={i} className={`admin-throwdown-row ${isCurrent ? 'current' : ''}`}>
+                <span className="admin-throwdown-month">{MONTH_NAMES[i]}</span>
+                <span className="admin-throwdown-label">{c.label}</span>
+                <span className="admin-throwdown-target">{c.desc}</span>
                 {isCurrent && <span className="admin-throwdown-badge">Active</span>}
               </div>
             );

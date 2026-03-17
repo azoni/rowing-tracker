@@ -2462,6 +2462,32 @@ function App() {
     try {
       const deleteEntryFn = httpsCallable(functions, 'deleteEntry');
       await deleteEntryFn({ entryId });
+
+      // Re-check achievements — remove any the user no longer qualifies for
+      if (currentUser) {
+        const user = users[currentUser.uid];
+        if (user?.unlockedAchievements) {
+          const remainingEntries = entries.filter(e => e.id !== entryId && e.userId === currentUser.uid);
+          const updatedUser = {
+            ...user,
+            totalMeters: (user.totalMeters || 0) - meters,
+            uploadCount: (user.uploadCount || 0) - 1,
+          };
+          const streak = calculateStreak(currentUser.uid);
+          const toRemove = [];
+          for (const achievement of ACHIEVEMENTS) {
+            if (user.unlockedAchievements[achievement.id] && !achievement.check(updatedUser, remainingEntries, streak)) {
+              toRemove.push(achievement.id);
+            }
+          }
+          if (toRemove.length > 0) {
+            const cleaned = { ...user.unlockedAchievements };
+            toRemove.forEach(id => delete cleaned[id]);
+            const userRef = doc(db, 'users', currentUser.uid);
+            await setDoc(userRef, { unlockedAchievements: cleaned }, { merge: true });
+          }
+        }
+      }
     } catch (error) {
       console.error('Delete entry error:', error);
       showToast('Failed to delete entry. Try again.');

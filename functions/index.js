@@ -9,29 +9,53 @@ if (admin.apps.length === 0) {
 
 const db = admin.firestore();
 
-// Fire-and-forget activity logger — logs to MCP ecosystem feed.
+// Fire-and-forget activity logger — logs to portfolio Firestore and MCP.
 function logActivity({ type, title, description, model, tokens, cost, metadata }) {
-  const mcpKey = functions.config().mcp?.admin_key;
-  if (!mcpKey) return;
-
   const https = require('https');
-  const payload = JSON.stringify({
-    type, title, source: 'rowcrew',
-    description: description || '', model, tokens, cost, metadata,
-  });
-  const req = https.request({
-    hostname: 'azoni-mcp.onrender.com',
-    path: '/activity/log',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${mcpKey}`,
-      'Content-Length': Buffer.byteLength(payload),
-    },
-  });
-  req.on('error', (e) => console.error('[activity-log] Failed:', e.message));
-  req.write(payload);
-  req.end();
+
+  // Write to portfolio Firestore (primary — what the dashboard reads)
+  const webhookSecret = functions.config().portfolio?.webhook_secret;
+  if (webhookSecret) {
+    const portfolioPayload = JSON.stringify({
+      type, title, source: 'rowcrew',
+      description: description || '', model, tokens, cost, metadata,
+      secret: webhookSecret,
+    });
+    const pReq = https.request({
+      hostname: 'azoni.netlify.app',
+      path: '/.netlify/functions/log-agent-activity',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(portfolioPayload),
+      },
+    });
+    pReq.on('error', (e) => console.error('[activity-log] Portfolio write failed:', e.message));
+    pReq.write(portfolioPayload);
+    pReq.end();
+  }
+
+  // Also forward to MCP
+  const mcpKey = functions.config().mcp?.admin_key;
+  if (mcpKey) {
+    const payload = JSON.stringify({
+      type, title, source: 'rowcrew',
+      description: description || '', model, tokens, cost, metadata,
+    });
+    const req = https.request({
+      hostname: 'azoni-mcp.onrender.com',
+      path: '/activity/log',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${mcpKey}`,
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    });
+    req.on('error', (e) => console.error('[activity-log] MCP write failed:', e.message));
+    req.write(payload);
+    req.end();
+  }
 }
 
 // Constants

@@ -215,25 +215,54 @@ body {
   box-shadow: 0 0 8px var(--accent-gold);
 }
 
-.next-milestone {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.current-achievement {
-  font-size: 0.75rem;
-  color: var(--accent-primary);
-  text-align: center;
-  margin-top: 0.5rem;
-  font-weight: 600;
-}
-
-.world-bar-row {
+/* Milestone current (what you just passed) */
+.milestone-current {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* Milestone next (what's coming) */
+.milestone-next {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--accent-primary);
+  font-weight: 500;
+  margin-top: 6px;
+}
+
+/* Around the World section */
+.world-around {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+.world-around-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.world-around-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.world-around-pct {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  color: var(--accent-primary);
 }
 
 .world-bar-container {
@@ -251,10 +280,10 @@ body {
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.world-bar-label {
-  font-size: 0.65rem;
+.world-around-detail {
+  font-size: 0.7rem;
   color: var(--text-muted);
-  white-space: nowrap;
+  margin-top: 4px;
 }
 
 /* Journey Modal */
@@ -2077,6 +2106,7 @@ input[type="number"] {
 }
 
 .feed-item {
+  position: relative;
   background: var(--bg-card);
   border-radius: 12px;
   padding: 0.875rem;
@@ -2101,6 +2131,28 @@ input[type="number"] {
 .feed-item.is-you {
   border-color: var(--accent-primary);
   background: rgba(0, 212, 170, 0.05);
+}
+
+.feed-delete-admin {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 71, 87, 0.15);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.feed-delete-admin:hover {
+  opacity: 1;
+  background: rgba(255, 71, 87, 0.3);
 }
 
 .feed-avatar img,
@@ -2299,39 +2351,6 @@ input[type="number"] {
 .achievement-category-btn:hover:not(.active) {
   border-color: var(--accent-primary);
   color: var(--text-primary);
-}
-
-.achievements-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 0.75rem;
-}
-
-.achievements-page-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.achievements-page-btn:hover:not(:disabled) {
-  background: var(--bg-card-hover);
-}
-
-.achievements-page-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.achievements-page-info {
-  color: var(--text-muted);
-  font-size: 0.85rem;
 }
 
 /* Updates Link Button */
@@ -2976,8 +2995,22 @@ input[type="number"] {
 
 .achievements-grid-full {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.achievements-grid-full::-webkit-scrollbar {
+  width: 4px;
+}
+.achievements-grid-full::-webkit-scrollbar-track {
+  background: transparent;
+}
+.achievements-grid-full::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
 }
 
 .achievement-card {
@@ -3576,6 +3609,20 @@ input[type="number"] {
   padding: 2px 10px;
   border-radius: 10px;
   border: 1px solid;
+}
+
+/* Row entries — subtle tier border on left */
+.feed-item-row.row-tier-bronze { border-left: 3px solid rgba(205, 127, 50, 0.5); }
+.feed-item-row.row-tier-silver { border-left: 3px solid rgba(192, 192, 192, 0.5); }
+.feed-item-row.row-tier-gold { border-left: 3px solid rgba(255, 215, 0, 0.5); }
+.feed-item-row.row-tier-platinum { border-left: 3px solid rgba(162, 155, 254, 0.5); }
+.feed-item-row.row-tier-diamond { border-left: 3px solid rgba(0, 212, 170, 0.5); }
+
+/* Leaderboard position badge next to name */
+.feed-lb-badge {
+  display: inline-flex;
+  margin-left: 2px;
+  vertical-align: middle;
 }
 
 /* Tier-specific glowing borders and backgrounds */

@@ -6,7 +6,7 @@ import Icon from './Icon';
 
 function ActivityFeed() {
   const {
-    currentUser, users,
+    currentUser, users, isAdmin, deleteActivity, getLeaderboard,
     selectedGroupId, getSelectedGroup,
     isGroupAdmin, challenges,
     getChallengeStatus, getChallengeProgress,
@@ -29,6 +29,17 @@ function ActivityFeed() {
     getWrappedStats, setShowWrapped,
     entries,
   } = useApp();
+
+  // Build top-3 leaderboard position lookup
+  const leaderboardPositions = React.useMemo(() => {
+    const positions = {};
+    if (getLeaderboard) {
+      getLeaderboard.slice(0, 3).forEach((user, i) => {
+        positions[user.id] = i; // 0=gold, 1=silver, 2=bronze
+      });
+    }
+    return positions;
+  }, [getLeaderboard]);
 
   return (
     <section className="feed-section">
@@ -243,11 +254,13 @@ function ActivityFeed() {
               {feedData.items.map((item) => {
                 const itemStreak = item.user ? calculateStreak(item.user.id) : 0;
                 const itemRank = item.user ? getUserRank(item.user.totalMeters) : null;
+                const itemTier = itemRank?.tier || 'bronze';
+                const lbPos = item.user ? leaderboardPositions[item.user.id] : undefined;
 
                 return (
                   <div
                     key={item.id}
-                    className={`feed-item feed-item-${item.type} ${item.type === 'rank' ? `tier-${getRankTier(item.rank?.rank)}` : ''} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
+                    className={`feed-item feed-item-${item.type} ${item.type === 'rank' ? `tier-${getRankTier(item.rank?.rank)}` : ''} ${item.type === 'row' ? `row-tier-${itemTier}` : ''} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
                     onClick={() => item.user && setShowUserProfileModal(item.user)}
                   >
                     <div className="feed-avatar">
@@ -263,6 +276,7 @@ function ActivityFeed() {
                       <div className="feed-header">
                         <span className="feed-name">
                           {item.user?.name}
+                          {lbPos !== undefined && <span className="feed-lb-badge"><Icon name={lbPos === 0 ? 'ui_gold' : lbPos === 1 ? 'ui_silver' : 'ui_bronze'} size={12} /></span>}
                           {itemRank && <span className="feed-rank-badge"><Icon name={itemRank.emoji} size={14} /></span>}
                         </span>
                         <span className="feed-time">{formatTimeAgo(new Date(item.date))}</span>
@@ -427,6 +441,20 @@ function ActivityFeed() {
                           </div>
                         )}
                       </div>
+                    )}
+                    {isAdmin && (
+                      <button
+                        className="feed-delete-admin"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm('Delete this feed item?')) {
+                            deleteActivity(item.id, item.type);
+                          }
+                        }}
+                        title="Admin: Delete"
+                      >
+                        <Icon name="ui_unverified" size={12} />
+                      </button>
                     )}
                   </div>
                 );

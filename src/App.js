@@ -2129,6 +2129,12 @@ function App() {
         userUpdate.lastUsedMachine = machineInfo.type;
         userUpdate.lastUsedMachineCustomName = machineInfo.customName || null;
       }
+
+      // Auto-set default machine on first use
+      if (machineInfo?.type && !userProfile.defaultMachine) {
+        userUpdate.defaultMachine = machineInfo.type;
+        userUpdate.customMachineName = machineInfo.customName || null;
+      }
       
       await setDoc(userRef, userUpdate, { merge: true });
 
@@ -2376,6 +2382,26 @@ function App() {
       setShareImageUrl(capturedImage?.data || capturedImage);
       setShowShareModal(true);
       setLinkCopied(false);
+    }
+  };
+
+  // Admin delete any activity from feed
+  const deleteActivity = async (itemId, itemType) => {
+    if (!isAdmin) return;
+    try {
+      if (itemType === 'row') {
+        // Row items come from entries collection — use existing delete
+        const entry = entries.find(e => e.id === itemId);
+        if (entry) {
+          await handleDeleteEntry(itemId, entry.meters);
+        }
+      } else {
+        // Activities, achievements, rank events — delete from activities collection
+        await deleteDoc(doc(db, 'activities', itemId));
+      }
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      showToast('Failed to delete. Try again.');
     }
   };
 
@@ -3406,6 +3432,7 @@ function App() {
     newUsername, handleUsernameChange, usernameStatus,
 
     // Admin
+    deleteActivity,
     pendingReviews, adminStats, loadPendingReviews,
     reviewingEntry, setReviewingEntry,
     adjustedMeters, setAdjustedMeters,

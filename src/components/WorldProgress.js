@@ -9,6 +9,7 @@ function WorldProgress() {
 
   return (
     <section className="world-progress clickable" onClick={() => setShowJourneyModal(true)}>
+      {/* Main stats row */}
       <div className="world-stats">
         <div className="world-total">
           <span className="world-number">{formatMeters(totalMeters)}</span>
@@ -19,17 +20,24 @@ function WorldProgress() {
           <span className="milestone-count-label">milestones</span>
         </div>
       </div>
+
+      {/* Milestone progress */}
       {milestoneProgress.next ? (() => {
         const prevMeters = milestoneProgress.current?.meters || 0;
         const segmentProgress = ((totalMeters - prevMeters) / (milestoneProgress.next.meters - prevMeters)) * 100;
         return (
           <>
+            {milestoneProgress.current && (
+              <div className="milestone-current">
+                <Icon name="ui_check" size={14} /> <Icon name={milestoneProgress.current.emoji} size={14} /> {milestoneProgress.current.label} — {milestoneProgress.current.comparison}
+              </div>
+            )}
             <div className="progress-bar-container">
               <div className="progress-bar" style={{ width: `${Math.min(segmentProgress, 100)}%` }} />
             </div>
-            <p className="next-milestone">
-              <Icon name={milestoneProgress.next.emoji} size={16} /> Next: {milestoneProgress.next.label} — {formatMeters(milestoneProgress.next.meters - totalMeters)} to go!
-            </p>
+            <div className="milestone-next">
+              <Icon name={milestoneProgress.next.emoji} size={14} /> Next: {milestoneProgress.next.label} — {formatMeters(milestoneProgress.next.meters - totalMeters)} to go
+            </div>
           </>
         );
       })() : (
@@ -37,14 +45,19 @@ function WorldProgress() {
           <div className="progress-bar" style={{ width: '100%' }} />
         </div>
       )}
-      {milestoneProgress.current && (
-        <p className="current-achievement"><Icon name={milestoneProgress.current.emoji} size={16} /> {milestoneProgress.current.comparison}</p>
-      )}
-      <div className="world-bar-row">
+
+      {/* Around the World */}
+      <div className="world-around">
+        <div className="world-around-header">
+          <span className="world-around-title"><Icon name="ui_globe" size={16} /> Row Around The World</span>
+          <span className="world-around-pct">{worldProgress.toFixed(1)}%</span>
+        </div>
         <div className="world-bar-container">
           <div className="world-bar" style={{ width: `${Math.min(worldProgress, 100)}%` }} />
         </div>
-        <span className="world-bar-label"><Icon name="ui_globe" size={14} /> {worldProgress.toFixed(2)}%</span>
+        <div className="world-around-detail">
+          {formatMeters(totalMeters)} of {formatMeters(40075000)} — {formatMeters(40075000 - totalMeters)} to go
+        </div>
       </div>
     </section>
   );

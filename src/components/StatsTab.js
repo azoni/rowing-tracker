@@ -7,7 +7,6 @@ import { ACHIEVEMENTS } from '../constants';
 function StatsTab() {
   const {
     currentUser, isAdmin,
-    achievementsPage, setAchievementsPage, ACHIEVEMENTS_PAGE_SIZE,
     getUserAchievements, getAchievementProgress,
     setShowAchievementModal,
     setShowSessionHistory, setShowRankProgressModal,
@@ -63,14 +62,14 @@ function StatsTab() {
             <button
               key={f.key}
               className={`achievement-filter-btn ${achievementFilter === f.key ? 'active' : ''}`}
-              onClick={() => { setAchievementFilter(f.key); setAchievementsPage(0); }}
+              onClick={() => { setAchievementFilter(f.key); }}
             >
               {f.label}
             </button>
           ))}
         </div>
         <div className="achievements-grid-full">
-          {filteredAchievements.slice(achievementsPage * ACHIEVEMENTS_PAGE_SIZE, (achievementsPage + 1) * ACHIEVEMENTS_PAGE_SIZE).map((achievement) => {
+          {filteredAchievements.map((achievement) => {
             const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
             const progress = currentUser ? getAchievementProgress(currentUser.uid, achievement) : { current: 0, target: 1 };
             const unlockedAchievement = currentUser ? getUserAchievements(currentUser.uid).find(a => a.id === achievement.id) : null;
@@ -98,11 +97,6 @@ function StatsTab() {
               </div>
             );
           })}
-        </div>
-        <div className="achievements-pagination">
-          <button className="achievements-page-btn" onClick={() => setAchievementsPage(p => p - 1)} disabled={achievementsPage === 0}>← Prev</button>
-          <span className="achievements-page-info">{achievementsPage + 1} / {Math.ceil(filteredAchievements.length / ACHIEVEMENTS_PAGE_SIZE) || 1}</span>
-          <button className="achievements-page-btn" onClick={() => setAchievementsPage(p => p + 1)} disabled={(achievementsPage + 1) * ACHIEVEMENTS_PAGE_SIZE >= filteredAchievements.length}>Next →</button>
         </div>
       </div>
 

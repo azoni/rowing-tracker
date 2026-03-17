@@ -26,21 +26,32 @@ export const MILESTONES = [
   { meters: 4000000, label: '4,000 km', emoji: 'milestone_polarbear', comparison: 'Trans-Siberian Railway length!' },
   { meters: 5000000, label: '5,000 km', emoji: 'milestone_island', comparison: 'Middle of the Pacific. Nothing but ocean.', checkpoint: 'Midway Atoll' },
 
-  // 5000km+ — gaps: 2000km, arriving in Asia
+  // 5000-10000km — gaps: 1500-2000km, arriving in Asia
+  { meters: 6371000, label: '6,371 km', emoji: 'milestone_volcano', comparison: 'Earth\'s radius — you could row to the center!' },
   { meters: 7000000, label: '7,000 km', emoji: 'milestone_tokyotower', comparison: 'Konnichiwa! Hit up a ramen shop!', checkpoint: 'Tokyo, Japan' },
+  { meters: 8000000, label: '8,000 km', emoji: 'milestone_dumpling', comparison: 'Dumplings for days!', checkpoint: 'Shanghai, China' },
   { meters: 9000000, label: '9,000 km', emoji: 'milestone_bowl', comparison: 'Pad thai and tuk tuks!', checkpoint: 'Bangkok, Thailand' },
-
-  // 10000km+ — gaps: 2000-3000km, Middle East & Europe
   { meters: 10000000, label: '10,000 km', emoji: 'milestone_mosque', comparison: 'Quarter around the world!', checkpoint: 'Mumbai, India' },
+
+  // 10000-20000km — gaps: 2000km, Middle East & Europe
   { meters: 12000000, label: '12,000 km', emoji: 'milestone_camel', comparison: 'Gold, skyscrapers, and 120F heat!', checkpoint: 'Dubai, UAE' },
+  { meters: 13500000, label: '13,500 km', emoji: 'milestone_desert', comparison: 'Across the Sahara Desert at its narrowest!' },
   { meters: 15000000, label: '15,000 km', emoji: 'milestone_pyramid', comparison: 'Pyramids in sight!', checkpoint: 'Cairo, Egypt' },
+  { meters: 16500000, label: '16,500 km', emoji: 'milestone_italian', comparison: 'When in Rome... row!', checkpoint: 'Rome, Italy' },
   { meters: 18000000, label: '18,000 km', emoji: 'milestone_croissant', comparison: 'Ooh la la, croissants!', checkpoint: 'Paris, France' },
   { meters: 20000000, label: '20,000 km', emoji: 'milestone_coffee', comparison: 'Halfway! Time for tea and crumpets!', checkpoint: 'London, UK' },
 
-  // 20000km+ — gaps: 5000km, across the Atlantic and home
+  // 20000-30000km — gaps: 2500km, across the Atlantic
+  { meters: 22000000, label: '22,000 km', emoji: 'milestone_iceland', comparison: 'Hot springs and puffins!', checkpoint: 'Reykjavik, Iceland' },
+  { meters: 24000000, label: '24,000 km', emoji: 'milestone_whale', comparison: 'You\'ve out-migrated a blue whale. Twice.' },
   { meters: 25000000, label: '25,000 km', emoji: 'milestone_newyork', comparison: 'The Big Apple! Start spreading the news!', checkpoint: 'New York, NY' },
+  { meters: 27000000, label: '27,000 km', emoji: 'milestone_surfing', comparison: 'You surfed every ocean... twice!' },
+
+  // 27000-40075km — gaps: 3000km, heading home
   { meters: 30000000, label: '30,000 km', emoji: 'milestone_mexico', comparison: 'Tacos and churros!', checkpoint: 'Mexico City, MX' },
+  { meters: 33000000, label: '33,000 km', emoji: 'milestone_target', comparison: 'The home stretch — less than 20% to go!' },
   { meters: 35000000, label: '35,000 km', emoji: 'milestone_llama', comparison: 'Ceviche and Machu Picchu!', checkpoint: 'Lima, Peru' },
+  { meters: 37500000, label: '37,500 km', emoji: 'milestone_wine', comparison: 'Almost home! Wine country vibes!', checkpoint: 'Santiago, Chile' },
   { meters: 40075000, label: '40,075 km', emoji: 'milestone_home', comparison: 'YOU ROWED AROUND THE WORLD! Welcome home!', checkpoint: 'Seattle, WA — HOME!' },
 ];
 

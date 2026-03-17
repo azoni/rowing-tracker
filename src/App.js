@@ -2126,7 +2126,7 @@ function App() {
       if (imageData?.data) {
         try {
           const imageRef = ref(storage, `row-images/${currentUser.uid}/${entryId}.jpg`);
-          await uploadString(imageRef, imageData.data, 'data_url');
+          await uploadString(imageRef, imageData.data, 'data_url', { contentType: 'image/jpeg' });
           imageUrl = await getDownloadURL(imageRef);
         } catch (uploadErr) {
           console.error('Image upload error:', uploadErr);

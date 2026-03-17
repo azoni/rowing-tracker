@@ -59,6 +59,7 @@ import { AppContext } from './context/AppContext';
 import Header from './components/Header';
 import WorldProgress from './components/WorldProgress';
 import EntryForm from './components/EntryForm';
+import HomeTab from './components/HomeTab';
 import ActivityFeed from './components/ActivityFeed';
 import Leaderboard from './components/Leaderboard';
 import StatsTab from './components/StatsTab';
@@ -108,7 +109,8 @@ function App() {
   const [newUsername, setNewUsername] = useState('');
   const [usernameStatus, setUsernameStatus] = useState(null); // null, 'checking', 'available', 'taken', 'invalid'
   const [recentMilestone, setRecentMilestone] = useState(null);
-  const [activeTab, setActiveTab] = useState('feed');
+  const [activeTab, setActiveTab] = useState('feed'); // Will be set to 'home' after auth
+  const [showLogModal, setShowLogModal] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [validationError, setValidationError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -359,6 +361,7 @@ function App() {
             const profileData = profileSnap.data();
             setUserProfile({ id: user.uid, ...profileData });
             setIsAdmin(profileData.isAdmin === true);
+            setActiveTab('home');
           } else {
             // New user - show setup modal
             setDisplayName(user.displayName || '');
@@ -2264,7 +2267,8 @@ function App() {
       setAiMachineType('');
       setCustomMachineName('');
       setValidationError('');
-      // Show share modal without image
+      // Close log modal and show share
+      setShowLogModal(false);
       setShareImageUrl(null);
       setShowShareModal(true);
       setLinkCopied(false);
@@ -2378,7 +2382,8 @@ function App() {
       setCustomMachineName('');
       setValidationError('');
       setVerificationStatus(null);
-      // Show share modal (use image data for share card)
+      // Close log modal and show share
+      setShowLogModal(false);
       setShareImageUrl(capturedImage?.data || capturedImage);
       setShowShareModal(true);
       setLinkCopied(false);
@@ -3338,6 +3343,7 @@ function App() {
     achievementsPage, setAchievementsPage, ACHIEVEMENTS_PAGE_SIZE,
 
     // Modals
+    showLogModal, setShowLogModal,
     showConfirmModal, setShowConfirmModal,
     showSetupModal, setShowSetupModal,
     showShareModal, setShowShareModal,
@@ -3498,8 +3504,8 @@ function App() {
       {/* Tabs */}
       <nav className="tabs">
         {currentUser && userProfile && (
-          <button className={`tab ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>
-            <Icon name="ui_camera" size={14} /> Log
+          <button className={`tab ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
+            <Icon name="ui_rowing" size={14} /> Home
           </button>
         )}
         <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
@@ -3580,7 +3586,7 @@ function App() {
 
       {/* Main Content */}
       <main className="main-content">
-        {activeTab === 'upload' && <EntryForm />}
+        {activeTab === 'home' && <HomeTab />}
         {activeTab === 'feed' && <ActivityFeed />}
         {activeTab === 'leaderboard' && <Leaderboard />}
         {activeTab === 'more' && <StatsTab />}
@@ -3714,6 +3720,16 @@ function App() {
       <InstallPrompt />
       <WelcomeModal />
       <ChangelogModal />
+
+      {/* Floating Action Button — Log a Row */}
+      {currentUser && userProfile && !showLogModal && !showConfirmModal && (
+        <button className="fab" onClick={() => setShowLogModal(true)} title="Log a Row">
+          <Icon name="ui_plus" size={24} color="#fff" />
+        </button>
+      )}
+
+      {/* Log Modal (replaces old Log tab) */}
+      <EntryForm />
 
       <footer className="footer" onClick={handleFooterTap}>
         <p><Icon name="ui_globe" size={14} /> Goal: Row {formatMeters(WORLD_CIRCUMFERENCE)}m around the world!</p>

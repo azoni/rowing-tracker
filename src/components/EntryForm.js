@@ -1,14 +1,15 @@
 import React from 'react';
 import Icon from './Icon';
 import { useApp } from '../context/AppContext';
-import { formatMeters, calculatePace, parseTimeInput } from '../utils';
-import { MIN_METERS, MAX_METERS, COOLDOWN_MINUTES, getUserRank, getNextRank, ROWING_MACHINES, getMachineName } from '../constants';
+import { calculatePace, parseTimeInput } from '../utils';
+import { MIN_METERS, MAX_METERS, COOLDOWN_MINUTES, ROWING_MACHINES, getMachineName } from '../constants';
 
 function EntryForm() {
   const {
-    dailyQuote, fileInputRef, galleryInputRef,
+    showLogModal, setShowLogModal,
+    fileInputRef, galleryInputRef,
     handleImageUpload, isProcessing, processingStatus,
-    userProfile, currentUser,
+    userProfile,
     manualMeters, setManualMeters,
     manualTime, setManualTime,
     manualCalories, setManualCalories,
@@ -16,23 +17,15 @@ function EntryForm() {
     aiMachineType, setAiMachineType,
     customMachineName, setCustomMachineName,
     validationError,
-    getPersonalRecord,
-    setShowRankProgressModal,
   } = useApp();
 
-  return (
-    <section className="upload-section">
-      {/* Motivational Quote */}
-      {dailyQuote && (
-        <div className="daily-quote">
-          <p className="quote-text">"{dailyQuote.text}"</p>
-          <p className="quote-author">— {dailyQuote.author}</p>
-        </div>
-      )}
+  if (!showLogModal) return null;
 
-      <div className="upload-card">
+  return (
+    <div className="modal-overlay" onClick={() => setShowLogModal(false)}>
+      <div className="log-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={() => setShowLogModal(false)}>✕</button>
         <h2>Log Your Row</h2>
-        <p>Take a photo of your rowing machine display</p>
 
         <div className="upload-buttons-row">
           <label className="upload-button">
@@ -203,46 +196,7 @@ function EntryForm() {
           <div className="validation-error">{validationError}</div>
         )}
       </div>
-
-      {/* User Rank & Weekly Stats */}
-      {userProfile && (
-        <div className="user-status-card">
-          <div
-            className="user-rank-display clickable"
-            onClick={() => setShowRankProgressModal(true)}
-          >
-            <span className="rank-emoji"><Icon name={getUserRank(userProfile.totalMeters).emoji} size={24} /></span>
-            <div className="rank-info">
-              <span className="rank-title">{getUserRank(userProfile.totalMeters).title}</span>
-              {getNextRank(userProfile.totalMeters) && (
-                <span className="rank-next">
-                  {formatMeters(getNextRank(userProfile.totalMeters).minMeters - userProfile.totalMeters)}m to {getNextRank(userProfile.totalMeters).title}
-                </span>
-              )}
-            </div>
-            <span className="rank-tap-hint">Tap for all ranks →</span>
-          </div>
-          <div className="user-stats-compact">
-            <div className="compact-stat">
-              <span className="compact-stat-value">{formatMeters(userProfile.totalMeters)}</span>
-              <span className="compact-stat-label">total meters</span>
-            </div>
-            <div className="compact-stat">
-              <span className="compact-stat-value">{userProfile.uploadCount || 0}</span>
-              <span className="compact-stat-label">sessions</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Personal Record Display */}
-      {userProfile && getPersonalRecord(currentUser?.uid) > 0 && (
-        <div className="pr-display">
-          <span className="pr-label"><Icon name="ui_trophy" size={16} /> Personal Record</span>
-          <span className="pr-value">{getPersonalRecord(currentUser?.uid).toLocaleString()}m</span>
-        </div>
-      )}
-    </section>
+    </div>
   );
 }
 

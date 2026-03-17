@@ -131,7 +131,7 @@ function App() {
   const [showPRModal, setShowPRModal] = useState(null);
   const [dailyQuote, setDailyQuote] = useState(null);
   const [feedSearchQuery, setFeedSearchQuery] = useState('');
-  const [feedTypeFilter, setFeedTypeFilter] = useState('all');
+  const [feedTypeFilter, setFeedTypeFilter] = useState('row');
   const [showAchievementModal, setShowAchievementModal] = useState(null);
   const [showJourneyModal, setShowJourneyModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);

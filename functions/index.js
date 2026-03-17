@@ -119,39 +119,40 @@ const verifyWithClaude = async (imageBase64, claimedMeters) => {
   }
 
   const extractionHints = `
-CRITICAL display reading rules:
+You are reading a rowing machine display. There are MANY different screens and layouts. Do your best to extract the data. Use common sense about what each number means.
 
-CONCEPT2 PM5 DISPLAY LAYOUTS:
-The PM5 has multiple screens. You MUST identify which screen is shown:
+SANITY CHECK RULES (CRITICAL — apply these to every value):
+- extractedMeters MUST be between 100 and 50000. If a number is less than 100, it is NOT meters — it might be calories, time, intervals, or stroke rate. A typical rowing session is 500-10000m.
+- extractedTime is TOTAL ELAPSED TIME in seconds. A typical session is 60-7200 seconds (1 min to 2 hours). A value like 118.6 means 1 min 58.6 sec. If you see "25:30" that's 1530 seconds.
+- extractedCalories is typically 50-1000 for a session. Small numbers (under 50) might be something else.
+- extractedStrokeRate is strokes per minute, typically 18-40. If you see "s/m" or "SPM" next to a number, that's stroke rate.
+- extractedSplitPace is pace per 500m, typically "1:30" to "3:00". Shown as "X:XX.X /500" on Concept2.
 
-1. SUMMARY SCREEN (after workout): Shows total distance (large, e.g. "2000m"), total time, avg pace, avg stroke rate, calories. This is the most common photo.
+NUMBER ASSIGNMENT LOGIC:
+When you see numbers on the display, assign them to fields based on what makes sense:
+- A 3-5 digit number (500, 2000, 5000, 10000) → likely meters
+- A time format like "MM:SS.s" or "H:MM:SS" → likely elapsed time OR pace
+- If "/500" appears next to a time → that's pace, NOT elapsed time
+- A 2-3 digit number labeled "Cal" → calories
+- A 2-digit number (18-40) with "s/m" or "SPM" → stroke rate
+- A single digit with "Interval" → interval count, NOT meters
+- Numbers under 10 with no units → probably interval count or something else, NOT meters
 
-2. INTERVAL/WORKOUT IN-PROGRESS SCREEN: Shows current interval data. Look for "Interval" label.
-   - If you see "Interval 1" or "Interval 2" etc, this is an interval workout
-   - The time at top may be TIME REMAINING, not elapsed time
-   - The distance shown is the TARGET DISTANCE per interval (e.g., 500m intervals)
-   - The pace shown (e.g., "1:58.6 ave /500") is the average pace FOR THAT INTERVAL
-   - The "s/m" value is stroke rate
+CONCEPT2 PM5 SPECIFICS:
+- Has many different screens (summary, intervals, just row, workout config)
+- ":26r" or ":26" at top often means seconds REMAINING
+- "Interval 1" means this is interval workout — the large number nearby may be interval count
+- "ave /500" = average pace per 500m
+- On interval screens: determine the interval distance from the workout setup or context
+- On summary screens: the large number is usually total meters
 
-3. JUST ROW SCREEN: Shows running distance, time, pace, stroke rate as you row
+WATERROWER / OTHER MACHINES:
+- Layouts vary — use the sanity checks above to figure out what each number means
 
-4. WORKOUT RESULTS: Shows summary with all intervals listed
-
-KEY READING RULES:
-- A time like ":26" or ":26r" means 26 seconds REMAINING, not elapsed time
-- "ave /500" means average pace per 500 meters
-- If "Interval" is visible, determine the interval distance from context
-- For interval workouts: extractedMeters = interval distance (e.g., 500), extractedTime = convert the pace to total time for that distance
-- If pace is "1:58.6 /500" and distance is 500m, then time = 118.6 seconds (1 min 58.6 sec)
-- Stroke rate labeled "s/m" or "SPM", typically 18-40
-
-WATERROWER S4: Shows distance, time, intensity. Distance is usually the large number.
-
-GENERAL RULES:
-- Convert all times to total seconds (e.g., "25:30.0" = 1530, "1:58.6" = 118.6)
-- Distance is in meters
-- Calories labeled "Cal"
-- If you can determine the workout type (single distance, time, intervals), include it`;
+IF UNCERTAIN:
+- Set the field to null rather than guessing wrong
+- A wrong value is worse than no value — the user can always enter manually
+- Explain what you see in the reasoning field`;
 
   const jsonFormat = `{
   "isRowingMachineDisplay": true/false,

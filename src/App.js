@@ -1927,13 +1927,13 @@ function App() {
         // If Claude extracted meters successfully
         if (claudeResult.extractedMeters && claudeResult.confidence >= 60) {
           detectedMeterValue = claudeResult.extractedMeters;
-          setProcessingStatus(`AI detected: ${detectedMeterValue}m`);
+          const typeLabel = claudeResult.workoutType === 'interval' ? ' (interval)' : '';
+          setProcessingStatus(`AI detected: ${detectedMeterValue}m${typeLabel}`);
         } else if (claudeResult.extractedMeters) {
-          // Low confidence but has a reading
           detectedMeterValue = claudeResult.extractedMeters;
           setProcessingStatus('AI detected meters (low confidence)');
         }
-        
+
         // Also grab time and calories if AI detected them
         if (claudeResult.extractedTime) {
           detectedTimeValue = claudeResult.extractedTime;

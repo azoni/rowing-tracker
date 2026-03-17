@@ -119,50 +119,72 @@ const verifyWithClaude = async (imageBase64, claimedMeters) => {
   }
 
   const extractionHints = `
-Display-specific extraction hints:
-- For Concept2 PM5 displays, distance is the large center number. Time is usually top-left. Calories labeled 'Cal'. Split pace shown as /500m.
-- For WaterRower S4, the display shows distance, time, and intensity. Look for total meters and elapsed time.
-- Convert time to total seconds (e.g., '25:30.0' = 1530 seconds). Convert minutes:seconds format.
-- Stroke rate is strokes per minute (s/m or SPM). Split pace is time per 500m (e.g., '2:05.0').`;
+CRITICAL display reading rules:
 
-  const prompt = isExtractionMode
-    ? `You are analyzing a rowing machine display photo. Extract ALL visible display data.
-${extractionHints}
+CONCEPT2 PM5 DISPLAY LAYOUTS:
+The PM5 has multiple screens. You MUST identify which screen is shown:
 
-Respond in this EXACT JSON format only:
-{
+1. SUMMARY SCREEN (after workout): Shows total distance (large, e.g. "2000m"), total time, avg pace, avg stroke rate, calories. This is the most common photo.
+
+2. INTERVAL/WORKOUT IN-PROGRESS SCREEN: Shows current interval data. Look for "Interval" label.
+   - If you see "Interval 1" or "Interval 2" etc, this is an interval workout
+   - The time at top may be TIME REMAINING, not elapsed time
+   - The distance shown is the TARGET DISTANCE per interval (e.g., 500m intervals)
+   - The pace shown (e.g., "1:58.6 ave /500") is the average pace FOR THAT INTERVAL
+   - The "s/m" value is stroke rate
+
+3. JUST ROW SCREEN: Shows running distance, time, pace, stroke rate as you row
+
+4. WORKOUT RESULTS: Shows summary with all intervals listed
+
+KEY READING RULES:
+- A time like ":26" or ":26r" means 26 seconds REMAINING, not elapsed time
+- "ave /500" means average pace per 500 meters
+- If "Interval" is visible, determine the interval distance from context
+- For interval workouts: extractedMeters = interval distance (e.g., 500), extractedTime = convert the pace to total time for that distance
+- If pace is "1:58.6 /500" and distance is 500m, then time = 118.6 seconds (1 min 58.6 sec)
+- Stroke rate labeled "s/m" or "SPM", typically 18-40
+
+WATERROWER S4: Shows distance, time, intensity. Distance is usually the large number.
+
+GENERAL RULES:
+- Convert all times to total seconds (e.g., "25:30.0" = 1530, "1:58.6" = 118.6)
+- Distance is in meters
+- Calories labeled "Cal"
+- If you can determine the workout type (single distance, time, intervals), include it`;
+
+  const jsonFormat = `{
   "isRowingMachineDisplay": true/false,
   "displayType": "Concept2 PM5" or "WaterRower S4" or "Generic" or "Unknown" or "Not a rowing machine",
-  "extractedMeters": number or null,
-  "extractedTime": number in total seconds or null,
+  "extractedMeters": total meters rowed (number or null),
+  "extractedTime": total elapsed time in seconds (number or null),
   "extractedCalories": number or null,
-  "extractedSplitPace": "M:SS.s" string per 500m or null,
+  "extractedSplitPace": "M:SS.s per 500m" string or null,
   "extractedStrokeRate": number (strokes per minute) or null,
-  "machineModel": specific model string (e.g. "Concept2 Model D with PM5") or null,
+  "machineModel": specific model string or null,
+  "workoutType": "single_distance" or "single_time" or "interval" or "just_row" or "unknown",
+  "intervalInfo": { "count": number, "distance": meters_per_interval, "currentInterval": number } or null,
   "overallConfidence": 0-100,
-  "reasoning": "Brief explanation"
-}
+  "reasoning": "Explain what screen you see and how you determined each value"
+}`;
 
-Look for the main distance display (usually the largest number, 3-5 digits). Extract time, calories, split pace, and stroke rate if visible. Respond ONLY with JSON.${learningContext}`
-    : `You are verifying a rowing machine display photo. The user claims: ${claimedMeters} meters. Extract ALL visible display data.
+  const prompt = isExtractionMode
+    ? `You are an expert at reading rowing machine displays. Analyze this photo carefully.
 ${extractionHints}
 
 Respond in this EXACT JSON format only:
-{
-  "isRowingMachineDisplay": true/false,
-  "displayType": "Concept2 PM5" or "WaterRower S4" or "Generic" or "Unknown",
-  "extractedMeters": number or null,
-  "extractedTime": number in total seconds or null,
-  "extractedCalories": number or null,
-  "extractedSplitPace": "M:SS.s" string per 500m or null,
-  "extractedStrokeRate": number (strokes per minute) or null,
-  "machineModel": specific model string (e.g. "Concept2 Model D with PM5") or null,
-  "matchesClaimed": true/false,
-  "overallConfidence": 0-100,
-  "reasoning": "Brief explanation"
-}
+${jsonFormat}
 
-Respond ONLY with JSON.${learningContext}`;
+IMPORTANT: Explain your reasoning. If this is an interval workout showing "Interval 1" with a pace of "1:58.6 /500" and you can see the interval is 500m, then extractedMeters=500 and extractedTime=118.6. Think step by step about what each number on the display means.
+
+Respond ONLY with valid JSON.${learningContext}`
+    : `You are an expert at reading rowing machine displays. The user claims: ${claimedMeters} meters. Analyze this photo carefully.
+${extractionHints}
+
+Respond in this EXACT JSON format only:
+${jsonFormat.replace('"overallConfidence"', '"matchesClaimed": true/false,\n  "overallConfidence"')}
+
+Respond ONLY with valid JSON.${learningContext}`;
 
   const selectedModel = 'claude-sonnet-4-20250514';
 
@@ -176,7 +198,7 @@ Respond ONLY with JSON.${learningContext}`;
       },
       body: JSON.stringify({
         model: selectedModel,
-        max_tokens: 500,
+        max_tokens: 800,
         messages: [
           {
             role: 'user',
@@ -309,6 +331,8 @@ exports.verifyRowEntry = functions.https.onCall(async (data, context) => {
       extractedSplitPace: claudeResult.extractedSplitPace || null,
       extractedStrokeRate: claudeResult.extractedStrokeRate || null,
       machineModel: claudeResult.machineModel || null,
+      workoutType: claudeResult.workoutType || null,
+      intervalInfo: claudeResult.intervalInfo || null,
       displayType: claudeResult.displayType,
       isRowingMachineDisplay: claudeResult.isRowingMachineDisplay,
       matchesClaimed: claudeResult.matchesClaimed,

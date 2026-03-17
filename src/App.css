@@ -7586,6 +7586,13 @@ input[type="number"] {
   flex: 1;
 }
 
+.ai-workout-type {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 .photo-date-info {
   font-size: 0.85rem;
   color: var(--text-muted);

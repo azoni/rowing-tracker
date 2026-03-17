@@ -38,7 +38,15 @@ function ConfirmEntryModal() {
             <span className="ai-status-icon"><Icon name="ui_robot" size={16} /></span>
             <span className="ai-status-text">
               {capturedImage.claudeResult.extractedMeters ? (
-                <>AI read your display {capturedImage.claudeResult.confidence >= 60 ? '✓' : '(uncertain)'}</>
+                <>
+                  AI read your display {capturedImage.claudeResult.confidence >= 60 ? '✓' : '(uncertain)'}
+                  {capturedImage.claudeResult.workoutType === 'interval' && capturedImage.claudeResult.intervalInfo && (
+                    <span className="ai-workout-type"> — Interval workout ({capturedImage.claudeResult.intervalInfo.distance}m x{capturedImage.claudeResult.intervalInfo.count || '?'})</span>
+                  )}
+                  {capturedImage.claudeResult.extractedSplitPace && (
+                    <span className="ai-workout-type"> — Pace: {capturedImage.claudeResult.extractedSplitPace}/500m</span>
+                  )}
+                </>
               ) : capturedImage.claudeResult.isRowingMachineDisplay === false ? (
                 <>Doesn't look like a rowing display</>
               ) : (

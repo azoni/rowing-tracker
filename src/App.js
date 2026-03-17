@@ -2165,6 +2165,30 @@ function App() {
         totalMeters: newTotalMeters,
       });
 
+      // Check for new distance record (500m, 1K, 2K, 5K, 10K, 15K)
+      if (timeSeconds && timeSeconds > 0 && verification.status !== 'unverified') {
+        const distCat = getDistanceCategory(finalMeters);
+        if (distCat) {
+          // Check if this is the user's best time for this distance
+          const previousBest = entries
+            .filter(e => e.userId === currentUser.uid && e.time && e.time > 0
+              && getDistanceCategory(e.meters)?.meters === distCat.meters
+              && ['verified', 'pending_review'].includes(e.verificationStatus))
+            .reduce((best, e) => (!best || e.time < best) ? e.time : best, null);
+
+          if (!previousBest || timeSeconds < previousBest) {
+            logActivity('distance_record', {
+              meters: finalMeters,
+              time: timeSeconds,
+              distanceLabel: distCat.label,
+              distanceMeters: distCat.meters,
+              previousBest: previousBest || null,
+              isFirstRecord: !previousBest,
+            });
+          }
+        }
+      }
+
       // Check for new achievements and rank promotion (after a delay to let state update)
       setTimeout(async () => {
         await checkAndSaveNewAchievements(currentUser.uid);

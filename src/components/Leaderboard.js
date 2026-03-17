@@ -18,12 +18,15 @@ function Leaderboard() {
     <section className="leaderboard-section">
       <h2>{selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Leaderboard` : 'Leaderboard'}</h2>
 
-      <div className="leaderboard-tabs">
-        <button className={`lb-tab ${leaderboardTab === 'alltime' ? 'active' : ''}`} onClick={() => setLeaderboardTab('alltime')}><Icon name="ui_trophy" size={14} /> Meters</button>
-        <button className={`lb-tab ${leaderboardTab === 'weekly' ? 'active' : ''}`} onClick={() => setLeaderboardTab('weekly')}><Icon name="ui_calendar" size={14} /> Weekly</button>
-        <button className={`lb-tab ${leaderboardTab === 'streak' ? 'active' : ''}`} onClick={() => setLeaderboardTab('streak')}><Icon name="ui_streak" size={14} /> Streaks</button>
-        <button className={`lb-tab ${leaderboardTab === 'achievements' ? 'active' : ''}`} onClick={() => setLeaderboardTab('achievements')}><Icon name="ui_medal" size={14} /> Awards</button>
-        <button className={`lb-tab ${leaderboardTab === 'records' ? 'active' : ''}`} onClick={() => setLeaderboardTab('records')}><Icon name="ui_records" size={14} /> Records</button>
+      <div className="leaderboard-tabs-wrapper">
+        <div className="leaderboard-tabs">
+          <button className={`lb-tab ${leaderboardTab === 'alltime' ? 'active' : ''}`} onClick={() => setLeaderboardTab('alltime')}><Icon name="ui_trophy" size={14} /> Meters</button>
+          <button className={`lb-tab ${leaderboardTab === 'weekly' ? 'active' : ''}`} onClick={() => setLeaderboardTab('weekly')}><Icon name="ui_calendar" size={14} /> Weekly</button>
+          <button className={`lb-tab ${leaderboardTab === 'streak' ? 'active' : ''}`} onClick={() => setLeaderboardTab('streak')}><Icon name="ui_streak" size={14} /> Streaks</button>
+          <button className={`lb-tab ${leaderboardTab === 'achievements' ? 'active' : ''}`} onClick={() => setLeaderboardTab('achievements')}><Icon name="ui_medal" size={14} /> Awards</button>
+          <button className={`lb-tab ${leaderboardTab === 'records' ? 'active' : ''}`} onClick={() => setLeaderboardTab('records')}><Icon name="ui_records" size={14} /> Records</button>
+          <span className="scroll-hint">scroll →</span>
+        </div>
       </div>
 
       {/* All Time Leaderboard */}

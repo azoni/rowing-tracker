@@ -7269,20 +7269,86 @@ input[type="number"] {
   font-style: italic;
 }
 
-/* Leaderboard Tabs - Scrollable */
+/* Leaderboard Tabs - Scrollable with fade hint */
+.leaderboard-tabs-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.leaderboard-tabs-wrapper::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, transparent, var(--bg-card, #1a1f2e));
+  pointer-events: none;
+  border-radius: 0 8px 8px 0;
+  z-index: 1;
+}
+
+.leaderboard-tabs-wrapper.scrolled-end::after {
+  display: none;
+}
+
 .leaderboard-tabs {
   display: flex;
   gap: 0.35rem;
-  margin-bottom: 1rem;
   overflow-x: auto;
   padding-bottom: 0.5rem;
+  padding-right: 40px;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.leaderboard-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.leaderboard-tabs .scroll-hint {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+  animation: pulse-hint 2s ease-in-out infinite;
+}
+
+@keyframes pulse-hint {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 .lb-tab {
   white-space: nowrap;
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
+}
+
+/* Distance record feed items */
+.feed-record {
+  color: var(--text-secondary);
+}
+
+.feed-record-distance {
+  font-weight: 700;
+  color: var(--accent-gold, #ffd700);
+}
+
+.feed-record-improvement {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.feed-record-first {
+  color: var(--accent-gold, #ffd700);
+  font-weight: 600;
+}
+
+.feed-item-distance_record {
+  border-left: 3px solid var(--accent-gold, #ffd700);
 }
 
 /* =============================================

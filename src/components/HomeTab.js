@@ -89,6 +89,163 @@ function HomeTab() {
         </div>
       </div>
 
+      {/* Row Streak Heatmap */}
+      {(() => {
+        const userEntries = entries.filter(e => e.userId === currentUser.uid);
+        if (userEntries.length === 0) return null;
+
+        // Build day → meters map for last 3 months
+        const dayMap = {};
+        userEntries.forEach(e => {
+          const key = new Date(e.date).toISOString().split('T')[0];
+          dayMap[key] = (dayMap[key] || 0) + e.meters;
+        });
+
+        // Generate last 12 weeks of days
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const weeks = [];
+        const startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - (12 * 7 - 1) - startDate.getDay()); // Start on Sunday, 12 weeks ago
+
+        for (let w = 0; w < 12; w++) {
+          const week = [];
+          for (let d = 0; d < 7; d++) {
+            const date = new Date(startDate);
+            date.setDate(startDate.getDate() + w * 7 + d);
+            const key = date.toISOString().split('T')[0];
+            const meters = dayMap[key] || 0;
+            const isFuture = date > today;
+            week.push({ date, key, meters, isFuture });
+          }
+          weeks.push(week);
+        }
+
+        // Max meters for color scaling
+        const maxMeters = Math.max(...Object.values(dayMap), 1);
+
+        const getColor = (meters) => {
+          if (!meters) return 'var(--bg-dark)';
+          const intensity = Math.min(meters / maxMeters, 1);
+          if (intensity < 0.25) return 'rgba(0, 212, 170, 0.2)';
+          if (intensity < 0.5) return 'rgba(0, 212, 170, 0.4)';
+          if (intensity < 0.75) return 'rgba(0, 212, 170, 0.65)';
+          return 'rgba(0, 212, 170, 0.9)';
+        };
+
+        const monthLabels = [];
+        let lastMonth = -1;
+        weeks.forEach((week, wi) => {
+          const m = week[0].date.getMonth();
+          if (m !== lastMonth) {
+            monthLabels.push({ index: wi, label: week[0].date.toLocaleDateString('en-US', { month: 'short' }) });
+            lastMonth = m;
+          }
+        });
+
+        return (
+          <div className="home-heatmap">
+            <h3>Activity</h3>
+            <div className="heatmap-month-labels">
+              {monthLabels.map((ml, i) => (
+                <span key={i} className="heatmap-month" style={{ gridColumn: ml.index + 1 }}>{ml.label}</span>
+              ))}
+            </div>
+            <div className="heatmap-grid">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                <span key={i} className="heatmap-day-label">{i % 2 === 1 ? d : ''}</span>
+              ))}
+              {[0, 1, 2, 3, 4, 5, 6].map(dayOfWeek => (
+                <React.Fragment key={dayOfWeek}>
+                  {weeks.map((week, wi) => {
+                    const cell = week[dayOfWeek];
+                    return (
+                      <div
+                        key={cell.key}
+                        className={`heatmap-cell ${cell.isFuture ? 'future' : ''}`}
+                        style={{ background: cell.isFuture ? 'transparent' : getColor(cell.meters) }}
+                        title={cell.meters ? `${cell.date.toLocaleDateString()}: ${cell.meters.toLocaleString()}m` : cell.date.toLocaleDateString()}
+                      />
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Pace Trend */}
+      {(() => {
+        const paceEntries = entries
+          .filter(e => e.userId === currentUser.uid && e.time && e.time > 0 && e.meters && e.meters > 0)
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .slice(-20) // Last 20 sessions with pace data
+          .map(e => ({
+            date: new Date(e.date),
+            pace: (e.time / e.meters) * 500, // seconds per 500m
+          }));
+
+        if (paceEntries.length < 3) return null;
+
+        const minPace = Math.min(...paceEntries.map(p => p.pace));
+        const maxPace = Math.max(...paceEntries.map(p => p.pace));
+        const range = maxPace - minPace || 1;
+        const width = 280;
+        const height = 80;
+        const padding = 4;
+
+        const points = paceEntries.map((p, i) => {
+          const x = padding + (i / (paceEntries.length - 1)) * (width - padding * 2);
+          const y = padding + ((p.pace - minPace) / range) * (height - padding * 2);
+          return `${x},${y}`;
+        }).join(' ');
+
+        // Format pace as M:SS
+        const formatPace = (secs) => {
+          const m = Math.floor(secs / 60);
+          const s = Math.floor(secs % 60);
+          return `${m}:${s.toString().padStart(2, '0')}`;
+        };
+
+        const latestPace = paceEntries[paceEntries.length - 1].pace;
+        const firstPace = paceEntries[0].pace;
+        const improvement = firstPace - latestPace;
+
+        return (
+          <div className="home-pace-trend">
+            <h3>Pace Trend <span className="pace-trend-label">/500m</span></h3>
+            <div className="pace-trend-chart">
+              <svg viewBox={`0 0 ${width} ${height}`} className="pace-svg">
+                <polyline
+                  points={points}
+                  fill="none"
+                  stroke="var(--accent-primary)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {/* Latest point dot */}
+                {(() => {
+                  const lastPt = points.split(' ').pop().split(',');
+                  return <circle cx={lastPt[0]} cy={lastPt[1]} r="3" fill="var(--accent-primary)" />;
+                })()}
+              </svg>
+              <div className="pace-trend-labels">
+                <span>{formatPace(maxPace)}</span>
+                <span>{formatPace(minPace)}</span>
+              </div>
+            </div>
+            <div className="pace-trend-summary">
+              <span>Current: <strong>{formatPace(latestPace)}</strong>/500m</span>
+              {improvement > 2 && (
+                <span className="pace-improvement"><Icon name="ui_streak" size={12} /> {formatPace(improvement)} faster</span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Almost There Achievements */}
       {almostThere.length > 0 && (
         <div className="home-almost-there">

@@ -1118,6 +1118,126 @@ body {
   margin-top: 2px;
 }
 
+/* Row Streak Heatmap */
+.home-heatmap {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.home-heatmap h3 {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.heatmap-month-labels {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  margin-left: 18px;
+  margin-bottom: 2px;
+}
+
+.heatmap-month {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: 16px repeat(12, 1fr);
+  grid-template-rows: repeat(7, 1fr);
+  gap: 2px;
+  grid-auto-flow: column;
+}
+
+.heatmap-day-label {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 14px;
+}
+
+.heatmap-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 2px;
+  min-height: 10px;
+  max-height: 16px;
+}
+
+.heatmap-cell.future {
+  opacity: 0;
+}
+
+/* Pace Trend */
+.home-pace-trend {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.home-pace-trend h3 {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.pace-trend-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.pace-trend-chart {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.pace-svg {
+  width: 100%;
+  height: 80px;
+}
+
+.pace-trend-labels {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.pace-trend-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.pace-trend-summary strong {
+  color: var(--text-primary);
+}
+
+.pace-improvement {
+  color: var(--success, #2ed573);
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .home-almost-there {
   background: var(--bg-card);
   border-radius: 16px;
@@ -7806,6 +7926,75 @@ input[type="number"] {
 .feed-record-first {
   color: var(--accent-gold, #ffd700);
   font-weight: 600;
+}
+
+/* Monthly Throwdown Banner */
+.throwdown-banner {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.12) 0%, rgba(255, 215, 0, 0.08) 100%);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.throwdown-banner.complete {
+  border-color: rgba(46, 213, 115, 0.4);
+  background: linear-gradient(135deg, rgba(46, 213, 115, 0.12) 0%, rgba(0, 212, 170, 0.08) 100%);
+}
+
+.throwdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.throwdown-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.throwdown-days {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.throwdown-goal {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.throwdown-bar {
+  height: 6px;
+  background: var(--bg-dark);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.throwdown-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6b35, #ffd700);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.throwdown-banner.complete .throwdown-fill {
+  background: linear-gradient(90deg, #2ed573, #00d4aa);
+}
+
+.throwdown-progress {
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 
 .feed-item-distance_record {

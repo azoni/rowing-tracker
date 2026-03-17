@@ -103,6 +103,29 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Activities collection (feed events)
+    match /activities/{activityId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      // Delete/update only via Cloud Functions (admin SDK)
+      allow update, delete: if false;
+    }
+
+    // AI Feedback collection
+    match /ai_feedback/{feedbackId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // Challenges collection
+    match /challenges/{challengeId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if false;
+    }
+
     // Admin review queue (readable/writable only via Cloud Functions)
     match /reviewQueue/{docId} {
       allow read, write: if false;

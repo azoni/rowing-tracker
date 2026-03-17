@@ -503,3 +503,93 @@ exports.forwardActivity = functions.firestore
     logActivity({ type, title, description: `RowCrew ${type.replace('_', ' ')}` });
     return null;
   });
+
+// Admin: delete any feed item (bypasses Firestore rules via admin SDK)
+exports.adminDeleteFeedItem = functions.https.onCall(async (data, context) => {
+  // Verify authenticated admin
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
+  const callerDoc = await db.collection('users').doc(context.auth.uid).get();
+  if (!callerDoc.exists || !callerDoc.data().isAdmin) {
+    throw new functions.https.HttpsError('permission-denied', 'Admin only');
+  }
+
+  const { itemId, itemType } = data;
+  if (!itemId || !itemType) throw new functions.https.HttpsError('invalid-argument', 'Missing itemId or itemType');
+
+  try {
+    // Row entries
+    if (itemType === 'row') {
+      const entryRef = db.collection('entries').doc(itemId);
+      const entrySnap = await entryRef.get();
+      if (entrySnap.exists()) {
+        const entry = entrySnap.data();
+        // Revert user stats
+        const userRef = db.collection('users').doc(entry.userId);
+        const userSnap = await userRef.get();
+        if (userSnap.exists()) {
+          const user = userSnap.data();
+          await userRef.update({
+            totalMeters: Math.max(0, (user.totalMeters || 0) - (entry.meters || 0)),
+            totalTime: Math.max(0, (user.totalTime || 0) - (entry.time || 0)),
+            totalCalories: Math.max(0, (user.totalCalories || 0) - (entry.calories || 0)),
+            uploadCount: Math.max(0, (user.uploadCount || 0) - 1),
+          });
+        }
+        await entryRef.delete();
+        return { success: true, message: 'Entry deleted' };
+      }
+    }
+
+    // Activities collection
+    const activityRef = db.collection('activities').doc(itemId);
+    const activitySnap = await activityRef.get();
+    if (activitySnap.exists()) {
+      await activityRef.delete();
+      return { success: true, message: 'Activity deleted' };
+    }
+
+    // Rank events (ID format: rank-{userId}-{index})
+    if (itemType === 'rank' && itemId.startsWith('rank-')) {
+      const parts = itemId.split('-');
+      const rankIndex = parseInt(parts[parts.length - 1], 10);
+      const userId = parts.slice(1, -1).join('-');
+      const userRef = db.collection('users').doc(userId);
+      const userSnap = await userRef.get();
+      if (userSnap.exists() && userSnap.data().rankHistory && !isNaN(rankIndex)) {
+        const history = [...userSnap.data().rankHistory];
+        if (rankIndex < history.length) {
+          history.splice(rankIndex, 1);
+          await userRef.update({ rankHistory: history });
+          return { success: true, message: 'Rank event removed' };
+        }
+      }
+    }
+
+    // Achievement events (ID format: achievement-{userId}-{dayKey})
+    if (itemType === 'achievement' && itemId.startsWith('achievement-')) {
+      const parts = itemId.split('-');
+      const dayKey = parts[parts.length - 3] + '-' + parts[parts.length - 2] + '-' + parts[parts.length - 1];
+      const userId = parts.slice(1, -3).join('-');
+      const userRef = db.collection('users').doc(userId);
+      const userSnap = await userRef.get();
+      if (userSnap.exists() && userSnap.data().unlockedAchievements) {
+        const updated = { ...userSnap.data().unlockedAchievements };
+        let removed = false;
+        Object.entries(updated).forEach(([achievementId, dateStr]) => {
+          const d = new Date(dateStr);
+          const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+          if (key === dayKey) { delete updated[achievementId]; removed = true; }
+        });
+        if (removed) {
+          await userRef.update({ unlockedAchievements: updated });
+          return { success: true, message: 'Achievement event removed' };
+        }
+      }
+    }
+
+    return { success: false, message: 'Item not found' };
+  } catch (error) {
+    console.error('Admin delete error:', error);
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+});

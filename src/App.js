@@ -2385,76 +2385,17 @@ function App() {
     }
   };
 
-  // Admin delete any activity from feed
+  // Admin delete any activity from feed (via cloud function to bypass rules)
   const deleteActivity = async (itemId, itemType) => {
     if (!isAdmin) return;
     try {
-      // Row entries — delete from entries collection
-      if (itemType === 'row') {
-        const entry = entries.find(e => e.id === itemId);
-        if (entry) {
-          await handleDeleteEntry(itemId, entry.meters);
-          showToast('Entry deleted.', 'success');
-          return;
-        }
+      const adminDeleteFn = httpsCallable(functions, 'adminDeleteFeedItem');
+      const result = await adminDeleteFn({ itemId, itemType });
+      if (result.data.success) {
+        showToast(result.data.message, 'success');
+      } else {
+        showToast(result.data.message || 'Item not found.', 'info');
       }
-
-      // Activities (group/challenge/row_completed/distance_record) — check if doc exists first
-      const activityRef = doc(db, 'activities', itemId);
-      const activitySnap = await getDoc(activityRef);
-      if (activitySnap.exists()) {
-        await deleteDoc(activityRef);
-        showToast('Activity deleted.', 'success');
-        return;
-      }
-
-      // Entries fallback (in case ID matches an entry)
-      const entryRef = doc(db, 'entries', itemId);
-      const entrySnap = await getDoc(entryRef);
-      if (entrySnap.exists()) {
-        await handleDeleteEntry(itemId, entrySnap.data().meters);
-        showToast('Entry deleted.', 'success');
-        return;
-      }
-
-      // Profile-derived items — remove from user's profile data
-      if (itemType === 'rank' && itemId.startsWith('rank-')) {
-        // ID format: rank-{userId}-{index}
-        const parts = itemId.split('-');
-        const rankIndex = parseInt(parts[parts.length - 1], 10);
-        const userId = parts.slice(1, -1).join('-');
-        const user = users[userId];
-        if (user?.rankHistory && !isNaN(rankIndex)) {
-          const updatedHistory = [...user.rankHistory];
-          updatedHistory.splice(rankIndex, 1);
-          await updateDoc(doc(db, 'users', userId), { rankHistory: updatedHistory });
-          showToast('Rank event removed.', 'success');
-          return;
-        }
-      }
-
-      if (itemType === 'achievement' && itemId.startsWith('achievement-')) {
-        // ID format: achievement-{userId}-{dayKey}
-        // Remove all achievements unlocked on that day
-        const parts = itemId.split('-');
-        const dayKey = parts[parts.length - 1];
-        const userId = parts.slice(1, -1).join('-');
-        const user = users[userId];
-        if (user?.unlockedAchievements) {
-          const updated = { ...user.unlockedAchievements };
-          // Find and remove achievements from that day
-          Object.entries(updated).forEach(([achievementId, dateStr]) => {
-            const d = new Date(dateStr);
-            const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-            if (key === dayKey) delete updated[achievementId];
-          });
-          await updateDoc(doc(db, 'users', userId), { unlockedAchievements: updated });
-          showToast('Achievement event removed.', 'success');
-          return;
-        }
-      }
-
-      showToast('Could not find item to delete.', 'info');
     } catch (error) {
       console.error('Error deleting activity:', error);
       showToast('Failed to delete. Try again.');

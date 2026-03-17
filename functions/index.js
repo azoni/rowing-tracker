@@ -98,21 +98,34 @@ const verifyWithClaude = async (imageBase64, claimedMeters) => {
   // Query past AI corrections for learning context
   let learningContext = '';
   try {
-    const feedbackQuery = admin.firestore()
-      .collection('ai_feedback')
-      .where('corrections.meters', '==', true)
+    // Get recent feedback where ANY correction was made (meters, time, or calories)
+    const feedbackSnap = await db.collection('ai_feedback')
       .orderBy('createdAt', 'desc')
-      .limit(10);
-    const feedbackSnap = await feedbackQuery.get();
+      .limit(20)
+      .get();
 
     if (!feedbackSnap.empty) {
-      const corrections = feedbackSnap.docs.map(doc => {
-        const d = doc.data();
-        return `- Display type "${d.aiExtracted?.displayType || 'unknown'}", machine "${d.machine?.displayName || 'unknown'}": AI read ${d.aiExtracted?.meters}m but correct was ${d.userConfirmed?.meters}m` +
-          (d.userConfirmed?.time ? `, time was ${d.userConfirmed.time}s` : '') +
-          (d.userConfirmed?.calories ? `, calories was ${d.userConfirmed.calories}` : '');
-      });
-      learningContext = `\n\nLearning from past corrections (use these to improve accuracy):\n${corrections.join('\n')}`;
+      const corrections = feedbackSnap.docs
+        .map(doc => doc.data())
+        .filter(d => d.corrections?.meters || d.corrections?.time || d.corrections?.calories || d.corrections?.providedMissingTime || d.corrections?.providedMissingCalories)
+        .slice(0, 8)
+        .map(d => {
+          const parts = [`Display: "${d.aiExtracted?.displayType || 'unknown'}"`];
+          if (d.corrections?.meters) {
+            parts.push(`AI read ${d.aiExtracted?.meters ?? 'null'}m → correct: ${d.userConfirmed?.meters}m`);
+          }
+          if (d.corrections?.time || d.corrections?.providedMissingTime) {
+            parts.push(`AI read time ${d.aiExtracted?.time ?? 'null'}s → correct: ${d.userConfirmed?.time}s`);
+          }
+          if (d.corrections?.calories || d.corrections?.providedMissingCalories) {
+            parts.push(`AI read cal ${d.aiExtracted?.calories ?? 'null'} → correct: ${d.userConfirmed?.calories}`);
+          }
+          return `- ${parts.join(', ')}`;
+        });
+
+      if (corrections.length > 0) {
+        learningContext = `\n\nPast corrections from users (learn from these mistakes):\n${corrections.join('\n')}\nUse these patterns to avoid the same errors.`;
+      }
     }
   } catch (e) {
     console.log('Could not load feedback:', e.message);

@@ -547,6 +547,7 @@ exports.forwardActivity = functions.firestore
   });
 
 
+
 // Admin: delete any feed item (bypasses Firestore rules via admin SDK)
 exports.adminDeleteFeedItem = functions.https.onCall(async (data, context) => {
   // Verify authenticated admin

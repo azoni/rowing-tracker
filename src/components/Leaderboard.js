@@ -58,6 +58,25 @@ function Leaderboard() {
       {/* Weekly Leaderboard */}
       {leaderboardTab === 'weekly' && (
         <>
+          <div className="weekly-reset-info">
+            <Icon name="ui_timer" size={14} />
+            <span>Resets {(() => {
+              const now = new Date();
+              const nextSunday = new Date(now);
+              nextSunday.setDate(now.getDate() + (7 - now.getDay()));
+              nextSunday.setHours(0, 0, 0, 0);
+              const diff = nextSunday - now;
+              const days = Math.floor(diff / 86400000);
+              const hours = Math.floor((diff % 86400000) / 3600000);
+              if (days > 1) return `in ${days} days`;
+              if (days === 1) return `tomorrow`;
+              if (hours > 0) return `in ${hours}h`;
+              return 'soon';
+            })()}</span>
+            <span className="weekly-reset-day">
+              Sunday {new Date((() => { const d = new Date(); d.setDate(d.getDate() + (7 - d.getDay())); return d; })()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+          </div>
           {getWeeklyLeaderboard.length === 0 ? (
             <div className="empty-state"><p>No rows this week yet!</p><p>Be the first to get on the board.</p></div>
           ) : (

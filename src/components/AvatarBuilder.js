@@ -7,6 +7,7 @@ import {
   RARITY_COLORS, isCosmeticUnlocked, getCosmeticInfo,
 } from '../constants/avatarParts';
 import { useApp } from '../context/AppContext';
+import { ACHIEVEMENTS } from '../constants';
 import Icon from './Icon';
 
 const OUTFIT_COLORS = [
@@ -43,13 +44,14 @@ const PART_RENDERERS = {
 function AvatarBuilder() {
   const {
     showAvatarBuilder, setShowAvatarBuilder,
-    userProfile, saveAvatar,
+    currentUser, userProfile, saveAvatar, getAchievementProgress,
   } = useApp();
 
   const [config, setConfig] = useState(() => ({
     ...DEFAULT_AVATAR,
     ...(userProfile?.avatar || {}),
   }));
+  const [lockedPopup, setLockedPopup] = useState(null);
 
   if (!showAvatarBuilder) return null;
 
@@ -116,7 +118,18 @@ function AvatarBuilder() {
                     key={opt}
                     className={`ab-tile ${isSelected ? 'active' : ''} ${!unlocked ? 'locked' : ''}`}
                     style={{ borderColor: isSelected ? rarityColor : undefined }}
-                    onClick={() => unlocked && update(partKey, opt)}
+                    onClick={() => {
+                      if (unlocked) {
+                        update(partKey, opt);
+                        setLockedPopup(null);
+                      } else {
+                        const achievement = ACHIEVEMENTS.find(a => a.id === info.achievementId);
+                        const progress = achievement && getAchievementProgress && currentUser
+                          ? getAchievementProgress(currentUser.uid, achievement)
+                          : null;
+                        setLockedPopup({ info, achievement, progress });
+                      }
+                    }}
                     title={unlocked ? opt.replace(/_/g, ' ') : `Unlock: ${info.achievementName || 'Achievement'}`}
                   >
                     {/* Mini SVG preview */}
@@ -167,6 +180,40 @@ function AvatarBuilder() {
             ))}
           </div>
         </div>
+
+        {/* Locked item popup */}
+        {lockedPopup && (
+          <div className="ab-locked-popup">
+            <button className="ab-locked-popup-close" onClick={() => setLockedPopup(null)}>✕</button>
+            <div className="ab-locked-popup-rarity" style={{ color: RARITY_COLORS[lockedPopup.info.rarity] }}>
+              {lockedPopup.info.rarity.toUpperCase()}
+            </div>
+            <div className="ab-locked-popup-name">
+              {lockedPopup.achievement ? (
+                <><Icon name={lockedPopup.achievement.emoji} size={18} /> {lockedPopup.achievement.name}</>
+              ) : lockedPopup.info.achievementName}
+            </div>
+            {lockedPopup.achievement?.desc && (
+              <div className="ab-locked-popup-desc">{lockedPopup.achievement.desc}</div>
+            )}
+            {lockedPopup.progress && (
+              <div className="ab-locked-popup-progress">
+                <div className="ab-locked-popup-bar">
+                  <div className="ab-locked-popup-fill" style={{
+                    width: `${Math.min((lockedPopup.progress.current / lockedPopup.progress.target) * 100, 100)}%`,
+                    background: RARITY_COLORS[lockedPopup.info.rarity],
+                  }} />
+                </div>
+                <span className="ab-locked-popup-pct">
+                  {lockedPopup.progress.target >= 1000
+                    ? `${Math.round(lockedPopup.progress.current / 1000)}K / ${Math.round(lockedPopup.progress.target / 1000)}K`
+                    : `${lockedPopup.progress.current} / ${lockedPopup.progress.target}`
+                  }
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Save */}
         <button className="ab-save-btn" onClick={() => { saveAvatar(config); setShowAvatarBuilder(false); }}>

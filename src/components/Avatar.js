@@ -2,7 +2,7 @@ import React from 'react';
 import {
   HEAD_SHAPES, HAIR_STYLES, HAIR_COLORS, SKIN_COLORS,
   EYE_STYLES, MOUTH_STYLES, ACCESSORIES, OUTFIT_STYLES,
-  HELD_ITEMS, PET_STYLES, DEFAULT_AVATAR,
+  HELD_ITEMS, PET_STYLES, DEFAULT_AVATAR, ARMS,
 } from '../constants/avatarParts';
 
 function Avatar({ config, size = 40, showBody = false, className = '' }) {
@@ -41,8 +41,9 @@ function Avatar({ config, size = 40, showBody = false, className = '' }) {
       {/* Pet behind body */}
       {showBody && petFn()}
 
-      {/* Cape/outfit behind body */}
+      {/* Cape/outfit + arms */}
       {showBody && outfitFn(outfitColor)}
+      {showBody && ARMS(skinHex)}
 
       {/* Head */}
       {headFn(skinHex)}

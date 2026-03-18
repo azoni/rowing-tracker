@@ -2445,13 +2445,15 @@ function App() {
     
     if (testMode === 'dry') {
       setIsProcessing(false);
-      showToast('Dry run — nothing saved', 'info');
       setShowConfirmModal(false);
       setDetectedMeters(''); setDetectedTime(''); setDetectedCalories('');
       setEditableMeters(''); setEditableTime(''); setEditableCalories('');
       setAiMachineType(''); setCustomMachineName('');
-      setSessionType('free_row'); setValidationError('');
-      setShowLogModal(false); setTestMode(false);
+      setValidationError('');
+      setShowLogModal(false);
+      setLastSessionMeters(meters);
+      setShowRowCelebration(true);
+      setTestMode(false);
       return;
     }
 
@@ -2488,8 +2490,11 @@ function App() {
       setDetectedMeters(''); setDetectedTime(''); setDetectedCalories('');
       setEditableMeters(''); setEditableTime(''); setEditableCalories('');
       setAiMachineType(''); setCustomMachineName('');
-      setSessionType('free_row'); setValidationError('');
-      setShowLogModal(false); setTestMode(false);
+      setValidationError('');
+      setShowLogModal(false);
+      setLastSessionMeters(meters);
+      setShowRowCelebration(true);
+      setTestMode(false);
       return;
     }
 

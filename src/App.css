@@ -9925,6 +9925,78 @@ button:focus-visible {
   white-space: nowrap;
 }
 
+.ab-locked-popup {
+  position: relative;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+  animation: fadeIn 0.2s ease;
+}
+
+.ab-locked-popup-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.ab-locked-popup-rarity {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.ab-locked-popup-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.ab-locked-popup-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.ab-locked-popup-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ab-locked-popup-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-card);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ab-locked-popup-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.ab-locked-popup-pct {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  min-width: 50px;
+  text-align: right;
+}
+
 .ab-save-btn {
   width: 100%;
   padding: 12px;

@@ -284,6 +284,16 @@ export const ACCESSORIES = {
   ),
 };
 
+// Arms helper — draws arms on sides of torso
+export const ARMS = (skinColor) => (
+  <>
+    <path d="M20,44 L16,54 L18,55 L22,46" fill={skinColor} stroke={darken(skinColor)} strokeWidth="0.3" />
+    <path d="M44,44 L48,54 L46,55 L42,46" fill={skinColor} stroke={darken(skinColor)} strokeWidth="0.3" />
+    <circle cx="16" cy="55" r="2" fill={skinColor} />
+    <circle cx="48" cy="55" r="2" fill={skinColor} />
+  </>
+);
+
 // Legs helper — draws legs below the torso
 const LEGS = (pantColor) => (
   <>

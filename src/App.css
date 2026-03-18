@@ -535,6 +535,7 @@ body {
 
 .test-mode-toggle {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -542,12 +543,7 @@ body {
   background: rgba(255, 107, 53, 0.1);
   border: 1px solid rgba(255, 107, 53, 0.3);
   border-radius: 8px;
-  cursor: pointer;
   font-size: 0.8rem;
-}
-
-.test-mode-toggle input[type="checkbox"] {
-  accent-color: #ff6b35;
 }
 
 .test-mode-label {
@@ -558,8 +554,32 @@ body {
   color: #ff6b35;
 }
 
-.test-mode-hint {
+.test-mode-pills {
+  display: flex;
+  gap: 4px;
   margin-left: auto;
+}
+
+.test-mode-pill {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.test-mode-pill.active {
+  background: #ff6b35;
+  color: var(--bg-dark);
+  border-color: #ff6b35;
+  font-weight: 700;
+}
+
+.test-mode-hint {
+  width: 100%;
   font-size: 0.7rem;
   color: var(--text-muted);
   font-style: italic;
@@ -4539,6 +4559,66 @@ input[type="number"] {
   text-align: center;
   color: var(--text-muted);
   padding: 2rem;
+}
+
+.admin-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.admin-photo-card {
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.admin-photo-card:hover {
+  transform: scale(1.03);
+}
+
+.admin-photo-card.test {
+  border-color: #ff6b35;
+}
+
+.admin-photo-card img {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+}
+
+.admin-photo-info {
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-photo-user {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.admin-photo-status {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.admin-photo-status.verified {
+  color: var(--success);
+}
+
+.admin-photo-status.pending_review {
+  color: var(--warning);
+}
+
+.admin-photo-status.feedback {
+  color: var(--accent-primary);
 }
 
 .admin-throwdowns {

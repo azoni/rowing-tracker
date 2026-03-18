@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from './Icon';
 import { useApp } from '../context/AppContext';
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const THROWDOWNS = [
@@ -35,13 +37,47 @@ const CHALLENGES = [
 function AdminPanel() {
   const {
     showAdminPanel, setShowAdminPanel,
-    isAdmin, adminStats,
+    isAdmin, adminStats, users,
     pendingReviews, loadPendingReviews,
     reviewingEntry, setReviewingEntry,
     adjustedMeters, setAdjustedMeters,
     reviewNote, setReviewNote,
     handleReviewEntry, setShowPhotoModal,
   } = useApp();
+
+  const [photoEntries, setPhotoEntries] = useState([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
+
+  const loadPhotos = async () => {
+    setLoadingPhotos(true);
+    try {
+      // Get entries that have images (feedback images + entry images)
+      const entriesSnap = await getDocs(
+        query(collection(db, 'entries'), where('imageUrl', '!=', null), orderBy('imageUrl'), orderBy('createdAt', 'desc'), limit(50))
+      );
+      const feedbackSnap = await getDocs(
+        query(collection(db, 'ai_feedback'), where('imageUrl', '!=', null), orderBy('imageUrl'), orderBy('createdAt', 'desc'), limit(50))
+      );
+      const photos = [];
+      entriesSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.imageUrl) {
+          photos.push({ id: d.id, type: 'entry', imageUrl: data.imageUrl, meters: data.meters, status: data.verificationStatus, userId: data.userId, date: data.date, isTest: data.isTest });
+        }
+      });
+      feedbackSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.imageUrl) {
+          photos.push({ id: d.id, type: 'feedback', imageUrl: data.imageUrl, userId: data.userId, aiMeters: data.aiExtracted?.meters, userMeters: data.userConfirmed?.meters, confidence: data.aiExtracted?.confidence });
+        }
+      });
+      setPhotoEntries(photos);
+    } catch (e) {
+      console.error('Error loading photos:', e);
+    }
+    setLoadingPhotos(false);
+  };
 
   if (!showAdminPanel || !isAdmin) return null;
 
@@ -187,6 +223,45 @@ function AdminPanel() {
               </div>
             ))}
           </div>
+        )}
+        {/* Photo Gallery */}
+        <h3>
+          <Icon name="ui_camera" size={16} /> Photos
+          <button className="admin-refresh-btn" onClick={() => { setShowPhotos(true); loadPhotos(); }} style={{ marginLeft: 8, display: 'inline-flex' }}>
+            {loadingPhotos ? 'Loading...' : showPhotos ? 'Refresh' : 'Load'}
+          </button>
+        </h3>
+
+        {showPhotos && (
+          photoEntries.length === 0 && !loadingPhotos ? (
+            <p className="admin-empty">No photos found</p>
+          ) : (
+            <div className="admin-photo-grid">
+              {photoEntries.map(photo => (
+                <div
+                  key={photo.id}
+                  className={`admin-photo-card ${photo.isTest ? 'test' : ''}`}
+                  onClick={() => setShowPhotoModal({ url: photo.imageUrl, entry: photo })}
+                >
+                  <img src={photo.imageUrl} alt="Row" loading="lazy" />
+                  <div className="admin-photo-info">
+                    <span className="admin-photo-user">{users[photo.userId]?.name?.split(' ')[0] || 'User'}</span>
+                    {photo.type === 'entry' && (
+                      <span className={`admin-photo-status ${photo.status}`}>
+                        {photo.meters?.toLocaleString()}m • {photo.status}
+                        {photo.isTest && ' (test)'}
+                      </span>
+                    )}
+                    {photo.type === 'feedback' && (
+                      <span className="admin-photo-status feedback">
+                        AI: {photo.aiMeters || '?'}m → User: {photo.userMeters || '?'}m
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </div>
     </div>

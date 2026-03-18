@@ -2304,9 +2304,9 @@ function App() {
       customName: effectiveCustomName,
     } : null;
     
-    if (testMode) {
+    if (testMode === 'dry' || testMode === 'review') {
       setIsSubmittingManual(false);
-      showToast('Test mode — entry not saved', 'info');
+      showToast('Manual entries skip test mode', 'info');
       setShowLogModal(false);
       setTestMode(false);
       return;
@@ -2423,23 +2423,53 @@ function App() {
       customName: effectiveCustomName,
     } : null;
     
-    if (testMode) {
-      // Test mode: skip saving, just show results
+    if (testMode === 'dry') {
       setIsProcessing(false);
-      showToast('Test mode — entry not saved', 'info');
+      showToast('Dry run — nothing saved', 'info');
       setShowConfirmModal(false);
-      setDetectedMeters('');
-      setDetectedTime('');
-      setDetectedCalories('');
-      setEditableMeters('');
-      setEditableTime('');
-      setEditableCalories('');
-      setAiMachineType('');
-      setCustomMachineName('');
-      setSessionType('free_row');
-      setValidationError('');
-      setShowLogModal(false);
-      setTestMode(false);
+      setDetectedMeters(''); setDetectedTime(''); setDetectedCalories('');
+      setEditableMeters(''); setEditableTime(''); setEditableCalories('');
+      setAiMachineType(''); setCustomMachineName('');
+      setSessionType('free_row'); setValidationError('');
+      setShowLogModal(false); setTestMode(false);
+      return;
+    }
+
+    if (testMode === 'review') {
+      // Save entry + photo as pending_review but don't update user stats
+      try {
+        const entryId = `test_${Date.now()}_${currentUser.uid}`;
+        const entryRef = doc(db, 'entries', entryId);
+        let imageUrl = null;
+        if (capturedImage?.data) {
+          try {
+            const imageRef = ref(storage, `row-images/${currentUser.uid}/${entryId}.jpg`);
+            await uploadString(imageRef, capturedImage.data, 'data_url', { contentType: 'image/jpeg' });
+            imageUrl = await getDownloadURL(imageRef);
+          } catch (e) { console.error('Test upload error:', e); }
+        }
+        await setDoc(entryRef, {
+          userId: currentUser.uid,
+          meters, time: timeSeconds || null, calories: calories || null,
+          date: new Date().toISOString(),
+          createdAt: serverTimestamp(),
+          verificationStatus: 'pending_review',
+          verificationDetails: { reason: 'Admin test upload', confidence: 0 },
+          imageUrl, sessionType: sessionType || 'free_row',
+          isTest: true,
+        });
+        showToast('Saved to review (no stats counted)', 'success');
+      } catch (e) {
+        console.error('Test review save error:', e);
+        showToast('Failed to save test entry');
+      }
+      setIsProcessing(false);
+      setShowConfirmModal(false);
+      setDetectedMeters(''); setDetectedTime(''); setDetectedCalories('');
+      setEditableMeters(''); setEditableTime(''); setEditableCalories('');
+      setAiMachineType(''); setCustomMachineName('');
+      setSessionType('free_row'); setValidationError('');
+      setShowLogModal(false); setTestMode(false);
       return;
     }
 

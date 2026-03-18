@@ -31,11 +31,24 @@ function EntryForm() {
 
         {/* Admin Test Mode */}
         {isAdmin && (
-          <label className="test-mode-toggle">
-            <input type="checkbox" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} />
-            <span className="test-mode-label"><Icon name="ui_shield" size={14} /> Test Mode</span>
-            {testMode && <span className="test-mode-hint">AI will run but nothing saves</span>}
-          </label>
+          <div className="test-mode-toggle">
+            <span className="test-mode-label"><Icon name="ui_shield" size={14} /> Admin Mode</span>
+            <div className="test-mode-pills">
+              {[
+                { key: false, label: 'Off' },
+                { key: 'dry', label: 'Dry Run' },
+                { key: 'review', label: 'To Review' },
+              ].map(opt => (
+                <button
+                  key={String(opt.key)}
+                  className={`test-mode-pill ${testMode === opt.key ? 'active' : ''}`}
+                  onClick={() => setTestMode(opt.key)}
+                >{opt.label}</button>
+              ))}
+            </div>
+            {testMode === 'dry' && <span className="test-mode-hint">AI runs, nothing saves</span>}
+            {testMode === 'review' && <span className="test-mode-hint">Saves photo + entry to review, no stats</span>}
+          </div>
         )}
 
         {/* Session Type Selector */}

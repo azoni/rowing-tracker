@@ -3,6 +3,7 @@ import { Avatar } from './Avatar';
 import {
   SKIN_COLORS, HAIR_COLORS, AVATAR_PARTS, DEFAULT_AVATAR,
   HEAD_SHAPES, HAIR_STYLES, EYE_STYLES, MOUTH_STYLES, ACCESSORIES,
+  OUTFIT_STYLES, HELD_ITEMS, PET_STYLES,
   RARITY_COLORS, isCosmeticUnlocked, getCosmeticInfo,
 } from '../constants/avatarParts';
 import { useApp } from '../context/AppContext';
@@ -22,16 +23,21 @@ const PART_LABELS = {
   hair: 'Hair Style',
   eyes: 'Eyes',
   mouth: 'Mouth',
-  accessory: 'Accessory',
+  accessory: 'Head Accessory',
+  outfit: 'Outfit',
+  heldItem: 'Held Item',
+  pet: 'Pet',
 };
 
-// Render functions for each part type (for thumbnails)
 const PART_RENDERERS = {
   head: HEAD_SHAPES,
   hair: HAIR_STYLES,
   eyes: EYE_STYLES,
   mouth: MOUTH_STYLES,
   accessory: ACCESSORIES,
+  outfit: OUTFIT_STYLES,
+  heldItem: HELD_ITEMS,
+  pet: PET_STYLES,
 };
 
 function AvatarBuilder() {
@@ -59,7 +65,7 @@ function AvatarBuilder() {
 
         {/* Live Preview */}
         <div className="ab-preview">
-          <Avatar config={config} size={120} showBody />
+          <Avatar config={config} size={140} showBody />
         </div>
 
         {/* Skin Color */}
@@ -114,7 +120,7 @@ function AvatarBuilder() {
                     title={unlocked ? opt.replace(/_/g, ' ') : `Unlock: ${info.achievementName || 'Achievement'}`}
                   >
                     {/* Mini SVG preview */}
-                    <svg viewBox="0 0 64 48" className="ab-tile-preview">
+                    <svg viewBox={['outfit', 'heldItem', 'pet'].includes(partKey) ? '10 30 44 40' : '0 0 64 48'} className="ab-tile-preview">
                       {PART_RENDERERS[partKey]?.[opt]?.(
                         partKey === 'head' ? (SKIN_COLORS.find(s => s.id === config.skinColor)?.color || '#c68642') :
                         partKey === 'hair' ? (HAIR_COLORS.find(h => h.id === config.hairColor)?.color || '#5c3317') :

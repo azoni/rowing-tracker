@@ -284,10 +284,169 @@ export const ACCESSORIES = {
   ),
 };
 
-// Body (shown below head in avatar)
-export const BODY = (outfitColor) => (
-  <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,54 L22,54 Z" fill={outfitColor} stroke={darken(outfitColor)} strokeWidth="0.5" />
-);
+// Outfit styles (body area, y: 40-56)
+export const OUTFIT_STYLES = {
+  basic: (color) => (
+    <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
+  ),
+  singlet: (color) => (
+    <>
+      <path d="M24,46 C24,42 27,40 32,40 C37,40 40,42 40,46 L40,56 L24,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
+      <line x1="32" y1="42" x2="32" y2="50" stroke={darken(color)} strokeWidth="0.5" />
+    </>
+  ),
+  hoodie: (color) => (
+    <>
+      <path d="M20,46 C20,41 25,38 32,38 C39,38 44,41 44,46 L44,56 L20,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
+      <path d="M28,38 Q32,42 36,38" fill="none" stroke={darken(color)} strokeWidth="0.5" />
+      <ellipse cx="32" cy="40" rx="3" ry="1.5" fill={darken(color)} opacity="0.3" />
+    </>
+  ),
+  tank_top: (color) => (
+    <>
+      <path d="M26,44 C26,42 28,40 32,40 C36,40 38,42 38,44 L38,56 L26,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
+    </>
+  ),
+  wetsuit: (color) => (
+    <>
+      <path d="M20,46 C20,41 25,38 32,38 C39,38 44,41 44,46 L44,56 L20,56 Z" fill="#1a1a1a" stroke="#333" strokeWidth="0.5" />
+      <line x1="32" y1="40" x2="32" y2="56" stroke={color} strokeWidth="1" />
+    </>
+  ),
+  tuxedo: (color) => (
+    <>
+      <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill="#1a1a1a" stroke="#333" strokeWidth="0.5" />
+      <path d="M30,40 L32,48 L34,40" fill="#fff" />
+      <circle cx="32" cy="46" r="1" fill="#e63946" />
+    </>
+  ),
+  cape: (color) => (
+    <>
+      <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
+      <path d="M20,42 L16,60 Q32,56 48,60 L44,42" fill={darken(color)} opacity="0.7" />
+    </>
+  ),
+  jersey: (color) => (
+    <>
+      <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
+      <text x="32" y="52" textAnchor="middle" fontSize="7" fill="#fff" fontWeight="700">1</text>
+    </>
+  ),
+};
+
+// Legacy BODY export for backwards compat
+export const BODY = (outfitColor) => OUTFIT_STYLES.basic(outfitColor);
+
+// Held items (positioned to the right of body)
+export const HELD_ITEMS = {
+  none: () => null,
+  oar: () => (
+    <line x1="44" y1="38" x2="54" y2="58" stroke="#8B6914" strokeWidth="2" strokeLinecap="round" />
+  ),
+  trophy: () => (
+    <g transform="translate(46,42)">
+      <path d="M0,4 L2,0 L8,0 L10,4 L8,8 L6,12 L4,12 L2,8 Z" fill="#ffd700" stroke="#c9a227" strokeWidth="0.5" />
+      <rect x="3" y="12" width="4" height="2" fill="#c9a227" />
+    </g>
+  ),
+  coffee: () => (
+    <g transform="translate(44,44)">
+      <rect x="0" y="0" width="7" height="9" rx="1" fill="#8B4513" />
+      <path d="M7,2 Q10,2 10,5 Q10,8 7,8" fill="none" stroke="#8B4513" strokeWidth="1" />
+      <path d="M1,0 Q2,-2 3,0 Q4,-2 5,0" fill="none" stroke="#aaa" strokeWidth="0.5" opacity="0.5" />
+    </g>
+  ),
+  flag: (color) => (
+    <g transform="translate(46,36)">
+      <line x1="0" y1="0" x2="0" y2="20" stroke="#8a8a8a" strokeWidth="1" />
+      <path d="M1,1 L12,4 L1,7 Z" fill={color || '#e63946'} />
+    </g>
+  ),
+  dumbbell: () => (
+    <g transform="translate(44,46)">
+      <rect x="0" y="2" width="3" height="6" rx="1" fill="#555" />
+      <rect x="3" y="4" width="8" height="2" rx="0.5" fill="#888" />
+      <rect x="11" y="2" width="3" height="6" rx="1" fill="#555" />
+    </g>
+  ),
+  sword: () => (
+    <g transform="translate(46,36)">
+      <line x1="2" y1="0" x2="2" y2="16" stroke="#c0c0c0" strokeWidth="1.5" />
+      <rect x="0" y="14" width="4" height="2" rx="0.5" fill="#8B6914" />
+      <circle cx="2" cy="0" r="1" fill="#ffd700" />
+    </g>
+  ),
+};
+
+// Pets (positioned below/beside the body, y: 56-72)
+export const PET_STYLES = {
+  none: () => null,
+  dog: () => (
+    <g transform="translate(46,54)">
+      <ellipse cx="6" cy="8" rx="5" ry="4" fill="#c68642" />
+      <circle cx="3" cy="4" r="3.5" fill="#c68642" />
+      <circle cx="2" cy="3" r="1" fill="#2c3e50" />
+      <path d="M1,5 Q3,7 4,5" stroke="#2c3e50" strokeWidth="0.5" fill="none" />
+      <path d="M0,2 L-1,0 L1,1" fill="#8B6914" />
+      <path d="M5,1 L7,0 L6,2" fill="#8B6914" />
+      <path d="M11,8 Q14,7 13,9" stroke="#c68642" strokeWidth="1" fill="none" />
+    </g>
+  ),
+  cat: () => (
+    <g transform="translate(46,54)">
+      <ellipse cx="5" cy="8" rx="4" ry="3.5" fill="#555" />
+      <circle cx="3" cy="4" r="3" fill="#555" />
+      <path d="M1,2 L0,-1 L2,1" fill="#555" />
+      <path d="M5,2 L6,-1 L4,1" fill="#555" />
+      <circle cx="2" cy="3.5" r="0.8" fill="#2ed573" />
+      <circle cx="4" cy="3.5" r="0.8" fill="#2ed573" />
+      <path d="M10,8 Q13,6 12,9 Q14,7 13,10" stroke="#555" strokeWidth="0.8" fill="none" />
+    </g>
+  ),
+  parrot: () => (
+    <g transform="translate(44,34)">
+      <ellipse cx="4" cy="6" rx="3" ry="4" fill="#2ed573" />
+      <circle cx="3" cy="3" r="2.5" fill="#e63946" />
+      <circle cx="2.5" cy="2.5" r="0.7" fill="#2c3e50" />
+      <path d="M1,3.5 L-1,4 L1,4.5" fill="#ffd700" />
+      <path d="M5,8 L6,14 L4,14 L3,9" fill="#2ed573" />
+      <path d="M6,10 L8,12" stroke="#4169e1" strokeWidth="1" />
+    </g>
+  ),
+  dragon: () => (
+    <g transform="translate(44,48)">
+      <ellipse cx="8" cy="10" rx="6" ry="5" fill="#8b5cf6" />
+      <circle cx="4" cy="6" r="4" fill="#8b5cf6" />
+      <circle cx="3" cy="5" r="1" fill="#ffd700" />
+      <path d="M1,3 L-1,1 L1,2" fill="#8b5cf6" />
+      <path d="M6,3 L8,1 L7,3" fill="#8b5cf6" />
+      <path d="M0,7 L-1,8" stroke="#e63946" strokeWidth="0.5" />
+      <path d="M14,10 Q18,8 16,12 Q19,10 17,13" stroke="#8b5cf6" strokeWidth="1" fill="none" />
+      <path d="M6,6 L4,2 L8,4" fill="#8b5cf6" opacity="0.6" />
+      <path d="M10,6 L12,3 L9,5" fill="#8b5cf6" opacity="0.6" />
+    </g>
+  ),
+  fish: () => (
+    <g transform="translate(46,56)">
+      <ellipse cx="5" cy="4" rx="4" ry="2.5" fill="#4169e1" />
+      <path d="M9,4 L12,2 L12,6 Z" fill="#4169e1" />
+      <circle cx="3" cy="3.5" r="0.7" fill="#fff" />
+      <circle cx="3.3" cy="3.5" r="0.4" fill="#2c3e50" />
+    </g>
+  ),
+  phoenix: () => (
+    <g transform="translate(42,32)">
+      <ellipse cx="6" cy="10" rx="4" ry="5" fill="#ff6b35" />
+      <circle cx="4" cy="6" r="3" fill="#ffd700" />
+      <circle cx="3" cy="5.5" r="0.8" fill="#e63946" />
+      <path d="M2,7 L0,7.5 L2,8" fill="#ff6b35" />
+      <path d="M6,4 L4,0 L8,2" fill="#e63946" />
+      <path d="M8,4 L10,1 L9,4" fill="#ff6b35" />
+      <path d="M8,14 L12,18 L10,14 L14,16 L11,13" fill="#ffd700" opacity="0.7" />
+      <path d="M3,14 L0,17 L2,13 L-1,15 L1,12" fill="#ff6b35" opacity="0.7" />
+    </g>
+  ),
+};
 
 // Helper: darken a hex color
 function darken(hex) {
@@ -307,6 +466,9 @@ export const DEFAULT_AVATAR = {
   mouth: 'smile',
   skinColor: 'medium',
   accessory: 'none',
+  outfit: 'basic',
+  heldItem: 'none',
+  pet: 'none',
   outfitColor: '#00d4aa',
 };
 
@@ -383,6 +545,34 @@ export const COSMETIC_UNLOCKS = {
     fire_aura: { rarity: 'legendary', achievementId: 'sixty_day_streak', achievementName: '60-Day Fire' },
     tattoo: { rarity: 'rare', achievementId: 'big_session', achievementName: 'Power Hour' },
   },
+  outfit: {
+    basic: { rarity: 'common' },
+    singlet: { rarity: 'common' },
+    tank_top: { rarity: 'common' },
+    hoodie: { rarity: 'uncommon', achievementId: 'ten_sessions', achievementName: 'Getting Serious' },
+    wetsuit: { rarity: 'rare', achievementId: 'marathon', achievementName: 'Marathon Rower' },
+    jersey: { rarity: 'rare', achievementId: 'weekly_champion', achievementName: 'Weekly Champion' },
+    tuxedo: { rarity: 'epic', achievementId: 'hundred_sessions', achievementName: 'Centurion' },
+    cape: { rarity: 'legendary', achievementId: 'hundred_k', achievementName: '100K Legend' },
+  },
+  heldItem: {
+    none: { rarity: 'common' },
+    oar: { rarity: 'uncommon', achievementId: 'first_row', achievementName: 'First Strokes' },
+    coffee: { rarity: 'uncommon', achievementId: 'early_bird', achievementName: 'Early Bird' },
+    flag: { rarity: 'rare', achievementId: 'week_streak', achievementName: 'Week Warrior' },
+    trophy: { rarity: 'epic', achievementId: 'weekly_champion', achievementName: 'Weekly Champion' },
+    dumbbell: { rarity: 'rare', achievementId: 'big_session', achievementName: 'Power Hour' },
+    sword: { rarity: 'legendary', achievementId: 'hundred_sessions', achievementName: 'Centurion' },
+  },
+  pet: {
+    none: { rarity: 'common' },
+    fish: { rarity: 'uncommon', achievementId: 'first_5k', achievementName: '5K Club' },
+    cat: { rarity: 'rare', achievementId: 'fortnight_streak', achievementName: 'Fortnight Streak' },
+    dog: { rarity: 'rare', achievementId: 'fifty_sessions', achievementName: 'Dedicated Rower' },
+    parrot: { rarity: 'epic', achievementId: 'monthly_master', achievementName: 'Monthly Master' },
+    dragon: { rarity: 'legendary', achievementId: 'sixty_day_streak', achievementName: '60-Day Fire' },
+    phoenix: { rarity: 'legendary', achievementId: 'century_streak', achievementName: 'Century Streak' },
+  },
 };
 
 // Check if a cosmetic is unlocked for a user
@@ -405,4 +595,7 @@ export const AVATAR_PARTS = {
   eyes: Object.keys(EYE_STYLES),
   mouth: Object.keys(MOUTH_STYLES),
   accessory: Object.keys(ACCESSORIES),
+  outfit: Object.keys(OUTFIT_STYLES),
+  heldItem: Object.keys(HELD_ITEMS),
+  pet: Object.keys(PET_STYLES),
 };

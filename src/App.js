@@ -68,6 +68,7 @@ import StatsTab from './components/StatsTab';
 import ConfirmEntryModal from './components/ConfirmEntryModal';
 import ShareCardModal from './components/ShareCardModal';
 import RowCelebration from './components/RowCelebration';
+import AvatarBuilder from './components/AvatarBuilder';
 import SettingsModal from './components/SettingsModal';
 import AdminPanel from './components/AdminPanel';
 import UserProfileModal from './components/UserProfileModal';
@@ -120,6 +121,7 @@ function App() {
   const [sessionType, setSessionType] = useState('free_row');
   const [testMode, setTestMode] = useState(false);
   const [showRowCelebration, setShowRowCelebration] = useState(false);
+  const [showAvatarBuilder, setShowAvatarBuilder] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -2575,6 +2577,19 @@ function App() {
   };
 
   // Save AI feedback for training
+  // Save custom avatar to user profile
+  const saveAvatar = async (avatarConfig) => {
+    if (!currentUser) return;
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userRef, { avatar: avatarConfig }, { merge: true });
+      showToast('Avatar saved!', 'success');
+    } catch (error) {
+      console.error('Error saving avatar:', error);
+      showToast('Failed to save avatar');
+    }
+  };
+
   const saveAiFeedback = async (feedback) => {
     if (!currentUser) return;
 
@@ -3667,6 +3682,7 @@ function App() {
     showAchievementModal, setShowAchievementModal,
     showJourneyModal, setShowJourneyModal,
     showSettingsModal, setShowSettingsModal,
+    showAvatarBuilder, setShowAvatarBuilder, saveAvatar,
     showInstallPrompt, setShowInstallPrompt,
     showPhotoModal, setShowPhotoModal,
     showAdminPanel, setShowAdminPanel,
@@ -3973,6 +3989,7 @@ function App() {
           }}
         />
       )}
+      <AvatarBuilder />
       <ShareCardModal />
       <PRModal />
       <BustedModal />

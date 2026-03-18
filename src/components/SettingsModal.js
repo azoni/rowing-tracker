@@ -8,6 +8,7 @@ import Icon from './Icon';
 function SettingsModal() {
   const {
     showSettingsModal, setShowSettingsModal,
+    setShowAvatarBuilder,
     userProfile, currentUser,
     profilePicInputRef, handleProfilePicUpload, isUploadingPhoto,
     newUsername, handleUsernameChange, usernameStatus,
@@ -50,6 +51,12 @@ function SettingsModal() {
                   />
                   {isUploadingPhoto ? 'Uploading...' : 'Change Photo'}
                 </label>
+                <button
+                  className="settings-avatar-btn"
+                  onClick={() => { setShowAvatarBuilder(true); setShowSettingsModal(false); }}
+                >
+                  <Icon name="ui_user" size={16} /> Create Avatar
+                </button>
               </div>
             </div>
 

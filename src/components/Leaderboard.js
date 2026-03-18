@@ -3,6 +3,7 @@ import Icon from './Icon';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import { ACHIEVEMENTS, STANDARD_DISTANCES, getUserRank, TIER_COLORS } from '../constants';
+import AvatarOrPhoto from './Avatar';
 
 function Leaderboard() {
   const {
@@ -37,7 +38,7 @@ function Leaderboard() {
                 <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`} style={{ borderLeftColor: TIER_COLORS[getUserRank(user.totalMeters)?.tier] || '#00d4aa' }} onClick={() => setShowUserProfileModal(user)}>
                   <div className="rank">{index === 0 ? <Icon name="ui_gold" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}</div>
                   <div className="user-avatar-wrapper">
-                    {user.photoURL ? <img src={user.photoURL} alt="" className="leaderboard-avatar" /> : <div className="leaderboard-avatar-placeholder">{user.name?.charAt(0)?.toUpperCase() || '?'}</div>}
+                    <AvatarOrPhoto user={user} size={36} className="leaderboard-avatar" />
                   </div>
                   <div className="user-info">
                     <span className="user-name">{user.name}{user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</span>
@@ -85,7 +86,7 @@ function Leaderboard() {
                 <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`} style={{ borderLeftColor: TIER_COLORS[getUserRank(user.totalMeters)?.tier] || '#00d4aa' }} onClick={() => setShowUserProfileModal(user)}>
                   <div className="rank">{index === 0 ? <Icon name="ui_gold" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}</div>
                   <div className="user-avatar-wrapper">
-                    {user.photoURL ? <img src={user.photoURL} alt="" className="leaderboard-avatar" /> : <div className="leaderboard-avatar-placeholder">{user.name?.charAt(0)?.toUpperCase() || '?'}</div>}
+                    <AvatarOrPhoto user={user} size={36} className="leaderboard-avatar" />
                     {index === 0 && <span className="weekly-crown"><Icon name="ui_crown" size={16} /></span>}
                   </div>
                   <div className="user-info">
@@ -114,7 +115,7 @@ function Leaderboard() {
                 <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`} style={{ borderLeftColor: TIER_COLORS[getUserRank(user.totalMeters)?.tier] || '#00d4aa' }} onClick={() => setShowUserProfileModal(user)}>
                   <div className="rank">{index === 0 ? <Icon name="ui_fire" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}</div>
                   <div className="user-avatar-wrapper">
-                    {user.photoURL ? <img src={user.photoURL} alt="" className="leaderboard-avatar" /> : <div className="leaderboard-avatar-placeholder">{user.name?.charAt(0)?.toUpperCase() || '?'}</div>}
+                    <AvatarOrPhoto user={user} size={36} className="leaderboard-avatar" />
                   </div>
                   <div className="user-info">
                     <span className="user-name">{user.name}{user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</span>
@@ -142,7 +143,7 @@ function Leaderboard() {
                 <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`} style={{ borderLeftColor: TIER_COLORS[getUserRank(user.totalMeters)?.tier] || '#00d4aa' }} onClick={() => setShowUserProfileModal(user)}>
                   <div className="rank">{index === 0 ? <Icon name="ui_medal" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}</div>
                   <div className="user-avatar-wrapper">
-                    {user.photoURL ? <img src={user.photoURL} alt="" className="leaderboard-avatar" /> : <div className="leaderboard-avatar-placeholder">{user.name?.charAt(0)?.toUpperCase() || '?'}</div>}
+                    <AvatarOrPhoto user={user} size={36} className="leaderboard-avatar" />
                   </div>
                   <div className="user-info">
                     <span className="user-name">{user.name}{user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</span>
@@ -193,13 +194,7 @@ function Leaderboard() {
                     {index === 0 ? <Icon name="ui_gold" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}
                   </div>
                   <div className="user-avatar-wrapper">
-                    {entry.user?.photoURL ? (
-                      <img src={entry.user.photoURL} alt="" className="leaderboard-avatar" />
-                    ) : (
-                      <div className="leaderboard-avatar-placeholder">
-                        {entry.user?.name?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
-                    )}
+                    <AvatarOrPhoto user={entry.user} size={36} className="leaderboard-avatar" />
                   </div>
                   <div className="user-info">
                     <span className="user-name">

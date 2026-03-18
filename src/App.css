@@ -3845,6 +3845,25 @@ input[type="number"] {
   display: none;
 }
 
+.settings-avatar-btn {
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.15s;
+}
+
+.settings-avatar-btn:active {
+  transform: scale(0.97);
+}
+
 .settings-info-row {
   display: flex;
   justify-content: space-between;
@@ -9446,6 +9465,115 @@ button:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ==========================================
+   AVATAR BUILDER
+   ========================================== */
+
+.avatar-svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.avatar-builder-modal {
+  max-width: 380px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.ab-preview {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+  margin-bottom: 0.5rem;
+  background: var(--bg-dark);
+  border-radius: 12px;
+}
+
+.ab-section {
+  margin-bottom: 0.75rem;
+}
+
+.ab-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.ab-color-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ab-color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ab-color-swatch.active {
+  border-color: var(--text-primary);
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+.ab-options-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ab-option {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  text-transform: capitalize;
+}
+
+.ab-option.active {
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+  border-color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.ab-save-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 0.5rem;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.15s;
+}
+
+.ab-save-btn:active {
+  transform: scale(0.97);
 }
 
 /* ==========================================

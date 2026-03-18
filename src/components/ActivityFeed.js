@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { formatMeters, formatTime, formatTimeDisplay, formatTimeAgo } from '../utils';
 import { getUserRank, getRankTier, TIER_COLORS } from '../constants';
 import Icon from './Icon';
+import AvatarOrPhoto from './Avatar';
 
 function ActivityFeed() {
   const {
@@ -272,13 +273,7 @@ function ActivityFeed() {
                     onClick={() => item.user && setShowUserProfileModal(item.user)}
                   >
                     <div className="feed-avatar">
-                      {item.user?.photoURL ? (
-                        <img src={item.user.photoURL} alt="" />
-                      ) : (
-                        <div className="feed-avatar-placeholder">
-                          {item.user?.name?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                      )}
+                      <AvatarOrPhoto user={item.user} size={40} />
                     </div>
                     <div className="feed-content">
                       <div className="feed-header">

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { ACHIEVEMENTS, getUserRank, getMachineName } from '../constants';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import Icon from './Icon';
+import AvatarOrPhoto from './Avatar';
 
 const MONTHLY_CHALLENGES = [
   { label: 'Fastest 2K', type: 'fastest_distance', distance: 2000 },
@@ -67,13 +68,7 @@ function UserProfileModal() {
             <>
               {/* Header */}
               <div className="profile-modal-header">
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt="" className="profile-modal-avatar" />
-                ) : (
-                  <div className="profile-modal-avatar-placeholder">
-                    {user.name?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                )}
+                <AvatarOrPhoto user={user} size={64} className="profile-modal-avatar" />
                 <div className="profile-modal-info">
                   <h2>{user.name}</h2>
                   {user.username && <span className="profile-modal-username">@{user.username}</span>}

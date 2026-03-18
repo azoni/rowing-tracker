@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { formatTimeAgo } from '../utils';
 import { getActiveHoliday } from '../constants';
 import Icon from './Icon';
+import AvatarOrPhoto from './Avatar';
 
 function Header() {
   const {
@@ -91,13 +92,9 @@ function Header() {
                 )}
               </div>
 
-              {userProfile.photoURL ? (
-                <img src={userProfile.photoURL} alt="" className="user-avatar" onClick={() => setShowSettingsModal(true)} />
-              ) : (
-                <div className="user-avatar user-avatar-placeholder" onClick={() => setShowSettingsModal(true)}>
-                  {userProfile.name?.charAt(0)?.toUpperCase() || '?'}
-                </div>
-              )}
+              <div className="user-avatar" onClick={() => setShowSettingsModal(true)}>
+                <AvatarOrPhoto user={userProfile} size={36} />
+              </div>
             </>
           ) : (
             <>

@@ -373,24 +373,42 @@ exports.verifyRowEntry = functions.https.onCall(async (data, context) => {
       console.log(`Estimated meters from intervals: ${claudeResult.intervalInfo.distance}m × ${claudeResult.intervalInfo.count} = ${estimatedMeters}m`);
     }
 
-    // Second try: calories
-    if (!estimatedMeters && claudeResult.extractedCalories && claudeResult.extractedTime) {
-      // Concept2 formula approximation: ~5.5 meters per calorie at moderate intensity
-      // Better estimate using Cal/hr if available: meters ≈ (Cal/hr / 300)^(1/0.222) * time/500 * 500
-      // Simplified: use calories * 5.5 as rough estimate
-      estimatedMeters = Math.round(claudeResult.extractedCalories * 5.5);
-      metersEstimated = true;
-      console.log(`Estimated meters from calories: ${claudeResult.extractedCalories} cal → ~${estimatedMeters}m`);
-    } else if (!estimatedMeters && claudeResult.extractedSplitPace && claudeResult.extractedTime) {
-      // Estimate from pace: if pace is "1:58.6/500m" and time is 98s
+    // Second try: pace from the screen
+    if (!estimatedMeters && claudeResult.extractedSplitPace && claudeResult.extractedTime) {
       const paceMatch = claudeResult.extractedSplitPace.match(/(\d+):(\d+\.?\d*)/);
       if (paceMatch) {
         const paceSeconds = parseInt(paceMatch[1]) * 60 + parseFloat(paceMatch[2]);
         if (paceSeconds > 0) {
-          estimatedMeters = Math.round((claudeResult.extractedTime / paceSeconds) * 500);
+          const raw = (claudeResult.extractedTime / paceSeconds) * 500;
+          estimatedMeters = Math.round(raw / 500) * 500; // round to nearest 500m
           metersEstimated = true;
           console.log(`Estimated meters from pace: ${claudeResult.extractedSplitPace} × ${claudeResult.extractedTime}s → ~${estimatedMeters}m`);
         }
+      }
+    }
+
+    // Third try: user's average pace from recent entries
+    if (!estimatedMeters && claudeResult.extractedTime && context.auth) {
+      try {
+        const recentEntries = await db.collection('entries')
+          .where('userId', '==', context.auth.uid)
+          .orderBy('createdAt', 'desc')
+          .limit(10)
+          .get();
+        const paceEntries = recentEntries.docs
+          .map(d => d.data())
+          .filter(e => e.time > 0 && e.meters > 0);
+        if (paceEntries.length > 0) {
+          const avgPacePer500 = paceEntries.reduce((s, e) => s + (e.time / e.meters) * 500, 0) / paceEntries.length;
+          if (avgPacePer500 > 0) {
+            const raw = (claudeResult.extractedTime / avgPacePer500) * 500;
+            estimatedMeters = Math.round(raw / 500) * 500; // round to nearest 500m
+            metersEstimated = true;
+            console.log(`Estimated meters from user avg pace (${avgPacePer500.toFixed(1)}s/500m): ${claudeResult.extractedTime}s → ~${estimatedMeters}m`);
+          }
+        }
+      } catch (e) {
+        console.log('Could not estimate from user history:', e.message);
       }
     }
 

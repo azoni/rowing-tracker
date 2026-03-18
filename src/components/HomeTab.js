@@ -128,29 +128,28 @@ function HomeTab() {
         const getScore = (userId) => {
           const userEntries = allMonthEntries.filter(e => e.userId === userId && e.time && e.time > 0 && e.meters > 0);
           if (challenge.type === 'fastest_distance') {
-            // Find entries close to the target distance (within 10%)
             const tolerance = challenge.distance * 0.1;
             const qualifying = userEntries.filter(e => Math.abs(e.meters - challenge.distance) <= tolerance);
             if (qualifying.length === 0) return null;
             const best = qualifying.reduce((best, e) => (!best || e.time < best.time) ? e : best, null);
-            return best ? { value: best.time, display: formatTimeDisplay(best.time), sort: best.time } : null;
+            return best ? { value: best.time, display: formatTimeDisplay(best.time), sort: best.time, attempts: qualifying.length } : null;
           } else if (challenge.type === 'longest_row') {
             const allUserEntries = allMonthEntries.filter(e => e.userId === userId);
             if (allUserEntries.length === 0) return null;
             const best = Math.max(...allUserEntries.map(e => e.meters));
-            return { value: best, display: formatMeters(best), sort: -best };
+            return { value: best, display: formatMeters(best), sort: -best, attempts: allUserEntries.length };
           } else if (challenge.type === 'most_meters') {
             const allUserEntries = allMonthEntries.filter(e => e.userId === userId);
             const total = allUserEntries.reduce((s, e) => s + e.meters, 0);
             if (total === 0) return null;
-            return { value: total, display: formatMeters(total), sort: -total };
+            return { value: total, display: formatMeters(total), sort: -total, attempts: allUserEntries.length };
           } else if (challenge.type === 'best_pace') {
             if (userEntries.length === 0) return null;
             const paces = userEntries.map(e => (e.time / e.meters) * 500);
             const bestPace = Math.min(...paces);
             const mins = Math.floor(bestPace / 60);
             const secs = (bestPace % 60).toFixed(1).padStart(4, '0');
-            return { value: bestPace, display: `${mins}:${secs}/500m`, sort: bestPace };
+            return { value: bestPace, display: `${mins}:${secs}/500m`, sort: bestPace, attempts: userEntries.length };
           }
           return null;
         };
@@ -183,6 +182,7 @@ function HomeTab() {
               <div className="challenge-banner-my-score">
                 Your best: <strong>{myScore.display}</strong>
                 {myRank > 0 && <span className="challenge-banner-my-rank"> (#{myRank})</span>}
+                <span className="challenge-banner-attempts">{myScore.attempts} {myScore.attempts === 1 ? 'attempt' : 'attempts'}</span>
               </div>
             )}
             {!myScore && (
@@ -197,6 +197,7 @@ function HomeTab() {
                       {i === 0 ? <Icon name="ui_gold" size={14} /> : i === 1 ? <Icon name="ui_silver" size={14} /> : <Icon name="ui_bronze" size={14} />}
                     </span>
                     <span className="challenge-leader-name">{entry.user?.name?.split(' ')[0] || 'User'}</span>
+                    <span className="challenge-leader-attempts">{entry.attempts}x</span>
                     <span className="challenge-leader-score">{entry.display}</span>
                   </div>
                 ))}

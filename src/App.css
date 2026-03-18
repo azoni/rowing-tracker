@@ -2596,6 +2596,7 @@ input[type="number"] {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  overflow: hidden;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -2656,6 +2657,8 @@ input[type="number"] {
 
 .feed-content {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .feed-header {
@@ -5043,6 +5046,8 @@ input[type="number"] {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--border-color);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .reactions-row {

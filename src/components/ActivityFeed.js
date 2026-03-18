@@ -19,7 +19,7 @@ function ActivityFeed() {
     feedPage, setFeedPage,
     getActivityFeed, calculateStreak,
     handleSignIn,
-    setShowUserProfileModal, setShowPhotoModal,
+    setShowUserProfileModal,
     showReactionPicker, setShowReactionPicker,
     REACTION_EMOJIS, getReactionCounts, hasUserReacted, toggleReaction,
     expandedComments, setExpandedComments,
@@ -362,15 +362,6 @@ function ActivityFeed() {
                         <div className="feed-streak-badge"><Icon name="ui_fire" size={14} /> {itemStreak} day streak</div>
                       )}
                     </div>
-                    {item.type === 'row' && item.imageUrl && (
-                      <div
-                        className="feed-photo-thumb"
-                        onClick={(e) => { e.stopPropagation(); setShowPhotoModal({ url: item.imageUrl, entry: item }); }}
-                      >
-                        <img src={item.imageUrl} alt="Row evidence" />
-                      </div>
-                    )}
-
                     {/* Reactions & Comments */}
                     {currentUser && (
                       <div className="feed-interactions-compact">

@@ -226,7 +226,7 @@ ${jsonFormat.replace('"overallConfidence"', '"matchesClaimed": true/false,\n  "o
 
 Respond ONLY with valid JSON.${learningContext}`;
 
-  const selectedModel = 'claude-sonnet-4-20250514';
+  const selectedModel = 'claude-haiku-4-5-20251001';
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -238,7 +238,7 @@ Respond ONLY with valid JSON.${learningContext}`;
       },
       body: JSON.stringify({
         model: selectedModel,
-        max_tokens: 800,
+        max_tokens: 500,
         messages: [
           {
             role: 'user',
@@ -272,9 +272,9 @@ Respond ONLY with valid JSON.${learningContext}`;
     
     // Extract usage for activity logging
     const usage = data.usage || {};
-    // Claude Sonnet 4: $3.00/$15.00 per 1M tokens
-    const inputCost = (usage.input_tokens || 0) / 1e6 * 3.00;
-    const outputCost = (usage.output_tokens || 0) / 1e6 * 15.00;
+    // Claude Haiku 4.5: $0.80/$4.00 per 1M tokens
+    const inputCost = (usage.input_tokens || 0) / 1e6 * 0.80;
+    const outputCost = (usage.output_tokens || 0) / 1e6 * 4.00;
     const totalCost = inputCost + outputCost;
 
     // Parse JSON from response

@@ -2139,13 +2139,17 @@ function App() {
 
       // Upload photo to Firebase Storage if present
       let imageUrl = null;
+      console.log('[RowCrew] Image data present:', !!imageData?.data, 'length:', imageData?.data?.length || 0);
       if (imageData?.data) {
         try {
+          const blob = dataUrlToBlob(imageData.data);
+          console.log('[RowCrew] Blob created:', blob.size, 'bytes, type:', blob.type);
           const imageRef = ref(storage, `row-images/${currentUser.uid}/${entryId}.jpg`);
-          await uploadBytes(imageRef, dataUrlToBlob(imageData.data), { contentType: 'image/jpeg' });
+          await uploadBytes(imageRef, blob, { contentType: 'image/jpeg' });
           imageUrl = await getDownloadURL(imageRef);
+          console.log('[RowCrew] Upload success:', imageUrl);
         } catch (uploadErr) {
-          console.error('Image upload error:', uploadErr);
+          console.error('[RowCrew] Image upload FAILED:', uploadErr?.code, uploadErr?.message || uploadErr);
         }
       }
 

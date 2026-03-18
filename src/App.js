@@ -2369,8 +2369,8 @@ function App() {
       const hasNewData = userProvidedMissingTime || userProvidedMissingCalories;
       const hasMachineInfo = effectiveMachineType && effectiveMachineType !== 'unknown';
       
-      // Always save if we have useful data
-      if (hasCorrections || hasNewData || hasMachineInfo || aiResult.confidence < 70) {
+      // Always save feedback — every interaction helps the AI learn
+      if (true) {
         try {
           await saveAiFeedback({
             aiExtracted: {
@@ -2528,10 +2528,24 @@ function App() {
   // Save AI feedback for training
   const saveAiFeedback = async (feedback) => {
     if (!currentUser) return;
-    
+
     const feedbackId = `feedback_${Date.now()}_${currentUser.uid}`;
+
+    // Upload the image to Storage for visual reference
+    let feedbackImageUrl = null;
+    if (capturedImage?.data) {
+      try {
+        const fbRef = ref(storage, `row-images/${currentUser.uid}/feedback_${feedbackId}.jpg`);
+        await uploadString(fbRef, capturedImage.data, 'data_url', { contentType: 'image/jpeg' });
+        feedbackImageUrl = await getDownloadURL(fbRef);
+      } catch (e) {
+        console.error('Feedback image upload error:', e);
+      }
+    }
+
     await setDoc(doc(db, 'ai_feedback', feedbackId), {
       ...feedback,
+      imageUrl: feedbackImageUrl,
       userId: currentUser.uid,
       createdAt: serverTimestamp(),
     });

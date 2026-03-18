@@ -105,8 +105,10 @@ const verifyWithClaude = async (imageBase64, claimedMeters, sessionType) => {
       .get();
 
     if (!feedbackSnap.empty) {
-      const corrections = feedbackSnap.docs
-        .map(doc => doc.data())
+      const allFeedback = feedbackSnap.docs.map(doc => doc.data());
+
+      // Corrections: AI got it wrong, user fixed it
+      const corrections = allFeedback
         .filter(d => d.corrections?.meters || d.corrections?.time || d.corrections?.calories || d.corrections?.providedMissingTime || d.corrections?.providedMissingCalories)
         .slice(0, 8)
         .map(d => {
@@ -123,8 +125,15 @@ const verifyWithClaude = async (imageBase64, claimedMeters, sessionType) => {
           return `- ${parts.join(', ')}`;
         });
 
-      if (corrections.length > 0) {
-        learningContext = `\n\nPast corrections from users (learn from these mistakes):\n${corrections.join('\n')}\nUse these patterns to avoid the same errors.`;
+      // Zero-reads: AI couldn't extract anything but user provided values
+      const zeroReads = allFeedback
+        .filter(d => !d.aiExtracted?.meters && d.userConfirmed?.meters)
+        .slice(0, 4)
+        .map(d => `- Display: "${d.aiExtracted?.displayType || 'unknown'}", AI extracted nothing → user entered: ${d.userConfirmed.meters}m${d.userConfirmed.time ? `, ${d.userConfirmed.time}s` : ''}${d.machine?.displayName ? ` (${d.machine.displayName})` : ''}`);
+
+      const lines = [...corrections, ...zeroReads];
+      if (lines.length > 0) {
+        learningContext = `\n\nPast corrections from users (learn from these):\n${lines.join('\n')}\nUse these patterns to improve your accuracy.`;
       }
     }
   } catch (e) {
@@ -153,11 +162,14 @@ When you see numbers on the display, assign them to fields based on what makes s
 
 CONCEPT2 PM5 SPECIFICS:
 - Has many different screens (summary, intervals, just row, workout config)
-- ":26r" or ":26" at top often means seconds REMAINING
-- "Interval 1" means this is interval workout — the large number nearby may be interval count
-- "ave /500" = average pace per 500m
-- On interval screens: determine the interval distance from the workout setup or context
+- ":26r" or ":26" at top often means seconds REMAINING in the current interval/rest
+- "Interval 1" means this is interval workout — the large "1" is the interval NUMBER, NOT meters
+- "ave /500" = average pace per 500m (e.g. "1:58.6 ave /500" means 1 min 58.6s per 500m)
+- A number with "s/m" = stroke rate (e.g. "37 s/m" = 37 strokes per minute)
+- On interval screens: determine the interval distance from context. If you see "Interval 1" + ":26r" + "1:58.6 ave /500" + "37 s/m", this is an IN-PROGRESS interval — meters are NOT visible on this screen
 - On summary screens: the large number is usually total meters
+- CRITICAL: If this is an in-progress screen (has remaining time ":XXr"), meters may not be displayed. Still extract pace, stroke rate, and interval info. Set extractedMeters to null and explain in reasoning that this is a mid-workout screen
+- After a workout finishes, the PM5 shows a summary with total meters prominently displayed
 
 WATERROWER / OTHER MACHINES:
 - Layouts vary — use the sanity checks above to figure out what each number means

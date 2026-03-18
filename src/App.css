@@ -906,6 +906,7 @@ body {
 }
 
 .modal {
+  position: relative;
   background: var(--bg-card);
   border-radius: 20px;
   padding: 1.5rem;
@@ -914,7 +915,7 @@ body {
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.3s ease;
-  margin: auto 0;
+  margin: 2rem 0;
   flex-shrink: 0;
 }
 
@@ -3964,8 +3965,8 @@ input[type="number"] {
 
 .modal-close {
   position: absolute;
-  top: max(1rem, env(safe-area-inset-top, 0px) + 0.5rem);
-  right: max(1rem, env(safe-area-inset-right, 0px) + 0.5rem);
+  top: 1rem;
+  right: 1rem;
   background: var(--bg-dark);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
@@ -3973,6 +3974,7 @@ input[type="number"] {
   height: 36px;
   border-radius: 50%;
   cursor: pointer;
+  z-index: 10;
   font-size: 1.1rem;
   display: flex;
   align-items: center;

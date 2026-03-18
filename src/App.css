@@ -9447,3 +9447,205 @@ button:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================
+   ROW CELEBRATION - Animated Boat Scene
+   ========================================== */
+
+.row-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeIn 0.3s ease;
+}
+
+.rc-sky {
+  flex: 1;
+  background: linear-gradient(180deg,
+    var(--bg-dark) 0%,
+    color-mix(in srgb, var(--accent-primary) 15%, var(--bg-dark)) 60%,
+    color-mix(in srgb, var(--accent-primary) 25%, var(--bg-dark)) 100%
+  );
+}
+
+.rc-scene {
+  width: 100%;
+  height: 200px;
+  flex-shrink: 0;
+}
+
+.rc-water-bg {
+  fill: color-mix(in srgb, var(--accent-primary) 20%, #0a1628);
+}
+
+.rc-wave {
+  opacity: 0.6;
+}
+
+.rc-wave-1 {
+  fill: color-mix(in srgb, var(--accent-primary) 30%, #0d2040);
+  animation: rcWaveMove 4s linear infinite;
+}
+
+.rc-wave-2 {
+  fill: color-mix(in srgb, var(--accent-primary) 15%, #0a1830);
+  animation: rcWaveMove 3s linear infinite reverse;
+}
+
+@keyframes rcWaveMove {
+  from { transform: translateX(0); }
+  to { transform: translateX(200px); }
+}
+
+/* Boat */
+.rc-boat {
+  animation: rcBoatBob 1.5s ease-in-out infinite;
+}
+
+@keyframes rcBoatBob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-2px) rotate(-0.5deg); }
+}
+
+.rc-hull {
+  fill: var(--accent-primary);
+  stroke: color-mix(in srgb, var(--accent-primary) 70%, #000);
+  stroke-width: 0.5;
+}
+
+.rc-rower-head {
+  fill: #d4a574;
+}
+
+.rc-rower-body {
+  stroke: var(--text-primary);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.rc-oar {
+  stroke: #8b6914;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.rc-oar-left {
+  transform-origin: 180px 126px;
+  animation: rcOarStrokeLeft 1s ease-in-out infinite;
+}
+
+.rc-oar-right {
+  transform-origin: 200px 126px;
+  animation: rcOarStrokeRight 1s ease-in-out infinite;
+}
+
+@keyframes rcOarStrokeLeft {
+  0%, 100% { transform: rotate(-15deg); }
+  50% { transform: rotate(15deg); }
+}
+
+@keyframes rcOarStrokeRight {
+  0%, 100% { transform: rotate(15deg); }
+  50% { transform: rotate(-15deg); }
+}
+
+/* Wake */
+.rc-wake ellipse {
+  fill: rgba(255, 255, 255, 0.15);
+  animation: rcWakeFade 1.5s ease-out infinite;
+}
+
+.rc-wake-2 { animation-delay: 0.3s; }
+.rc-wake-3 { animation-delay: 0.6s; }
+
+@keyframes rcWakeFade {
+  0% { opacity: 0.3; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1.5) translateX(-10px); }
+}
+
+/* Splashes */
+.rc-splash {
+  fill: rgba(255, 255, 255, 0.5);
+  animation: rcSplash 0.8s ease-out infinite;
+}
+
+.rc-splash-2 { animation-delay: 0.2s; }
+.rc-splash-3 { animation-delay: 0.4s; }
+.rc-splash-4 { animation-delay: 0.1s; }
+.rc-splash-5 { animation-delay: 0.5s; }
+
+@keyframes rcSplash {
+  0% { opacity: 0.6; r: 1.5; }
+  100% { opacity: 0; r: 3; transform: translateY(-5px); }
+}
+
+/* Meters overlay */
+.rc-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding-bottom: 100px;
+}
+
+.row-celebration.complete .rc-overlay {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.rc-meters {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: rcMetersPop 0.3s ease-out;
+}
+
+.rc-meters-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 4rem;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+.rc-meters-unit {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+@keyframes rcMetersPop {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.rc-complete-msg {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  animation: rcMetersPop 0.3s ease-out;
+}
+
+.rc-tap-hint {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  animation: rcFadeIn 0.5s ease 0.5s both;
+}
+
+@keyframes rcFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -67,6 +67,7 @@ import Leaderboard from './components/Leaderboard';
 import StatsTab from './components/StatsTab';
 import ConfirmEntryModal from './components/ConfirmEntryModal';
 import ShareCardModal from './components/ShareCardModal';
+import RowCelebration from './components/RowCelebration';
 import SettingsModal from './components/SettingsModal';
 import AdminPanel from './components/AdminPanel';
 import UserProfileModal from './components/UserProfileModal';
@@ -118,6 +119,7 @@ function App() {
   const [capturedImage, setCapturedImage] = useState(null);
   const [sessionType, setSessionType] = useState('free_row');
   const [testMode, setTestMode] = useState(false);
+  const [showRowCelebration, setShowRowCelebration] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -2339,10 +2341,11 @@ function App() {
       setAiMachineType('');
       setCustomMachineName('');
       setValidationError('');
-      // Close log modal and show share
+      // Close log modal and show celebration
       setShowLogModal(false);
       setShareImageUrl(null);
-      setShowShareModal(true);
+      setLastSessionMeters(parseInt(manualMeters, 10) || 0);
+      setShowRowCelebration(true);
       setLinkCopied(false);
     }
   };
@@ -2502,10 +2505,11 @@ function App() {
       setSessionType('free_row');
       setValidationError('');
       setVerificationStatus(null);
-      // Close log modal and show share
+      // Close log modal and show celebration
       setShowLogModal(false);
       setShareImageUrl(capturedImage?.data || capturedImage);
-      setShowShareModal(true);
+      setLastSessionMeters(parseInt(editableMeters, 10) || 0);
+      setShowRowCelebration(true);
       setLinkCopied(false);
     }
   };
@@ -3960,6 +3964,15 @@ function App() {
         </div>
       )}
 
+      {showRowCelebration && (
+        <RowCelebration
+          meters={lastSessionMeters}
+          onComplete={() => {
+            setShowRowCelebration(false);
+            setShowShareModal(true);
+          }}
+        />
+      )}
       <ShareCardModal />
       <PRModal />
       <BustedModal />

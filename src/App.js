@@ -3104,15 +3104,18 @@ function App() {
     Object.values(filteredUsers).forEach(user => {
       if (user.unlockedAchievements) {
         // Group achievements by day for each user
+        // Only show achievements unlocked in the last 30 days to avoid bulk retroactive dumps
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 30);
         const byDay = {};
         Object.entries(user.unlockedAchievements).forEach(([achievementId, dateStr]) => {
           const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
           if (achievement) {
             const d = new Date(dateStr);
+            if (d < cutoff) return; // Skip old retroactive unlocks
             const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
             if (!byDay[dayKey]) byDay[dayKey] = { achievements: [], date: dateStr, sortDate: d };
             byDay[dayKey].achievements.push(achievement);
-            // Use the latest timestamp for sorting
             if (d > byDay[dayKey].sortDate) {
               byDay[dayKey].date = dateStr;
               byDay[dayKey].sortDate = d;
@@ -3120,13 +3123,15 @@ function App() {
           }
         });
         Object.entries(byDay).forEach(([dayKey, group]) => {
+          // Skip if too many unlocked on same day (likely bulk retroactive)
+          if (group.achievements.length > 5) return;
           feedItems.push({
             id: `achievement-${user.id}-${dayKey}`,
             type: 'achievement',
             userId: user.id,
             user,
             achievements: group.achievements,
-            achievement: group.achievements[0], // backwards compat
+            achievement: group.achievements[0],
             date: group.date,
             sortDate: group.sortDate,
           });

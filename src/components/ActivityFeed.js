@@ -313,9 +313,18 @@ function ActivityFeed() {
                         )}
                         {item.type === 'achievement' && (
                           <span className="feed-achievement">
-                            {item.achievements && item.achievements.length > 1 ? (
-                              <>unlocked {item.achievements.length} awards: {item.achievements.map(a => <Icon key={a.id} name={a.emoji} size={16} />)}</>
-                            ) : (
+                            {item.achievements && item.achievements.length > 1 ? (() => {
+                              const shown = item.achievements.slice(0, 3);
+                              const rest = item.achievements.length - shown.length;
+                              return (
+                                <>
+                                  {shown.map((a, i) => (
+                                    <span key={a.id} className="feed-achievement-name"><Icon name={a.emoji} size={16} /> {a.name}{i < shown.length - 1 ? ', ' : ''}</span>
+                                  ))}
+                                  {rest > 0 && <span className="feed-achievement-more"> +{rest} more</span>}
+                                </>
+                              );
+                            })() : (
                               <>unlocked <span className="feed-achievement-name"><Icon name={item.achievement.emoji} size={16} /> {item.achievement.name}</span></>
                             )}
                           </span>
@@ -409,6 +418,10 @@ function ActivityFeed() {
 
                         {expandedComments[item.id] && (
                           <div className="comments-compact" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="comments-close-btn"
+                              onClick={() => setExpandedComments(prev => ({ ...prev, [item.id]: false }))}
+                            >✕</button>
                             {getItemComments(item.id).map(comment => {
                               const commentUser = users[comment.userId];
                               return (

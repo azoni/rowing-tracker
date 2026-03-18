@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Icon from './Icon';
 import { useApp } from '../context/AppContext';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';

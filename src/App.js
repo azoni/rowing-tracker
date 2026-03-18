@@ -2366,14 +2366,11 @@ function App() {
       const userProvidedMissingTime = !aiDetectedTime && timeSeconds;
       const userProvidedMissingCalories = !aiDetectedCalories && calories;
       
-      // Determine if we should save feedback
+      // Determine if corrections were made (for toast)
       const hasCorrections = metersDiffer || timeDiffer || caloriesDiffer;
-      const hasNewData = userProvidedMissingTime || userProvidedMissingCalories;
-      const hasMachineInfo = effectiveMachineType && effectiveMachineType !== 'unknown';
-      
+
       // Always save feedback — every interaction helps the AI learn
-      if (true) {
-        try {
+      try {
           await saveAiFeedback({
             aiExtracted: {
               meters: aiResult.extractedMeters || null,
@@ -2414,7 +2411,6 @@ function App() {
           console.error('Error saving AI feedback:', error);
           // Don't block the entry submission
         }
-      }
     }
     
     // Pass machine info to addEntry

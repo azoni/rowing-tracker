@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { MILESTONES, getMilestoneIndex, getNearestCheckpoints, APP_VERSION, CHANGELOG } from '../constants';
+import { JOURNEY_CHECKPOINTS, getJourneyPathD, getJourneyPosition } from '../constants/journeyPath';
 import { formatMeters } from '../utils';
 import Icon from './Icon';
 
@@ -61,34 +62,84 @@ export function JourneyModal() {
 
   const milestoneIdx = getMilestoneIndex(totalMeters);
   const checkpoints = getNearestCheckpoints(totalMeters);
+  const pos = getJourneyPosition(totalMeters);
+  const journeyCheckpoints = JOURNEY_CHECKPOINTS;
 
   return (
     <div className="modal-overlay" onClick={() => setShowJourneyModal(false)}>
       <div className="modal journey-modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={() => setShowJourneyModal(false)}>✕</button>
         <h2><Icon name="ui_globe" size={20} /> Journey Around the World</h2>
-        <p className="journey-subtitle">Starting from Seattle, WA</p>
 
+        {/* Visual Map */}
+        <div className="journey-map-container">
+          <svg className="journey-map-svg" viewBox="0 0 800 360" preserveAspectRatio="xMidYMid meet">
+            {/* Water background */}
+            <rect width="800" height="360" className="jm-water" />
+
+            {/* Simplified continent shapes */}
+            <g className="jm-continents">
+              {/* North America */}
+              <path d="M80,60 L150,55 L190,70 L220,90 L230,130 L210,160 L180,200 L160,210 L140,240 L130,200 L100,170 L80,130 Z" />
+              {/* South America */}
+              <path d="M180,220 L210,230 L230,260 L220,300 L200,330 L185,340 L175,310 L165,270 L170,240 Z" />
+              {/* Europe */}
+              <path d="M420,60 L470,55 L490,70 L480,90 L460,100 L470,120 L455,140 L430,130 L420,100 Z" />
+              {/* Africa */}
+              <path d="M440,150 L480,145 L520,160 L530,200 L520,240 L500,270 L470,280 L450,260 L440,220 L435,180 Z" />
+              {/* Asia */}
+              <path d="M500,50 L580,45 L650,60 L720,70 L740,100 L730,140 L700,160 L660,180 L620,190 L570,180 L540,150 L520,120 L500,90 Z" />
+              {/* Australia */}
+              <path d="M680,260 L720,250 L750,260 L755,280 L740,300 L710,305 L685,290 Z" />
+            </g>
+
+            {/* Journey route path — upcoming (dimmed) */}
+            <path d={getJourneyPathD()} className="jm-route-upcoming" />
+
+            {/* Journey route path — completed (glowing) */}
+            <path d={getJourneyPathD()} className="jm-route-completed" style={{ strokeDasharray: '99999', strokeDashoffset: `${99999 - (totalMeters / 40075000) * 99999}` }} />
+
+            {/* Checkpoint dots */}
+            {journeyCheckpoints.map((cp, i) => {
+              const isCompleted = totalMeters >= cp.meters;
+              const isLast = i === journeyCheckpoints.length - 1;
+              if (isLast && !isCompleted) return null;
+              return (
+                <g key={cp.meters}>
+                  <circle cx={cp.x} cy={cp.y} r={isCompleted ? 4 : 3} className={`jm-checkpoint ${isCompleted ? 'completed' : 'upcoming'}`} />
+                  {isCompleted && i > 0 && (
+                    <text x={cp.x} y={cp.y - 8} className="jm-checkpoint-label">{cp.label}</text>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Current position — boat */}
+            <g className="jm-boat-marker" transform={`translate(${pos.x}, ${pos.y})`}>
+              <circle r="6" className="jm-boat-pulse" />
+              <circle r="4" className="jm-boat-dot" />
+              <text y="-10" className="jm-boat-label">YOU</text>
+            </g>
+          </svg>
+        </div>
+
+        {/* Location banner */}
         <div className="journey-location-banner">
           <span className="journey-location-pin"><Icon name="ui_pin" size={16} /></span>
           <div className="journey-location-info">
             {checkpoints.prev ? (
-              <span className="journey-location-text">
-                Passed {checkpoints.prev.checkpoint}
-              </span>
+              <span className="journey-location-text">Passed {checkpoints.prev.checkpoint}</span>
             ) : (
               <span className="journey-location-text">Just departed Seattle!</span>
             )}
             {checkpoints.next && (
-              <span className="journey-location-next">
-                {formatMeters(checkpoints.next.meters - totalMeters)} to {checkpoints.next.checkpoint}
-              </span>
+              <span className="journey-location-next">{formatMeters(checkpoints.next.meters - totalMeters)} to {checkpoints.next.checkpoint}</span>
             )}
           </div>
         </div>
 
+        {/* Milestone list */}
         <div className="journey-list">
-          {/* Start marker */}
           <div className="journey-item completed checkpoint">
             <div className="journey-indicator"><Icon name="ui_pin" size={16} /></div>
             <div className="journey-item-content">
@@ -126,9 +177,7 @@ export function JourneyModal() {
           })}
         </div>
 
-        <button className="journey-close-btn" onClick={() => setShowJourneyModal(false)}>
-          Close
-        </button>
+        <button className="journey-close-btn" onClick={() => setShowJourneyModal(false)}>Close</button>
       </div>
     </div>
   );

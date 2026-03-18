@@ -300,10 +300,96 @@ body {
 
 /* Journey Modal */
 .journey-modal {
-  max-width: 400px;
-  max-height: 85vh;
+  max-width: 440px;
+  max-height: 90vh;
   overflow-y: auto;
   padding-bottom: 1rem;
+}
+
+/* Journey Visual Map */
+.journey-map-container {
+  margin: 0 -1.5rem 1rem;
+  background: var(--bg-dark);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.journey-map-svg {
+  width: 100%;
+  display: block;
+}
+
+.jm-water {
+  fill: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-dark));
+}
+
+.jm-continents path {
+  fill: color-mix(in srgb, var(--accent-primary) 12%, var(--bg-card));
+  stroke: color-mix(in srgb, var(--accent-primary) 20%, var(--border-color));
+  stroke-width: 0.5;
+}
+
+.jm-route-upcoming {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  opacity: 0.4;
+}
+
+.jm-route-completed {
+  fill: none;
+  stroke: var(--accent-primary);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px var(--accent-primary));
+  transition: stroke-dashoffset 1s ease;
+}
+
+.jm-checkpoint {
+  stroke: var(--bg-dark);
+  stroke-width: 1;
+}
+
+.jm-checkpoint.completed {
+  fill: var(--accent-primary);
+}
+
+.jm-checkpoint.upcoming {
+  fill: var(--text-muted);
+  opacity: 0.4;
+}
+
+.jm-checkpoint-label {
+  font-size: 7px;
+  fill: var(--text-secondary);
+  text-anchor: middle;
+  font-weight: 500;
+}
+
+.jm-boat-dot {
+  fill: var(--accent-primary);
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.jm-boat-pulse {
+  fill: var(--accent-primary);
+  opacity: 0.3;
+  animation: jmPulse 2s ease-in-out infinite;
+}
+
+@keyframes jmPulse {
+  0%, 100% { r: 6; opacity: 0.3; }
+  50% { r: 10; opacity: 0; }
+}
+
+.jm-boat-label {
+  font-size: 7px;
+  fill: var(--accent-primary);
+  text-anchor: middle;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
 .journey-subtitle {

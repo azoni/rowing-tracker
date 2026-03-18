@@ -9554,6 +9554,193 @@ button:focus-visible {
 }
 
 /* ==========================================
+   CREW MAP
+   ========================================== */
+
+.crew-map-modal {
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.crew-map-subtitle {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.crew-map-container {
+  margin: 0 -1.5rem 1rem;
+  background: var(--bg-dark);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.crew-map-svg {
+  width: 100%;
+  display: block;
+}
+
+.cm-route {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  opacity: 0.3;
+}
+
+.cm-checkpoint-dot {
+  fill: var(--text-muted);
+  opacity: 0.3;
+}
+
+.cm-checkpoint-label {
+  font-size: 6px;
+  fill: var(--text-muted);
+  text-anchor: middle;
+  opacity: 0.5;
+}
+
+.cm-member-pulse {
+  opacity: 0.2;
+  animation: cmPulse 2s ease-in-out infinite;
+}
+
+@keyframes cmPulse {
+  0%, 100% { r: 8; opacity: 0.2; }
+  50% { r: 12; opacity: 0; }
+}
+
+.cm-member-dot {
+  stroke-width: 1.5;
+  transition: r 0.2s;
+}
+
+.cm-member.selected .cm-member-dot {
+  r: 7;
+}
+
+.cm-member-name {
+  font-size: 7px;
+  fill: var(--text-primary);
+  text-anchor: middle;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.cm-member.selected .cm-member-name {
+  opacity: 1;
+  font-size: 8px;
+}
+
+.cm-user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--bg-dark);
+  border-radius: 10px;
+  border-left: 3px solid;
+  margin-bottom: 0.75rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.cm-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cm-user-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.cm-user-rank {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cm-user-meters {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.cm-crew-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cm-crew-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.15s;
+}
+
+.cm-crew-row:hover,
+.cm-crew-row.active {
+  background: var(--bg-dark);
+}
+
+.cm-crew-rank {
+  width: 24px;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+.cm-crew-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.cm-crew-meters {
+  font-weight: 700;
+  font-family: 'DM Sans', monospace;
+}
+
+.leaderboard-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.leaderboard-header-row h2 {
+  margin-bottom: 0;
+}
+
+.crew-map-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.crew-map-btn:hover {
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+  border-color: var(--accent-primary);
+}
+
+/* ==========================================
    AVATAR BUILDER
    ========================================== */
 

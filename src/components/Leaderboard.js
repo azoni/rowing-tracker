@@ -10,14 +10,19 @@ function Leaderboard() {
     currentUser, selectedGroupId, getSelectedGroup,
     leaderboardTab, setLeaderboardTab,
     getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard, getAchievementsLeaderboard, getDistanceRecords,
-    setShowUserProfileModal,
+    setShowUserProfileModal, setShowCrewMap,
   } = useApp();
 
   const [selectedDistance, setSelectedDistance] = React.useState(2000);
 
   return (
     <section className="leaderboard-section">
-      <h2>{selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Leaderboard` : 'Leaderboard'}</h2>
+      <div className="leaderboard-header-row">
+        <h2>{selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Leaderboard` : 'Leaderboard'}</h2>
+        <button className="crew-map-btn" onClick={() => setShowCrewMap(true)}>
+          <Icon name="ui_globe" size={16} /> Map
+        </button>
+      </div>
 
       <div className="leaderboard-tabs">
         <button className={`lb-tab ${leaderboardTab === 'alltime' ? 'active' : ''}`} onClick={() => setLeaderboardTab('alltime')}><Icon name="ui_trophy" size={14} /> All</button>

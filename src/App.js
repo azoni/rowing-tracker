@@ -69,6 +69,7 @@ import ConfirmEntryModal from './components/ConfirmEntryModal';
 import ShareCardModal from './components/ShareCardModal';
 import RowCelebration from './components/RowCelebration';
 import AvatarBuilder from './components/AvatarBuilder';
+import CrewMap from './components/CrewMap';
 import SettingsModal from './components/SettingsModal';
 import AdminPanel from './components/AdminPanel';
 import UserProfileModal from './components/UserProfileModal';
@@ -122,6 +123,7 @@ function App() {
   const [testMode, setTestMode] = useState(false);
   const [showRowCelebration, setShowRowCelebration] = useState(false);
   const [showAvatarBuilder, setShowAvatarBuilder] = useState(false);
+  const [showCrewMap, setShowCrewMap] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -3683,6 +3685,7 @@ function App() {
     showJourneyModal, setShowJourneyModal,
     showSettingsModal, setShowSettingsModal,
     showAvatarBuilder, setShowAvatarBuilder, saveAvatar,
+    showCrewMap, setShowCrewMap,
     showInstallPrompt, setShowInstallPrompt,
     showPhotoModal, setShowPhotoModal,
     showAdminPanel, setShowAdminPanel,
@@ -3990,6 +3993,7 @@ function App() {
         />
       )}
       <AvatarBuilder />
+      <CrewMap />
       <ShareCardModal />
       <PRModal />
       <BustedModal />

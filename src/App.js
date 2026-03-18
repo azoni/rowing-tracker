@@ -2880,7 +2880,13 @@ function App() {
         rank: getUserRank(user.totalMeters),
         achievementCount: achievementCountCache[user.id] || 0,
       }))
-      .sort((a, b) => b.totalMeters - a.totalMeters);
+      .sort((a, b) => {
+        if (b.totalMeters !== a.totalMeters) return b.totalMeters - a.totalMeters;
+        // Tiebreaker: whoever reached this total first (earlier last entry date)
+        const aLatest = entries.filter(e => e.userId === a.id).reduce((max, e) => { const d = new Date(e.date); return d > max ? d : max; }, new Date(0));
+        const bLatest = entries.filter(e => e.userId === b.id).reduce((max, e) => { const d = new Date(e.date); return d > max ? d : max; }, new Date(0));
+        return aLatest - bLatest;
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredUsers, streakCache, achievementCountCache, entries]);
 
@@ -2904,7 +2910,12 @@ function App() {
         rank: getUserRank(user.totalMeters),
       }))
       .filter(u => u.weeklyMeters > 0)
-      .sort((a, b) => b.weeklyMeters - a.weeklyMeters);
+      .sort((a, b) => {
+        if (b.weeklyMeters !== a.weeklyMeters) return b.weeklyMeters - a.weeklyMeters;
+        const aLatest = filteredEntries.filter(e => e.userId === a.id).reduce((max, e) => { const d = new Date(e.date); return d > max ? d : max; }, new Date(0));
+        const bLatest = filteredEntries.filter(e => e.userId === b.id).reduce((max, e) => { const d = new Date(e.date); return d > max ? d : max; }, new Date(0));
+        return aLatest - bLatest;
+      });
   }, [filteredUsers, filteredEntries]);
 
 
@@ -2917,7 +2928,14 @@ function App() {
         rank: getUserRank(user.totalMeters),
       }))
       .filter(u => u.streak > 0 || u.longestStreak > 0)
-      .sort((a, b) => b.streak - a.streak || b.longestStreak - a.longestStreak);
+      .sort((a, b) => {
+        if (b.streak !== a.streak) return b.streak - a.streak;
+        if (b.longestStreak !== a.longestStreak) return b.longestStreak - a.longestStreak;
+        // Tiebreaker: earlier account
+        const aCreated = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const bCreated = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return aCreated - bCreated;
+      });
   }, [filteredUsers, streakCache, longestStreakCache]);
 
   const getAchievementsLeaderboard = useMemo(() => {

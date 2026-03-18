@@ -2980,7 +2980,7 @@ function App() {
       });
       records[dist] = Object.values(bestByUser)
         .filter(e => e.user)
-        .sort((a, b) => a.time - b.time);
+        .sort((a, b) => a.time - b.time || new Date(a.date) - new Date(b.date));
     });
 
     return records;

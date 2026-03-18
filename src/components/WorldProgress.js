@@ -5,12 +5,12 @@ import { formatMeters } from '../utils';
 import { MILESTONES, getMilestoneIndex } from '../constants';
 
 function WorldProgress() {
-  const { totalMeters, milestoneProgress, worldProgress, setShowJourneyModal } = useApp();
+  const { totalMeters, milestoneProgress, worldProgress, setShowJourneyModal, setShowCrewMap } = useApp();
 
   return (
-    <section className="world-progress clickable" onClick={() => setShowJourneyModal(true)}>
-      {/* Main stats row */}
-      <div className="world-stats">
+    <section className="world-progress">
+      {/* Main stats row — tap to open milestones */}
+      <div className="world-stats clickable" onClick={() => setShowJourneyModal(true)}>
         <div className="world-total">
           <span className="world-number">{formatMeters(totalMeters)}</span>
           <span className="world-label">meters rowed</span>
@@ -21,7 +21,8 @@ function WorldProgress() {
         </div>
       </div>
 
-      {/* Milestone progress */}
+      {/* Milestone progress — tap to open milestones */}
+      <div className="clickable" onClick={() => setShowJourneyModal(true)}>
       {milestoneProgress.next ? (() => {
         const prevMeters = milestoneProgress.current?.meters || 0;
         const segmentProgress = ((totalMeters - prevMeters) / (milestoneProgress.next.meters - prevMeters)) * 100;
@@ -46,8 +47,10 @@ function WorldProgress() {
         </div>
       )}
 
-      {/* Around the World */}
-      <div className="world-around">
+      </div>
+
+      {/* Around the World — tap to open map */}
+      <div className="world-around clickable" onClick={() => setShowCrewMap(true)}>
         <div className="world-around-header">
           <span className="world-around-title"><Icon name="ui_globe" size={16} /> Row Around The World</span>
           <span className="world-around-pct">{worldProgress.toFixed(1)}%</span>

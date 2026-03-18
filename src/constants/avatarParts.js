@@ -58,6 +58,25 @@ export const HAIR_STYLES = {
   headband: (color) => (
     <rect x="14" y="16" width="36" height="4" rx="2" fill={color} />
   ),
+  curly: (color) => (
+    <path d="M16,20 C14,10 22,4 32,4 C42,4 50,10 48,20 C48,16 44,8 32,8 C20,8 16,16 16,20 Z M16,20 C14,22 15,26 17,24 C19,22 18,18 16,20 Z M48,20 C50,22 49,26 47,24 C45,22 46,18 48,20 Z M20,8 C18,6 20,4 22,5 M42,8 C44,6 42,4 40,5 M26,6 C25,4 27,3 28,5 M36,6 C37,4 35,3 34,5" fill={color} />
+  ),
+  ponytail: (color) => (
+    <>
+      <path d="M16,22 C16,12 22,6 32,6 C42,6 48,12 48,22 C48,18 44,10 32,10 C20,10 16,18 16,22 Z" fill={color} />
+      <path d="M44,16 Q50,18 48,30 Q46,38 44,42" fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" />
+    </>
+  ),
+  spiky: (color) => (
+    <path d="M18,20 L22,4 L26,16 L30,2 L34,16 L38,4 L42,16 L46,6 L48,20 C48,14 44,8 32,8 C20,8 16,14 18,20 Z" fill={color} />
+  ),
+  beanie: (color) => (
+    <>
+      <path d="M14,24 C14,12 22,6 32,6 C42,6 50,12 50,24 Z" fill={color} />
+      <rect x="14" y="22" width="36" height="4" rx="2" fill={darken(color)} />
+      <circle cx="32" cy="4" r="3" fill={color} />
+    </>
+  ),
 };
 
 export const HAIR_COLORS = [
@@ -120,6 +139,38 @@ export const EYE_STYLES = {
       <path d="M35,27 Q38,24 41,27" stroke="#2c3e50" strokeWidth="1.5" fill="none" strokeLinecap="round" />
     </>
   ),
+  angry: () => (
+    <>
+      <circle cx="26" cy="27" r="2.5" fill="#fff" />
+      <circle cx="38" cy="27" r="2.5" fill="#fff" />
+      <circle cx="26.5" cy="27" r="1.5" fill="#c0392b" />
+      <circle cx="38.5" cy="27" r="1.5" fill="#c0392b" />
+      <line x1="23" y1="24" x2="29" y2="23" stroke="#2c3e50" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="41" y1="24" x2="35" y2="23" stroke="#2c3e50" strokeWidth="1.2" strokeLinecap="round" />
+    </>
+  ),
+  stars: () => (
+    <>
+      <text x="23" y="30" fontSize="8" fill="#ffd700">★</text>
+      <text x="35" y="30" fontSize="8" fill="#ffd700">★</text>
+    </>
+  ),
+  hearts: () => (
+    <>
+      <text x="22" y="30" fontSize="7" fill="#e63946">♥</text>
+      <text x="35" y="30" fontSize="7" fill="#e63946">♥</text>
+    </>
+  ),
+  monacle: () => (
+    <>
+      <circle cx="26" cy="27" r="2.5" fill="#fff" />
+      <circle cx="38" cy="27" r="2.5" fill="#fff" />
+      <circle cx="26.5" cy="27" r="1.5" fill="#2c3e50" />
+      <circle cx="38.5" cy="27" r="1.5" fill="#2c3e50" />
+      <circle cx="38" cy="27" r="5" fill="none" stroke="#ffd700" strokeWidth="0.8" />
+      <line x1="43" y1="27" x2="48" y2="35" stroke="#ffd700" strokeWidth="0.5" />
+    </>
+  ),
 };
 
 export const MOUTH_STYLES = {
@@ -137,6 +188,31 @@ export const MOUTH_STYLES = {
   ),
   open: () => (
     <ellipse cx="32" cy="35" rx="4" ry="3" fill="#2c3e50" />
+  ),
+  tongue: () => (
+    <>
+      <path d="M27,34 Q32,38 37,34" stroke="#2c3e50" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <ellipse cx="32" cy="36" rx="2" ry="2" fill="#e63946" />
+    </>
+  ),
+  teeth: () => (
+    <>
+      <path d="M26,33 Q32,39 38,33 Z" fill="#fff" stroke="#2c3e50" strokeWidth="0.8" />
+      <line x1="30" y1="33" x2="30" y2="36" stroke="#2c3e50" strokeWidth="0.5" />
+      <line x1="34" y1="33" x2="34" y2="36" stroke="#2c3e50" strokeWidth="0.5" />
+    </>
+  ),
+  mustache: () => (
+    <>
+      <line x1="28" y1="33" x2="36" y2="33" stroke="#2c3e50" strokeWidth="1" strokeLinecap="round" />
+      <path d="M25,33 Q28,30 32,33 Q36,30 39,33" fill="#5c3317" stroke="none" />
+    </>
+  ),
+  beard: () => (
+    <>
+      <line x1="28" y1="35" x2="36" y2="35" stroke="#2c3e50" strokeWidth="1" strokeLinecap="round" />
+      <path d="M23,34 Q24,42 32,44 Q40,42 41,34" fill="#5c3317" opacity="0.7" />
+    </>
   ),
 };
 
@@ -162,6 +238,49 @@ export const ACCESSORIES = {
   ),
   scar: () => (
     <line x1="40" y1="22" x2="44" y2="28" stroke="#b87d6b" strokeWidth="1" strokeLinecap="round" />
+  ),
+  crown: () => (
+    <path d="M22,12 L26,6 L29,10 L32,4 L35,10 L38,6 L42,12 Z" fill="#ffd700" stroke="#c9a227" strokeWidth="0.5" />
+  ),
+  halo: () => (
+    <ellipse cx="32" cy="8" rx="12" ry="3" fill="none" stroke="#ffd700" strokeWidth="1.5" opacity="0.7" />
+  ),
+  horns: () => (
+    <>
+      <path d="M18,18 L14,6 L22,14" fill="#c0392b" />
+      <path d="M46,18 L50,6 L42,14" fill="#c0392b" />
+    </>
+  ),
+  bandana: (color) => (
+    <>
+      <path d="M14,20 C14,14 22,10 32,10 C42,10 50,14 50,20 L50,22 L14,22 Z" fill={color || '#e63946'} />
+      <path d="M48,20 L54,26 L52,28 L48,22" fill={color || '#e63946'} />
+    </>
+  ),
+  glasses: () => (
+    <>
+      <circle cx="26" cy="27" r="5" fill="none" stroke="#2c3e50" strokeWidth="1" />
+      <circle cx="38" cy="27" r="5" fill="none" stroke="#2c3e50" strokeWidth="1" />
+      <line x1="31" y1="27" x2="33" y2="27" stroke="#2c3e50" strokeWidth="1" />
+      <line x1="21" y1="26" x2="16" y2="24" stroke="#2c3e50" strokeWidth="0.8" />
+      <line x1="43" y1="26" x2="48" y2="24" stroke="#2c3e50" strokeWidth="0.8" />
+    </>
+  ),
+  medal: () => (
+    <g transform="translate(32,48)">
+      <path d="M-2,-4 L-4,0 L4,0 L2,-4" fill="#4169e1" />
+      <circle r="4" fill="#ffd700" stroke="#c9a227" strokeWidth="0.5" />
+      <text y="1.5" textAnchor="middle" fontSize="4" fill="#c9a227" fontWeight="700">1</text>
+    </g>
+  ),
+  fire_aura: () => (
+    <>
+      <path d="M14,20 Q12,10 16,8 Q14,14 18,12 Q16,18 14,20" fill="#ff6b35" opacity="0.5" />
+      <path d="M50,20 Q52,10 48,8 Q50,14 46,12 Q48,18 50,20" fill="#ff6b35" opacity="0.5" />
+    </>
+  ),
+  tattoo: () => (
+    <path d="M16,32 Q14,30 16,28 Q18,30 16,32 M17,30 L20,30" fill="none" stroke="#2c3e50" strokeWidth="0.5" />
   ),
 };
 
@@ -204,7 +323,6 @@ export const RARITY_COLORS = {
 // If no entry here, the part is 'common' (free)
 // achievementId: the achievement id that unlocks this cosmetic
 export const COSMETIC_UNLOCKS = {
-  // Hair styles
   hair: {
     none: { rarity: 'common' },
     short: { rarity: 'common' },
@@ -215,8 +333,11 @@ export const COSMETIC_UNLOCKS = {
     bun: { rarity: 'uncommon', achievementId: 'first_5k', achievementName: '5K Club' },
     cap: { rarity: 'rare', achievementId: 'fifty_sessions', achievementName: 'Dedicated Rower' },
     headband: { rarity: 'rare', achievementId: 'week_streak', achievementName: 'Week Warrior' },
+    curly: { rarity: 'uncommon', achievementId: 'first_row', achievementName: 'First Strokes' },
+    ponytail: { rarity: 'uncommon', achievementId: 'first_10k', achievementName: '10K Crusher' },
+    spiky: { rarity: 'rare', achievementId: 'marathon', achievementName: 'Marathon Rower' },
+    beanie: { rarity: 'rare', achievementId: 'fortnight_streak', achievementName: 'Fortnight Streak' },
   },
-  // Eyes
   eyes: {
     normal: { rarity: 'common' },
     big: { rarity: 'common' },
@@ -224,30 +345,43 @@ export const COSMETIC_UNLOCKS = {
     determined: { rarity: 'uncommon', achievementId: 'first_10k', achievementName: '10K Crusher' },
     sunglasses: { rarity: 'rare', achievementId: 'hundred_k', achievementName: '100K Legend' },
     wink: { rarity: 'uncommon', achievementId: 'marathon', achievementName: 'Marathon Rower' },
+    angry: { rarity: 'rare', achievementId: 'huge_session', achievementName: 'Beast Mode' },
+    stars: { rarity: 'epic', achievementId: 'weekly_champion', achievementName: 'Weekly Champion' },
+    hearts: { rarity: 'rare', achievementId: 'consistent_rower', achievementName: 'Consistency King' },
+    monacle: { rarity: 'legendary', achievementId: 'hundred_sessions', achievementName: 'Centurion' },
   },
-  // Mouths
   mouth: {
     smile: { rarity: 'common' },
     grin: { rarity: 'common' },
     neutral: { rarity: 'common' },
     smirk: { rarity: 'uncommon', achievementId: 'big_session', achievementName: 'Power Hour' },
     open: { rarity: 'uncommon', achievementId: 'huge_session', achievementName: 'Beast Mode' },
+    tongue: { rarity: 'uncommon', achievementId: 'ten_sessions', achievementName: 'Getting Serious' },
+    teeth: { rarity: 'rare', achievementId: 'fifty_sessions', achievementName: 'Dedicated Rower' },
+    mustache: { rarity: 'rare', achievementId: 'hundred_k', achievementName: '100K Legend' },
+    beard: { rarity: 'epic', achievementId: 'monthly_master', achievementName: 'Monthly Master' },
   },
-  // Heads
   head: {
     round: { rarity: 'common' },
     oval: { rarity: 'common' },
     square: { rarity: 'uncommon', achievementId: 'first_row', achievementName: 'First Strokes' },
     wide: { rarity: 'uncommon', achievementId: 'ten_sessions', achievementName: 'Getting Serious' },
   },
-  // Accessories
   accessory: {
     none: { rarity: 'common' },
     sweatband: { rarity: 'uncommon', achievementId: 'first_5k', achievementName: '5K Club' },
     earring_left: { rarity: 'rare', achievementId: 'marathon', achievementName: 'Marathon Rower' },
     earring_both: { rarity: 'epic', achievementId: 'hundred_k', achievementName: '100K Legend' },
     blush: { rarity: 'uncommon', achievementId: 'first_row', achievementName: 'First Strokes' },
-    scar: { rarity: 'legendary', achievementId: 'hundred_sessions', achievementName: 'Centurion' },
+    scar: { rarity: 'epic', achievementId: 'hundred_sessions', achievementName: 'Centurion' },
+    crown: { rarity: 'legendary', achievementId: 'triple_crown', achievementName: 'Triple Crown' },
+    halo: { rarity: 'epic', achievementId: 'no_days_off', achievementName: 'No Days Off' },
+    horns: { rarity: 'rare', achievementId: 'night_owl', achievementName: 'Night Owl' },
+    bandana: { rarity: 'rare', achievementId: 'week_streak', achievementName: 'Week Warrior' },
+    glasses: { rarity: 'uncommon', achievementId: 'first_10k', achievementName: '10K Crusher' },
+    medal: { rarity: 'epic', achievementId: 'weekly_champion', achievementName: 'Weekly Champion' },
+    fire_aura: { rarity: 'legendary', achievementId: 'sixty_day_streak', achievementName: '60-Day Fire' },
+    tattoo: { rarity: 'rare', achievementId: 'big_session', achievementName: 'Power Hour' },
   },
 };
 

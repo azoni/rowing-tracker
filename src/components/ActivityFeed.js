@@ -273,7 +273,7 @@ function ActivityFeed() {
                     onClick={() => item.user && setShowUserProfileModal(item.user)}
                   >
                     <div className="feed-avatar">
-                      <AvatarOrPhoto user={item.user} size={40} />
+                      <AvatarOrPhoto user={item.user} size={40} showBody />
                     </div>
                     <div className="feed-content">
                       <div className="feed-header">

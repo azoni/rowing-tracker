@@ -132,24 +132,27 @@ function HomeTab() {
             const qualifying = userEntries.filter(e => Math.abs(e.meters - challenge.distance) <= tolerance);
             if (qualifying.length === 0) return null;
             const best = qualifying.reduce((best, e) => (!best || e.time < best.time) ? e : best, null);
-            return best ? { value: best.time, display: formatTimeDisplay(best.time), sort: best.time, attempts: qualifying.length } : null;
+            return best ? { value: best.time, display: formatTimeDisplay(best.time), sort: best.time, bestDate: new Date(best.date), attempts: qualifying.length } : null;
           } else if (challenge.type === 'longest_row') {
             const allUserEntries = allMonthEntries.filter(e => e.userId === userId);
             if (allUserEntries.length === 0) return null;
-            const best = Math.max(...allUserEntries.map(e => e.meters));
-            return { value: best, display: formatMeters(best), sort: -best, attempts: allUserEntries.length };
+            const bestEntry = allUserEntries.reduce((best, e) => (!best || e.meters > best.meters) ? e : best, null);
+            return { value: bestEntry.meters, display: formatMeters(bestEntry.meters), sort: -bestEntry.meters, bestDate: new Date(bestEntry.date), attempts: allUserEntries.length };
           } else if (challenge.type === 'most_meters') {
             const allUserEntries = allMonthEntries.filter(e => e.userId === userId);
             const total = allUserEntries.reduce((s, e) => s + e.meters, 0);
             if (total === 0) return null;
-            return { value: total, display: formatMeters(total), sort: -total, attempts: allUserEntries.length };
+            const lastEntry = allUserEntries.sort((a, b) => new Date(a.date) - new Date(b.date)).pop();
+            return { value: total, display: formatMeters(total), sort: -total, bestDate: new Date(lastEntry.date), attempts: allUserEntries.length };
           } else if (challenge.type === 'best_pace') {
             if (userEntries.length === 0) return null;
-            const paces = userEntries.map(e => (e.time / e.meters) * 500);
-            const bestPace = Math.min(...paces);
-            const mins = Math.floor(bestPace / 60);
-            const secs = (bestPace % 60).toFixed(1).padStart(4, '0');
-            return { value: bestPace, display: `${mins}:${secs}/500m`, sort: bestPace, attempts: userEntries.length };
+            const bestEntry = userEntries.reduce((best, e) => {
+              const pace = (e.time / e.meters) * 500;
+              return (!best || pace < best.pace) ? { ...e, pace } : best;
+            }, null);
+            const mins = Math.floor(bestEntry.pace / 60);
+            const secs = (bestEntry.pace % 60).toFixed(1).padStart(4, '0');
+            return { value: bestEntry.pace, display: `${mins}:${secs}/500m`, sort: bestEntry.pace, bestDate: new Date(bestEntry.date), attempts: userEntries.length };
           }
           return null;
         };
@@ -162,7 +165,7 @@ function HomeTab() {
             return { userId: uid, user: users[uid], ...score };
           })
           .filter(Boolean)
-          .sort((a, b) => a.sort - b.sort)
+          .sort((a, b) => a.sort - b.sort || a.bestDate - b.bestDate)
           .slice(0, 3);
 
         // Current user's score

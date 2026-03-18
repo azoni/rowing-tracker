@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import confetti from 'canvas-confetti';
 import exifr from 'exifr';
 import { db, auth, googleProvider, functions, storage } from './firebase';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   collection,
   doc,
@@ -2042,6 +2042,16 @@ function App() {
     }
   };
 
+  // Convert data URL to Blob for Storage upload
+  const dataUrlToBlob = (dataUrl) => {
+    const [header, base64] = dataUrl.split(',');
+    const mime = header.match(/:(.*?);/)[1];
+    const bytes = atob(base64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  };
+
   // Add entry to Firebase
   const addEntry = async (meters, imageData, timeSeconds = null, calories = null, machineInfo = null) => {
     if (!currentUser || !userProfile) return false;
@@ -2130,7 +2140,7 @@ function App() {
       if (imageData?.data) {
         try {
           const imageRef = ref(storage, `row-images/${currentUser.uid}/${entryId}.jpg`);
-          await uploadString(imageRef, imageData.data, 'data_url', { contentType: 'image/jpeg' });
+          await uploadBytes(imageRef, dataUrlToBlob(imageData.data), { contentType: 'image/jpeg' });
           imageUrl = await getDownloadURL(imageRef);
         } catch (uploadErr) {
           console.error('Image upload error:', uploadErr);
@@ -2440,7 +2450,7 @@ function App() {
         if (capturedImage?.data) {
           try {
             const imageRef = ref(storage, `row-images/${currentUser.uid}/${entryId}.jpg`);
-            await uploadString(imageRef, capturedImage.data, 'data_url', { contentType: 'image/jpeg' });
+            await uploadBytes(imageRef, dataUrlToBlob(capturedImage.data), { contentType: 'image/jpeg' });
             imageUrl = await getDownloadURL(imageRef);
           } catch (e) { console.error('Test upload error:', e); }
         }
@@ -2564,7 +2574,7 @@ function App() {
     if (capturedImage?.data) {
       try {
         const fbRef = ref(storage, `row-images/${currentUser.uid}/feedback_${feedbackId}.jpg`);
-        await uploadString(fbRef, capturedImage.data, 'data_url', { contentType: 'image/jpeg' });
+        await uploadBytes(fbRef, dataUrlToBlob(capturedImage.data), { contentType: 'image/jpeg' });
         feedbackImageUrl = await getDownloadURL(fbRef);
       } catch (e) {
         console.error('Feedback image upload error:', e);

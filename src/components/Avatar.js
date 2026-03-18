@@ -2,7 +2,7 @@ import React from 'react';
 import {
   HEAD_SHAPES, HAIR_STYLES, HAIR_COLORS, SKIN_COLORS,
   EYE_STYLES, MOUTH_STYLES, ACCESSORIES, OUTFIT_STYLES,
-  HELD_ITEMS, PET_STYLES, DEFAULT_AVATAR, ARMS,
+  PANTS_STYLES, HELD_ITEMS, PET_STYLES, DEFAULT_AVATAR, ARMS,
 } from '../constants/avatarParts';
 
 function Avatar({ config, size = 40, showBody = false, className = '' }) {
@@ -18,6 +18,7 @@ function Avatar({ config, size = 40, showBody = false, className = '' }) {
   const mouthFn = MOUTH_STYLES[c.mouth] || MOUTH_STYLES.smile;
   const accessoryFn = ACCESSORIES[c.accessory] || ACCESSORIES.none;
   const outfitFn = OUTFIT_STYLES[c.outfit] || OUTFIT_STYLES.basic;
+  const pantsFn = PANTS_STYLES[c.pants] || PANTS_STYLES.jeans;
   const heldItemFn = HELD_ITEMS[c.heldItem] || HELD_ITEMS.none;
   const petFn = PET_STYLES[c.pet] || PET_STYLES.none;
 
@@ -41,8 +42,9 @@ function Avatar({ config, size = 40, showBody = false, className = '' }) {
       {/* Pet behind body */}
       {showBody && petFn()}
 
-      {/* Cape/outfit + arms */}
+      {/* Outfit + pants + arms */}
       {showBody && outfitFn(outfitColor)}
+      {showBody && pantsFn(outfitColor)}
       {showBody && ARMS(skinHex)}
 
       {/* Head */}

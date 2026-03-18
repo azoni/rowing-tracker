@@ -3143,7 +3143,7 @@ function App() {
       type: 'row',
       user: filteredUsers[entry.userId],
       sortDate: new Date(entry.date),
-    })).filter(entry => entry.user);
+    })).filter(entry => entry.user && !entry.isTest);
 
     Object.values(filteredUsers).forEach(user => {
       if (user.unlockedAchievements) {

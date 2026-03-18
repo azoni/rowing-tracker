@@ -3,7 +3,7 @@ import { Avatar } from './Avatar';
 import {
   SKIN_COLORS, HAIR_COLORS, AVATAR_PARTS, DEFAULT_AVATAR,
   HEAD_SHAPES, HAIR_STYLES, EYE_STYLES, MOUTH_STYLES, ACCESSORIES,
-  OUTFIT_STYLES, HELD_ITEMS, PET_STYLES,
+  OUTFIT_STYLES, PANTS_STYLES, HELD_ITEMS, PET_STYLES,
   RARITY_COLORS, isCosmeticUnlocked, getCosmeticInfo,
 } from '../constants/avatarParts';
 import { useApp } from '../context/AppContext';
@@ -25,7 +25,8 @@ const PART_LABELS = {
   eyes: 'Eyes',
   mouth: 'Mouth',
   accessory: 'Head Accessory',
-  outfit: 'Outfit',
+  outfit: 'Top',
+  pants: 'Pants',
   heldItem: 'Held Item',
   pet: 'Pet',
 };
@@ -37,6 +38,7 @@ const PART_RENDERERS = {
   mouth: MOUTH_STYLES,
   accessory: ACCESSORIES,
   outfit: OUTFIT_STYLES,
+  pants: PANTS_STYLES,
   heldItem: HELD_ITEMS,
   pet: PET_STYLES,
 };
@@ -183,6 +185,8 @@ function AvatarBuilder() {
 
         {/* Locked item popup */}
         {lockedPopup && (
+          <>
+          <div className="ab-locked-popup-backdrop" onClick={() => setLockedPopup(null)} />
           <div className="ab-locked-popup">
             <button className="ab-locked-popup-close" onClick={() => setLockedPopup(null)}>✕</button>
             <div className="ab-locked-popup-rarity" style={{ color: RARITY_COLORS[lockedPopup.info.rarity] }}>
@@ -213,6 +217,7 @@ function AvatarBuilder() {
               </div>
             )}
           </div>
+          </>
         )}
 
         {/* Save */}

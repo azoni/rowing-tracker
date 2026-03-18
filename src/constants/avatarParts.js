@@ -77,6 +77,42 @@ export const HAIR_STYLES = {
       <circle cx="32" cy="4" r="3" fill={color} />
     </>
   ),
+  afro: (color) => (
+    <ellipse cx="32" cy="18" rx="20" ry="18" fill={color} />
+  ),
+  side_part: (color) => (
+    <>
+      <path d="M16,22 C16,12 22,6 32,6 C42,6 48,12 48,22 C48,18 44,10 32,10 C20,10 16,18 16,22 Z" fill={color} />
+      <path d="M16,18 L12,28 C12,28 14,22 16,20 Z" fill={color} />
+    </>
+  ),
+  pigtails: (color) => (
+    <>
+      <path d="M16,22 C16,12 22,6 32,6 C42,6 48,12 48,22 C48,18 44,10 32,10 C20,10 16,18 16,22 Z" fill={color} />
+      <circle cx="14" cy="28" r="5" fill={color} />
+      <circle cx="50" cy="28" r="5" fill={color} />
+    </>
+  ),
+  mullet: (color) => (
+    <>
+      <path d="M16,22 C16,12 22,6 32,6 C42,6 48,12 48,22 C48,18 44,10 32,10 C20,10 16,18 16,22 Z" fill={color} />
+      <path d="M16,22 L14,40 C14,40 20,36 24,34 L22,22 Z" fill={color} />
+      <path d="M48,22 L50,40 C50,40 44,36 40,34 L42,22 Z" fill={color} />
+    </>
+  ),
+  braids: (color) => (
+    <>
+      <path d="M16,22 C16,12 22,6 32,6 C42,6 48,12 48,22 C48,18 44,10 32,10 C20,10 16,18 16,22 Z" fill={color} />
+      <path d="M18,22 Q16,30 18,38 Q16,36 18,34 Q16,32 18,30" stroke={color} strokeWidth="3" fill="none" />
+      <path d="M46,22 Q48,30 46,38 Q48,36 46,34 Q48,32 46,30" stroke={color} strokeWidth="3" fill="none" />
+    </>
+  ),
+  topknot: (color) => (
+    <>
+      <path d="M22,22 C22,16 26,12 32,12 C38,12 42,16 42,22 C42,18 38,14 32,14 C26,14 22,18 22,22 Z" fill={color} />
+      <ellipse cx="32" cy="6" rx="4" ry="6" fill={color} />
+    </>
+  ),
 };
 
 export const HAIR_COLORS = [
@@ -294,29 +330,96 @@ export const ARMS = (skinColor) => (
   </>
 );
 
-// Legs helper — draws legs below the torso
-const LEGS = (pantColor) => (
+// Shoes helper
+const SHOES = (color) => (
   <>
-    <rect x="25" y="56" width="5" height="10" rx="2" fill={pantColor} stroke={darken(pantColor)} strokeWidth="0.3" />
-    <rect x="34" y="56" width="5" height="10" rx="2" fill={pantColor} stroke={darken(pantColor)} strokeWidth="0.3" />
-    <rect x="24" y="64" width="6" height="3" rx="1.5" fill="#333" />
-    <rect x="34" y="64" width="6" height="3" rx="1.5" fill="#333" />
+    <rect x="24" y="64" width="6" height="3" rx="1.5" fill={color} />
+    <rect x="34" y="64" width="6" height="3" rx="1.5" fill={color} />
   </>
 );
+
+// Pants styles
+export const PANTS_STYLES = {
+  jeans: (color) => (
+    <>
+      <rect x="25" y="56" width="5" height="10" rx="2" fill="#3d5a80" stroke="#2c4a6e" strokeWidth="0.3" />
+      <rect x="34" y="56" width="5" height="10" rx="2" fill="#3d5a80" stroke="#2c4a6e" strokeWidth="0.3" />
+      {SHOES('#333')}
+    </>
+  ),
+  shorts: (color) => (
+    <>
+      <rect x="25" y="56" width="5" height="5" rx="2" fill={color || '#3d5a80'} stroke={darken(color || '#3d5a80')} strokeWidth="0.3" />
+      <rect x="34" y="56" width="5" height="5" rx="2" fill={color || '#3d5a80'} stroke={darken(color || '#3d5a80')} strokeWidth="0.3" />
+      {SHOES('#333')}
+    </>
+  ),
+  sweats: (color) => (
+    <>
+      <rect x="24" y="56" width="6" height="10" rx="2.5" fill={color || '#555'} stroke={darken(color || '#555')} strokeWidth="0.3" />
+      <rect x="34" y="56" width="6" height="10" rx="2.5" fill={color || '#555'} stroke={darken(color || '#555')} strokeWidth="0.3" />
+      {SHOES('#444')}
+    </>
+  ),
+  khakis: (color) => (
+    <>
+      <rect x="25" y="56" width="5" height="10" rx="1.5" fill="#c2a878" stroke="#a89060" strokeWidth="0.3" />
+      <rect x="34" y="56" width="5" height="10" rx="1.5" fill="#c2a878" stroke="#a89060" strokeWidth="0.3" />
+      {SHOES('#5c3317')}
+    </>
+  ),
+  black_pants: (color) => (
+    <>
+      <rect x="25" y="56" width="5" height="10" rx="2" fill="#1a1a1a" stroke="#333" strokeWidth="0.3" />
+      <rect x="34" y="56" width="5" height="10" rx="2" fill="#1a1a1a" stroke="#333" strokeWidth="0.3" />
+      {SHOES('#1a1a1a')}
+    </>
+  ),
+  cargo: (color) => (
+    <>
+      <rect x="24" y="56" width="6" height="10" rx="2" fill="#5d6b3d" stroke="#4a5530" strokeWidth="0.3" />
+      <rect x="34" y="56" width="6" height="10" rx="2" fill="#5d6b3d" stroke="#4a5530" strokeWidth="0.3" />
+      <rect x="24" y="60" width="3" height="3" rx="0.5" fill="#4a5530" />
+      <rect x="37" y="60" width="3" height="3" rx="0.5" fill="#4a5530" />
+      {SHOES('#333')}
+    </>
+  ),
+  gold_pants: (color) => (
+    <>
+      <rect x="25" y="56" width="5" height="10" rx="2" fill="#ffd700" stroke="#c9a227" strokeWidth="0.3" />
+      <rect x="34" y="56" width="5" height="10" rx="2" fill="#ffd700" stroke="#c9a227" strokeWidth="0.3" />
+      {SHOES('#c9a227')}
+    </>
+  ),
+  rainbow: (color) => (
+    <>
+      <rect x="25" y="56" width="5" height="10" rx="2" fill="url(#rainbowGrad)" />
+      <rect x="34" y="56" width="5" height="10" rx="2" fill="url(#rainbowGrad)" />
+      <defs>
+        <linearGradient id="rainbowGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#e63946" />
+          <stop offset="25%" stopColor="#ffd700" />
+          <stop offset="50%" stopColor="#2ed573" />
+          <stop offset="75%" stopColor="#4169e1" />
+          <stop offset="100%" stopColor="#8b5cf6" />
+        </linearGradient>
+      </defs>
+      {SHOES('#fff')}
+    </>
+  ),
+};
 
 // Outfit styles (body area, y: 40-68)
 export const OUTFIT_STYLES = {
   basic: (color) => (
     <>
       <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
-      {LEGS('#3d4f6f')}
     </>
   ),
   singlet: (color) => (
     <>
       <path d="M24,46 C24,42 27,40 32,40 C37,40 40,42 40,46 L40,56 L24,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
       <line x1="32" y1="42" x2="32" y2="50" stroke={darken(color)} strokeWidth="0.5" />
-      {LEGS('#1a1a1a')}
     </>
   ),
   hoodie: (color) => (
@@ -324,20 +427,17 @@ export const OUTFIT_STYLES = {
       <path d="M20,46 C20,41 25,38 32,38 C39,38 44,41 44,46 L44,56 L20,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
       <path d="M28,38 Q32,42 36,38" fill="none" stroke={darken(color)} strokeWidth="0.5" />
       <ellipse cx="32" cy="40" rx="3" ry="1.5" fill={darken(color)} opacity="0.3" />
-      {LEGS('#3d4f6f')}
     </>
   ),
   tank_top: (color) => (
     <>
       <path d="M26,44 C26,42 28,40 32,40 C36,40 38,42 38,44 L38,56 L26,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
-      {LEGS('#3d4f6f')}
     </>
   ),
   wetsuit: (color) => (
     <>
       <path d="M20,46 C20,41 25,38 32,38 C39,38 44,41 44,46 L44,56 L20,56 Z" fill="#1a1a1a" stroke="#333" strokeWidth="0.5" />
       <line x1="32" y1="40" x2="32" y2="56" stroke={color} strokeWidth="1" />
-      {LEGS('#1a1a1a')}
     </>
   ),
   tuxedo: (color) => (
@@ -345,21 +445,18 @@ export const OUTFIT_STYLES = {
       <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill="#1a1a1a" stroke="#333" strokeWidth="0.5" />
       <path d="M30,40 L32,48 L34,40" fill="#fff" />
       <circle cx="32" cy="46" r="1" fill="#e63946" />
-      {LEGS('#1a1a1a')}
     </>
   ),
   cape: (color) => (
     <>
       <path d="M20,42 L14,68 Q32,64 50,68 L44,42" fill={darken(color)} opacity="0.7" />
       <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
-      {LEGS('#1a1a1a')}
     </>
   ),
   jersey: (color) => (
     <>
       <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
       <text x="32" y="52" textAnchor="middle" fontSize="7" fill="#fff" fontWeight="700">1</text>
-      {LEGS('#1a1a1a')}
     </>
   ),
 };
@@ -497,6 +594,7 @@ export const DEFAULT_AVATAR = {
   skinColor: 'medium',
   accessory: 'none',
   outfit: 'basic',
+  pants: 'jeans',
   heldItem: 'none',
   pet: 'none',
   outfitColor: '#00d4aa',
@@ -529,6 +627,12 @@ export const COSMETIC_UNLOCKS = {
     ponytail: { rarity: 'uncommon', achievementId: 'first_10k', achievementName: '10K Crusher' },
     spiky: { rarity: 'rare', achievementId: 'marathon', achievementName: 'Marathon Rower' },
     beanie: { rarity: 'rare', achievementId: 'fortnight_streak', achievementName: 'Fortnight Streak' },
+    afro: { rarity: 'uncommon', achievementId: 'marathon', achievementName: 'Marathon Rower' },
+    side_part: { rarity: 'common' },
+    pigtails: { rarity: 'uncommon', achievementId: 'first_5k', achievementName: '5K Club' },
+    mullet: { rarity: 'rare', achievementId: 'hundred_k', achievementName: '100K Legend' },
+    braids: { rarity: 'rare', achievementId: 'fifty_sessions', achievementName: 'Dedicated Rower' },
+    topknot: { rarity: 'epic', achievementId: 'monthly_master', achievementName: 'Monthly Master' },
   },
   eyes: {
     normal: { rarity: 'common' },
@@ -585,6 +689,16 @@ export const COSMETIC_UNLOCKS = {
     tuxedo: { rarity: 'epic', achievementId: 'hundred_sessions', achievementName: 'Centurion' },
     cape: { rarity: 'legendary', achievementId: 'hundred_k', achievementName: '100K Legend' },
   },
+  pants: {
+    jeans: { rarity: 'common' },
+    shorts: { rarity: 'common' },
+    sweats: { rarity: 'common' },
+    khakis: { rarity: 'uncommon', achievementId: 'first_row', achievementName: 'First Strokes' },
+    black_pants: { rarity: 'uncommon', achievementId: 'ten_sessions', achievementName: 'Getting Serious' },
+    cargo: { rarity: 'rare', achievementId: 'first_10k', achievementName: '10K Crusher' },
+    gold_pants: { rarity: 'legendary', achievementId: 'triple_crown', achievementName: 'Triple Crown' },
+    rainbow: { rarity: 'epic', achievementId: 'hundred_sessions', achievementName: 'Centurion' },
+  },
   heldItem: {
     none: { rarity: 'common' },
     oar: { rarity: 'uncommon', achievementId: 'first_row', achievementName: 'First Strokes' },
@@ -626,6 +740,7 @@ export const AVATAR_PARTS = {
   mouth: Object.keys(MOUTH_STYLES),
   accessory: Object.keys(ACCESSORIES),
   outfit: Object.keys(OUTFIT_STYLES),
+  pants: Object.keys(PANTS_STYLES),
   heldItem: Object.keys(HELD_ITEMS),
   pet: Object.keys(PET_STYLES),
 };

@@ -27,8 +27,8 @@ function Avatar({ config, size = 40, showBody = false, className = '' }) {
   // Extend viewBox based on what's shown
   let vbHeight = 48; // face only
   if (showBody) {
-    vbHeight = 58; // body
-    if (hasPet || hasHeldItem) vbHeight = 72; // room for pets/items
+    vbHeight = 70; // body with legs
+    if (hasPet || hasHeldItem) vbHeight = 78; // extra room for pets/items
   }
 
   return (

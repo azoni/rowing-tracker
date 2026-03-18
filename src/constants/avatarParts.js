@@ -284,15 +284,29 @@ export const ACCESSORIES = {
   ),
 };
 
-// Outfit styles (body area, y: 40-56)
+// Legs helper — draws legs below the torso
+const LEGS = (pantColor) => (
+  <>
+    <rect x="25" y="56" width="5" height="10" rx="2" fill={pantColor} stroke={darken(pantColor)} strokeWidth="0.3" />
+    <rect x="34" y="56" width="5" height="10" rx="2" fill={pantColor} stroke={darken(pantColor)} strokeWidth="0.3" />
+    <rect x="24" y="64" width="6" height="3" rx="1.5" fill="#333" />
+    <rect x="34" y="64" width="6" height="3" rx="1.5" fill="#333" />
+  </>
+);
+
+// Outfit styles (body area, y: 40-68)
 export const OUTFIT_STYLES = {
   basic: (color) => (
-    <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
+    <>
+      <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
+      {LEGS('#3d4f6f')}
+    </>
   ),
   singlet: (color) => (
     <>
       <path d="M24,46 C24,42 27,40 32,40 C37,40 40,42 40,46 L40,56 L24,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
       <line x1="32" y1="42" x2="32" y2="50" stroke={darken(color)} strokeWidth="0.5" />
+      {LEGS('#1a1a1a')}
     </>
   ),
   hoodie: (color) => (
@@ -300,17 +314,20 @@ export const OUTFIT_STYLES = {
       <path d="M20,46 C20,41 25,38 32,38 C39,38 44,41 44,46 L44,56 L20,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
       <path d="M28,38 Q32,42 36,38" fill="none" stroke={darken(color)} strokeWidth="0.5" />
       <ellipse cx="32" cy="40" rx="3" ry="1.5" fill={darken(color)} opacity="0.3" />
+      {LEGS('#3d4f6f')}
     </>
   ),
   tank_top: (color) => (
     <>
       <path d="M26,44 C26,42 28,40 32,40 C36,40 38,42 38,44 L38,56 L26,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
+      {LEGS('#3d4f6f')}
     </>
   ),
   wetsuit: (color) => (
     <>
       <path d="M20,46 C20,41 25,38 32,38 C39,38 44,41 44,46 L44,56 L20,56 Z" fill="#1a1a1a" stroke="#333" strokeWidth="0.5" />
       <line x1="32" y1="40" x2="32" y2="56" stroke={color} strokeWidth="1" />
+      {LEGS('#1a1a1a')}
     </>
   ),
   tuxedo: (color) => (
@@ -318,18 +335,21 @@ export const OUTFIT_STYLES = {
       <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill="#1a1a1a" stroke="#333" strokeWidth="0.5" />
       <path d="M30,40 L32,48 L34,40" fill="#fff" />
       <circle cx="32" cy="46" r="1" fill="#e63946" />
+      {LEGS('#1a1a1a')}
     </>
   ),
   cape: (color) => (
     <>
+      <path d="M20,42 L14,68 Q32,64 50,68 L44,42" fill={darken(color)} opacity="0.7" />
       <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
-      <path d="M20,42 L16,60 Q32,56 48,60 L44,42" fill={darken(color)} opacity="0.7" />
+      {LEGS('#1a1a1a')}
     </>
   ),
   jersey: (color) => (
     <>
       <path d="M22,46 C22,42 26,40 32,40 C38,40 42,42 42,46 L42,56 L22,56 Z" fill={color} stroke={darken(color)} strokeWidth="0.5" />
       <text x="32" y="52" textAnchor="middle" fontSize="7" fill="#fff" fontWeight="700">1</text>
+      {LEGS('#1a1a1a')}
     </>
   ),
 };

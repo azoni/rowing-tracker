@@ -191,6 +191,79 @@ export const DEFAULT_AVATAR = {
   outfitColor: '#00d4aa',
 };
 
+// Rarity tiers: common (free), uncommon (easy achievement), rare, epic, legendary
+export const RARITY_COLORS = {
+  common: '#a8b5c9',
+  uncommon: '#2ed573',
+  rare: '#4169e1',
+  epic: '#8b5cf6',
+  legendary: '#ffd700',
+};
+
+// Cosmetic metadata — maps part type + id to rarity and unlock requirement
+// If no entry here, the part is 'common' (free)
+// achievementId: the achievement id that unlocks this cosmetic
+export const COSMETIC_UNLOCKS = {
+  // Hair styles
+  hair: {
+    none: { rarity: 'common' },
+    short: { rarity: 'common' },
+    medium: { rarity: 'common' },
+    long: { rarity: 'common' },
+    buzz: { rarity: 'common' },
+    mohawk: { rarity: 'uncommon', achievementId: 'ten_sessions', achievementName: 'Getting Serious' },
+    bun: { rarity: 'uncommon', achievementId: 'first_5k', achievementName: '5K Club' },
+    cap: { rarity: 'rare', achievementId: 'fifty_sessions', achievementName: 'Dedicated Rower' },
+    headband: { rarity: 'rare', achievementId: 'week_streak', achievementName: 'Week Warrior' },
+  },
+  // Eyes
+  eyes: {
+    normal: { rarity: 'common' },
+    big: { rarity: 'common' },
+    sleepy: { rarity: 'common' },
+    determined: { rarity: 'uncommon', achievementId: 'first_10k', achievementName: '10K Crusher' },
+    sunglasses: { rarity: 'rare', achievementId: 'hundred_k', achievementName: '100K Legend' },
+    wink: { rarity: 'uncommon', achievementId: 'marathon', achievementName: 'Marathon Rower' },
+  },
+  // Mouths
+  mouth: {
+    smile: { rarity: 'common' },
+    grin: { rarity: 'common' },
+    neutral: { rarity: 'common' },
+    smirk: { rarity: 'uncommon', achievementId: 'big_session', achievementName: 'Power Hour' },
+    open: { rarity: 'uncommon', achievementId: 'huge_session', achievementName: 'Beast Mode' },
+  },
+  // Heads
+  head: {
+    round: { rarity: 'common' },
+    oval: { rarity: 'common' },
+    square: { rarity: 'uncommon', achievementId: 'first_row', achievementName: 'First Strokes' },
+    wide: { rarity: 'uncommon', achievementId: 'ten_sessions', achievementName: 'Getting Serious' },
+  },
+  // Accessories
+  accessory: {
+    none: { rarity: 'common' },
+    sweatband: { rarity: 'uncommon', achievementId: 'first_5k', achievementName: '5K Club' },
+    earring_left: { rarity: 'rare', achievementId: 'marathon', achievementName: 'Marathon Rower' },
+    earring_both: { rarity: 'epic', achievementId: 'hundred_k', achievementName: '100K Legend' },
+    blush: { rarity: 'uncommon', achievementId: 'first_row', achievementName: 'First Strokes' },
+    scar: { rarity: 'legendary', achievementId: 'hundred_sessions', achievementName: 'Centurion' },
+  },
+};
+
+// Check if a cosmetic is unlocked for a user
+export function isCosmeticUnlocked(partType, partId, userAchievements) {
+  const unlock = COSMETIC_UNLOCKS[partType]?.[partId];
+  if (!unlock || unlock.rarity === 'common') return true;
+  if (!unlock.achievementId) return true;
+  return !!(userAchievements && userAchievements[unlock.achievementId]);
+}
+
+// Get cosmetic info
+export function getCosmeticInfo(partType, partId) {
+  return COSMETIC_UNLOCKS[partType]?.[partId] || { rarity: 'common' };
+}
+
 // All part options for the builder
 export const AVATAR_PARTS = {
   head: Object.keys(HEAD_SHAPES),

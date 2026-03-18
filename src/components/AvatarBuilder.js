@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Avatar } from './Avatar';
 import {
   SKIN_COLORS, HAIR_COLORS, AVATAR_PARTS, DEFAULT_AVATAR,
+  HEAD_SHAPES, HAIR_STYLES, EYE_STYLES, MOUTH_STYLES, ACCESSORIES,
+  RARITY_COLORS, isCosmeticUnlocked, getCosmeticInfo,
 } from '../constants/avatarParts';
 import { useApp } from '../context/AppContext';
 import Icon from './Icon';
@@ -15,13 +17,21 @@ const OUTFIT_COLORS = [
   { id: 'green', color: '#22c55e', label: 'Green' },
 ];
 
-// Labels for each part category
 const PART_LABELS = {
-  head: 'Head',
-  hair: 'Hair',
+  head: 'Head Shape',
+  hair: 'Hair Style',
   eyes: 'Eyes',
   mouth: 'Mouth',
   accessory: 'Accessory',
+};
+
+// Render functions for each part type (for thumbnails)
+const PART_RENDERERS = {
+  head: HEAD_SHAPES,
+  hair: HAIR_STYLES,
+  eyes: EYE_STYLES,
+  mouth: MOUTH_STYLES,
+  accessory: ACCESSORIES,
 };
 
 function AvatarBuilder() {
@@ -37,6 +47,7 @@ function AvatarBuilder() {
 
   if (!showAvatarBuilder) return null;
 
+  const userAchievements = userProfile?.unlockedAchievements || {};
   const update = (key, value) => setConfig(prev => ({ ...prev, [key]: value }));
 
   return (
@@ -83,27 +94,59 @@ function AvatarBuilder() {
           </div>
         </div>
 
-        {/* Part selectors */}
+        {/* Part selectors with visual tiles */}
         {Object.entries(AVATAR_PARTS).map(([partKey, options]) => (
           <div key={partKey} className="ab-section">
             <label className="ab-label">{PART_LABELS[partKey]}</label>
-            <div className="ab-options-row">
-              {options.map(opt => (
-                <button
-                  key={opt}
-                  className={`ab-option ${config[partKey] === opt ? 'active' : ''}`}
-                  onClick={() => update(partKey, opt)}
-                >
-                  {opt.replace('_', ' ')}
-                </button>
-              ))}
+            <div className="ab-tile-row">
+              {options.map(opt => {
+                const info = getCosmeticInfo(partKey, opt);
+                const unlocked = isCosmeticUnlocked(partKey, opt, userAchievements);
+                const isSelected = config[partKey] === opt;
+                const rarityColor = RARITY_COLORS[info.rarity] || RARITY_COLORS.common;
+
+                return (
+                  <button
+                    key={opt}
+                    className={`ab-tile ${isSelected ? 'active' : ''} ${!unlocked ? 'locked' : ''}`}
+                    style={{ borderColor: isSelected ? rarityColor : undefined }}
+                    onClick={() => unlocked && update(partKey, opt)}
+                    title={unlocked ? opt.replace(/_/g, ' ') : `Unlock: ${info.achievementName || 'Achievement'}`}
+                  >
+                    {/* Mini SVG preview */}
+                    <svg viewBox="0 0 64 48" className="ab-tile-preview">
+                      {PART_RENDERERS[partKey]?.[opt]?.(
+                        partKey === 'head' ? (SKIN_COLORS.find(s => s.id === config.skinColor)?.color || '#c68642') :
+                        partKey === 'hair' ? (HAIR_COLORS.find(h => h.id === config.hairColor)?.color || '#5c3317') :
+                        config.outfitColor || '#00d4aa'
+                      )}
+                    </svg>
+
+                    {/* Rarity dot */}
+                    {info.rarity !== 'common' && (
+                      <span className="ab-tile-rarity" style={{ background: rarityColor }} />
+                    )}
+
+                    {/* Lock overlay */}
+                    {!unlocked && (
+                      <div className="ab-tile-lock">
+                        <Icon name="ui_lock" size={14} />
+                        <span className="ab-tile-lock-text">{info.achievementName}</span>
+                      </div>
+                    )}
+
+                    {/* Label */}
+                    <span className="ab-tile-label">{opt.replace(/_/g, ' ')}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
 
         {/* Outfit Color */}
         <div className="ab-section">
-          <label className="ab-label">Outfit</label>
+          <label className="ab-label">Outfit Color</label>
           <div className="ab-color-row">
             {OUTFIT_COLORS.map(o => (
               <button

@@ -9841,7 +9841,7 @@ button:focus-visible {
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
-.ab-options-row {
+.ab-tile-row {
   display: flex;
   gap: 6px;
   overflow-x: auto;
@@ -9849,25 +9849,70 @@ button:focus-visible {
   -webkit-overflow-scrolling: touch;
 }
 
-.ab-option {
-  padding: 6px 12px;
+.ab-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
   border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-  font-weight: 500;
+  border: 2px solid var(--border-color);
+  background: var(--bg-dark);
   cursor: pointer;
-  white-space: nowrap;
+  min-width: 56px;
   transition: all 0.15s;
-  text-transform: capitalize;
 }
 
-.ab-option.active {
-  background: var(--accent-primary);
-  color: var(--bg-dark);
-  border-color: var(--accent-primary);
-  font-weight: 700;
+.ab-tile.active {
+  background: rgba(255, 255, 255, 0.05);
+  border-width: 2px;
+}
+
+.ab-tile.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ab-tile-preview {
+  width: 40px;
+  height: 30px;
+}
+
+.ab-tile-rarity {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.ab-tile-lock {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.ab-tile-lock-text {
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.1;
+  padding: 0 2px;
+}
+
+.ab-tile-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .ab-save-btn {

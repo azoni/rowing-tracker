@@ -4,6 +4,7 @@ import { MILESTONES, getMilestoneIndex, getNearestCheckpoints, APP_VERSION, CHAN
 import { JOURNEY_CHECKPOINTS, getJourneyPathD, getJourneyPosition } from '../constants/journeyPath';
 import { formatMeters } from '../utils';
 import Icon from './Icon';
+import { Avatar } from './Avatar';
 
 export function PRModal() {
   const { showPRModal, setShowPRModal } = useApp();
@@ -119,11 +120,19 @@ export function JourneyModal() {
               <circle r="8" className="jm-boat-pulse" />
               {/* Boat hull */}
               <path d="M-16,2 L16,2 L12,8 L-12,8 Z" className="jm-boat-hull" />
-              {/* Crew dots */}
+              {/* Crew avatars */}
               {(() => {
-                const activeRowers = Object.values(users).filter(u => u.totalMeters > 0).slice(0, 6);
+                const activeRowers = Object.values(users).filter(u => u.totalMeters > 0).sort((a, b) => b.totalMeters - a.totalMeters).slice(0, 5);
+                const spacing = Math.min(8, 32 / Math.max(activeRowers.length, 1));
+                const startX = -(activeRowers.length - 1) * spacing / 2;
                 return activeRowers.map((u, i) => (
-                  <circle key={u.id} cx={-8 + i * 4} cy={-2} r="2.5" fill={u.avatar ? '#00d4aa' : '#a8b5c9'} stroke="#fff" strokeWidth="0.5" />
+                  <foreignObject key={u.id} x={startX + i * spacing - 4} y={-10} width="8" height="8" style={{ overflow: 'visible' }}>
+                    {u.avatar?.head ? (
+                      <Avatar config={u.avatar} size={8} />
+                    ) : (
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#a8b5c9', border: '0.5px solid #fff' }} />
+                    )}
+                  </foreignObject>
                 ));
               })()}
               <text y="-12" className="jm-boat-label">CREW</text>

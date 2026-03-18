@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { getUserRank, TIER_COLORS } from '../constants';
 import { JOURNEY_CHECKPOINTS, getJourneyPathD, getJourneyPosition } from '../constants/journeyPath';
 import { formatMeters } from '../utils';
-import AvatarOrPhoto from './Avatar';
+import AvatarOrPhoto, { Avatar } from './Avatar';
 import Icon from './Icon';
 
 function CrewMap() {
@@ -63,20 +63,35 @@ function CrewMap() {
             <g className="jm-boat-marker" transform={`translate(${pos.x}, ${pos.y})`}>
               <circle r="10" className="jm-boat-pulse" />
               <path d="M-20,2 L20,2 L15,10 L-15,10 Z" className="jm-boat-hull" />
-              {crewMembers.slice(0, 8).map((u, i) => (
-                <circle
-                  key={u.id}
-                  cx={-14 + i * 4.5}
-                  cy={-3}
-                  r="3"
-                  fill={u.tierColor}
-                  stroke="#fff"
-                  strokeWidth="0.5"
-                  className={selectedUser?.id === u.id ? 'cm-member-selected' : ''}
-                  style={{ cursor: 'pointer' }}
-                  onClick={(e) => { e.stopPropagation(); setSelectedUser(selectedUser?.id === u.id ? null : u); }}
-                />
-              ))}
+              {(() => {
+                const shown = crewMembers.slice(0, 6);
+                const spacing = Math.min(9, 40 / Math.max(shown.length, 1));
+                const startX = -(shown.length - 1) * spacing / 2;
+                return shown.map((u, i) => (
+                  <foreignObject
+                    key={u.id}
+                    x={startX + i * spacing - 5}
+                    y={-14}
+                    width="10"
+                    height="10"
+                    style={{ overflow: 'visible', cursor: 'pointer' }}
+                    onClick={(e) => { e.stopPropagation(); setSelectedUser(selectedUser?.id === u.id ? null : u); }}
+                  >
+                    {u.avatar?.head ? (
+                      <Avatar config={u.avatar} size={10} />
+                    ) : (
+                      <div style={{
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: u.tierColor, border: '1px solid #fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 5, fontWeight: 700, color: '#fff',
+                      }}>
+                        {u.name?.charAt(0) || '?'}
+                      </div>
+                    )}
+                  </foreignObject>
+                ));
+              })()}
               <text y="-16" className="jm-boat-label">ROW CREW</text>
             </g>
           </svg>

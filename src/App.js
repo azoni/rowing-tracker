@@ -2349,8 +2349,9 @@ function App() {
 
   // Confirm entry
   const handleConfirmEntry = async () => {
+    if (isProcessing) return; // Prevent double submit
     const meters = parseInt(editableMeters, 10);
-    
+
     if (!meters || isNaN(meters)) {
       setValidationError('Please enter a valid number');
       return;

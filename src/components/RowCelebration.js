@@ -27,7 +27,7 @@ function RowCelebration({ meters, onComplete }) {
   }, [meters, onComplete]);
 
   return (
-    <div className={`row-celebration ${phase}`} onClick={() => phase === 'complete' && onComplete?.()}>
+    <div className={`row-celebration ${phase}`} onClick={() => onComplete?.()}>
       {/* Sky gradient */}
       <div className="rc-sky" />
 
@@ -82,9 +82,7 @@ function RowCelebration({ meters, onComplete }) {
             <Icon name="ui_check" size={18} /> Row Logged!
           </div>
         )}
-        {phase === 'complete' && (
-          <div className="rc-tap-hint">Tap to continue</div>
-        )}
+        <div className="rc-tap-hint">Tap to continue</div>
       </div>
     </div>
   );

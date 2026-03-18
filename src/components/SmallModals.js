@@ -56,7 +56,7 @@ export function BustedModal() {
 }
 
 export function JourneyModal() {
-  const { showJourneyModal, setShowJourneyModal, totalMeters } = useApp();
+  const { showJourneyModal, setShowJourneyModal, totalMeters, users } = useApp();
 
   if (!showJourneyModal) return null;
 
@@ -114,11 +114,20 @@ export function JourneyModal() {
               );
             })}
 
-            {/* Current position — boat */}
+            {/* Current position — crew boat */}
             <g className="jm-boat-marker" transform={`translate(${pos.x}, ${pos.y})`}>
-              <circle r="6" className="jm-boat-pulse" />
-              <circle r="4" className="jm-boat-dot" />
-              <text y="-10" className="jm-boat-label">YOU</text>
+              <circle r="8" className="jm-boat-pulse" />
+              {/* Boat hull */}
+              <path d="M-16,2 L16,2 L12,8 L-12,8 Z" className="jm-boat-hull" />
+              {/* Crew dots */}
+              {(() => {
+                const activeRowers = Object.values(users).filter(u => u.totalMeters > 0).slice(0, 6);
+                return activeRowers.map((u, i) => (
+                  <circle key={u.id} cx={-8 + i * 4} cy={-2} r="2.5" fill={u.avatar ? '#00d4aa' : '#a8b5c9'} stroke="#fff" strokeWidth="0.5" />
+                ));
+              })()}
+              <text y="-12" className="jm-boat-label">CREW</text>
+              <text y="18" className="jm-boat-meters">{formatMeters(totalMeters)}</text>
             </g>
           </svg>
         </div>

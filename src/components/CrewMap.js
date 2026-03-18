@@ -7,7 +7,7 @@ import AvatarOrPhoto from './Avatar';
 import Icon from './Icon';
 
 function CrewMap() {
-  const { showCrewMap, setShowCrewMap, users } = useApp();
+  const { showCrewMap, setShowCrewMap, users, totalMeters } = useApp();
   const [selectedUser, setSelectedUser] = useState(null);
 
   if (!showCrewMap) return null;
@@ -15,18 +15,20 @@ function CrewMap() {
   const crewMembers = Object.values(users)
     .filter(u => u.totalMeters > 0)
     .map(u => {
-      const pos = getJourneyPosition(u.totalMeters);
       const rank = getUserRank(u.totalMeters);
-      return { ...u, pos, rank, tierColor: TIER_COLORS[rank?.tier] || '#00d4aa' };
+      const pct = totalMeters > 0 ? ((u.totalMeters / totalMeters) * 100).toFixed(1) : 0;
+      return { ...u, rank, tierColor: TIER_COLORS[rank?.tier] || '#00d4aa', pct };
     })
     .sort((a, b) => b.totalMeters - a.totalMeters);
+
+  const pos = getJourneyPosition(totalMeters);
 
   return (
     <div className="modal-overlay" onClick={() => { setShowCrewMap(false); setSelectedUser(null); }}>
       <div className="modal crew-map-modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={() => { setShowCrewMap(false); setSelectedUser(null); }}>✕</button>
         <h2><Icon name="ui_globe" size={20} /> Crew Map</h2>
-        <p className="crew-map-subtitle">{crewMembers.length} rowers around the world</p>
+        <p className="crew-map-subtitle">{crewMembers.length} rowers — {formatMeters(totalMeters)} together</p>
 
         <div className="crew-map-container">
           <svg className="crew-map-svg" viewBox="0 0 800 360" preserveAspectRatio="xMidYMid meet">
@@ -43,36 +45,44 @@ function CrewMap() {
               <path d="M680,260 L720,250 L750,260 L755,280 L740,300 L710,305 L685,290 Z" />
             </g>
 
-            {/* Route path */}
+            {/* Route */}
             <path d={getJourneyPathD()} className="cm-route" />
 
-            {/* Checkpoint labels */}
+            {/* Completed route - glowing */}
+            <path d={getJourneyPathD()} className="jm-route-completed" style={{ strokeDasharray: '99999', strokeDashoffset: `${99999 - (totalMeters / 40075000) * 99999}` }} />
+
+            {/* Checkpoints */}
             {JOURNEY_CHECKPOINTS.filter((_, i) => i > 0 && i < JOURNEY_CHECKPOINTS.length - 1).map(cp => (
               <g key={cp.meters}>
-                <circle cx={cp.x} cy={cp.y} r="2" className="cm-checkpoint-dot" />
+                <circle cx={cp.x} cy={cp.y} r={totalMeters >= cp.meters ? 3 : 2} className={`jm-checkpoint ${totalMeters >= cp.meters ? 'completed' : 'upcoming'}`} />
                 <text x={cp.x} y={cp.y - 6} className="cm-checkpoint-label">{cp.label}</text>
               </g>
             ))}
 
-            {/* Crew member dots */}
-            {crewMembers.map((member, i) => (
-              <g
-                key={member.id}
-                className={`cm-member ${selectedUser?.id === member.id ? 'selected' : ''}`}
-                onClick={(e) => { e.stopPropagation(); setSelectedUser(selectedUser?.id === member.id ? null : member); }}
-                style={{ cursor: 'pointer' }}
-              >
-                <circle cx={member.pos.x} cy={member.pos.y} r="8" className="cm-member-pulse" style={{ fill: member.tierColor }} />
-                <circle cx={member.pos.x} cy={member.pos.y} r="5" className="cm-member-dot" style={{ fill: member.tierColor, stroke: '#fff' }} />
-                <text x={member.pos.x} y={member.pos.y - 12} className="cm-member-name">
-                  {member.name?.split(' ')[0]}
-                </text>
-              </g>
-            ))}
+            {/* Crew boat */}
+            <g className="jm-boat-marker" transform={`translate(${pos.x}, ${pos.y})`}>
+              <circle r="10" className="jm-boat-pulse" />
+              <path d="M-20,2 L20,2 L15,10 L-15,10 Z" className="jm-boat-hull" />
+              {crewMembers.slice(0, 8).map((u, i) => (
+                <circle
+                  key={u.id}
+                  cx={-14 + i * 4.5}
+                  cy={-3}
+                  r="3"
+                  fill={u.tierColor}
+                  stroke="#fff"
+                  strokeWidth="0.5"
+                  className={selectedUser?.id === u.id ? 'cm-member-selected' : ''}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(e) => { e.stopPropagation(); setSelectedUser(selectedUser?.id === u.id ? null : u); }}
+                />
+              ))}
+              <text y="-16" className="jm-boat-label">ROW CREW</text>
+            </g>
           </svg>
         </div>
 
-        {/* Selected user info */}
+        {/* Selected user detail */}
         {selectedUser && (
           <div className="cm-user-card" style={{ borderLeftColor: selectedUser.tierColor }}>
             <div className="cm-user-avatar">
@@ -83,13 +93,14 @@ function CrewMap() {
               <span className="cm-user-rank">
                 <Icon name={selectedUser.rank?.emoji} size={14} /> {selectedUser.rank?.title}
               </span>
-              <span className="cm-user-meters">{formatMeters(selectedUser.totalMeters)}</span>
+              <span className="cm-user-meters">{formatMeters(selectedUser.totalMeters)} ({selectedUser.pct}% of journey)</span>
             </div>
           </div>
         )}
 
-        {/* Crew list */}
+        {/* Crew contribution list */}
         <div className="cm-crew-list">
+          <h3 className="cm-crew-list-title">Crew Contributions</h3>
           {crewMembers.map((member, i) => (
             <div
               key={member.id}
@@ -99,6 +110,9 @@ function CrewMap() {
               <span className="cm-crew-rank">#{i + 1}</span>
               <AvatarOrPhoto user={member} size={24} />
               <span className="cm-crew-name">{member.name?.split(' ')[0]}</span>
+              <div className="cm-crew-bar-wrap">
+                <div className="cm-crew-bar" style={{ width: `${member.pct}%`, background: member.tierColor }} />
+              </div>
               <span className="cm-crew-meters" style={{ color: member.tierColor }}>{formatMeters(member.totalMeters)}</span>
             </div>
           ))}

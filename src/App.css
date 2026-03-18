@@ -384,12 +384,24 @@ body {
   50% { r: 10; opacity: 0; }
 }
 
+.jm-boat-hull {
+  fill: var(--accent-primary);
+  stroke: color-mix(in srgb, var(--accent-primary) 70%, #000);
+  stroke-width: 0.5;
+}
+
 .jm-boat-label {
   font-size: 7px;
   fill: var(--accent-primary);
   text-anchor: middle;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
+}
+
+.jm-boat-meters {
+  font-size: 6px;
+  fill: var(--text-muted);
+  text-anchor: middle;
 }
 
 .journey-subtitle {
@@ -9706,6 +9718,37 @@ button:focus-visible {
 .cm-crew-meters {
   font-weight: 700;
   font-family: 'DM Sans', monospace;
+  font-size: 0.75rem;
+  min-width: 45px;
+  text-align: right;
+}
+
+.cm-crew-bar-wrap {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-dark);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cm-crew-bar {
+  height: 100%;
+  border-radius: 2px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.cm-crew-list-title {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cm-member-selected {
+  r: 4.5;
+  stroke-width: 1.5 !important;
 }
 
 .leaderboard-header-row {

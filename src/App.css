@@ -533,6 +533,38 @@ body {
   transition: all 0.3s ease;
 }
 
+.test-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: rgba(255, 107, 53, 0.1);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.test-mode-toggle input[type="checkbox"] {
+  accent-color: #ff6b35;
+}
+
+.test-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: #ff6b35;
+}
+
+.test-mode-hint {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .session-type-selector {
   margin-bottom: 12px;
 }

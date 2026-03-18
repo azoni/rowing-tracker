@@ -117,6 +117,7 @@ function App() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [sessionType, setSessionType] = useState('free_row');
+  const [testMode, setTestMode] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -2301,8 +2302,16 @@ function App() {
       customName: effectiveCustomName,
     } : null;
     
+    if (testMode) {
+      setIsSubmittingManual(false);
+      showToast('Test mode — entry not saved', 'info');
+      setShowLogModal(false);
+      setTestMode(false);
+      return;
+    }
+
     const success = await addEntry(meters, null, timeSeconds, calories, machineInfo);
-    
+
     setIsSubmittingManual(false);
     
     if (success) {
@@ -2412,9 +2421,29 @@ function App() {
       customName: effectiveCustomName,
     } : null;
     
+    if (testMode) {
+      // Test mode: skip saving, just show results
+      setIsProcessing(false);
+      showToast('Test mode — entry not saved', 'info');
+      setShowConfirmModal(false);
+      setDetectedMeters('');
+      setDetectedTime('');
+      setDetectedCalories('');
+      setEditableMeters('');
+      setEditableTime('');
+      setEditableCalories('');
+      setAiMachineType('');
+      setCustomMachineName('');
+      setSessionType('free_row');
+      setValidationError('');
+      setShowLogModal(false);
+      setTestMode(false);
+      return;
+    }
+
     const success = await addEntry(meters, capturedImage, timeSeconds, calories, machineInfo);
     setIsProcessing(false);
-    
+
     if (success) {
       setShowConfirmModal(false);
       setDetectedMeters('');
@@ -3626,6 +3655,7 @@ function App() {
     // Machine
     aiMachineType, setAiMachineType,
     sessionType, setSessionType,
+    testMode, setTestMode,
     customMachineName, setCustomMachineName,
 
     // Theme

@@ -9,7 +9,7 @@ function EntryForm() {
     showLogModal, setShowLogModal,
     fileInputRef, galleryInputRef,
     handleImageUpload, isProcessing, processingStatus,
-    userProfile,
+    userProfile, isAdmin,
     manualMeters, setManualMeters,
     manualTime, setManualTime,
     manualCalories, setManualCalories,
@@ -17,6 +17,7 @@ function EntryForm() {
     aiMachineType, setAiMachineType,
     customMachineName, setCustomMachineName,
     sessionType, setSessionType,
+    testMode, setTestMode,
     validationError,
   } = useApp();
 
@@ -27,6 +28,15 @@ function EntryForm() {
       <div className="log-modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={() => setShowLogModal(false)}>✕</button>
         <h2>Log Your Row</h2>
+
+        {/* Admin Test Mode */}
+        {isAdmin && (
+          <label className="test-mode-toggle">
+            <input type="checkbox" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} />
+            <span className="test-mode-label"><Icon name="ui_shield" size={14} /> Test Mode</span>
+            {testMode && <span className="test-mode-hint">AI will run but nothing saves</span>}
+          </label>
+        )}
 
         {/* Session Type Selector */}
         <div className="session-type-selector">

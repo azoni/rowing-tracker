@@ -1964,10 +1964,12 @@ function App() {
         if (claudeResult.extractedMeters && claudeResult.confidence >= 60) {
           detectedMeterValue = claudeResult.extractedMeters;
           const typeLabel = claudeResult.workoutType === 'interval' ? ' (interval)' : '';
-          setProcessingStatus(`AI detected: ${detectedMeterValue}m${typeLabel}`);
+          const estLabel = claudeResult.metersEstimated ? ' (estimated)' : '';
+          setProcessingStatus(`AI detected: ${detectedMeterValue}m${typeLabel}${estLabel}`);
         } else if (claudeResult.extractedMeters) {
           detectedMeterValue = claudeResult.extractedMeters;
-          setProcessingStatus('AI detected meters (low confidence)');
+          const estLabel = claudeResult.metersEstimated ? ' (estimated from calories)' : ' (low confidence)';
+          setProcessingStatus(`AI detected meters${estLabel}`);
         }
 
         // Also grab time and calories if AI detected them

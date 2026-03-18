@@ -168,8 +168,18 @@ CONCEPT2 PM5 SPECIFICS:
 - A number with "s/m" = stroke rate (e.g. "37 s/m" = 37 strokes per minute)
 - On interval screens: determine the interval distance from context. If you see "Interval 1" + ":26r" + "1:58.6 ave /500" + "37 s/m", this is an IN-PROGRESS interval — meters are NOT visible on this screen
 - On summary screens: the large number is usually total meters
-- CRITICAL: If this is an in-progress screen (has remaining time ":XXr"), meters may not be displayed. Still extract pace, stroke rate, and interval info. Set extractedMeters to null and explain in reasoning that this is a mid-workout screen
+- CRITICAL: On interval workout screens, you CAN calculate meters even if not directly shown:
+  - If you see "Interval 1" with "/500" pace → this is a 500m interval, so extractedMeters = 500 × interval_count
+  - If you see "Interval 3" with "/500" pace → extractedMeters = 500 × 3 = 1500
+  - The interval distance is often indicated by the pace denominator or workout setup
+  - Set intervalInfo with count and distance so the system can calculate
+- If this is truly mid-interval (has remaining time ":XXr"), still extract what you can and calculate meters from completed intervals
 - After a workout finishes, the PM5 shows a summary with total meters prominently displayed
+- IMPORTANT: If you see "0m" or "0 m" on screen, it usually means this is a CALORIE-BASED or TIME-BASED workout where distance is not the primary metric. Meters are tracked internally but not shown on this display page. In this case:
+  - Set extractedMeters to null (do NOT set it to 0)
+  - Still extract calories, time, Cal/hr, stroke rate, split pace — these ARE visible
+  - Note in reasoning that this appears to be a calorie/time workout with distance not displayed
+  - The system can estimate meters from calories and time
 
 WATERROWER / OTHER MACHINES:
 - Layouts vary — use the sanity checks above to figure out what each number means
@@ -352,12 +362,45 @@ exports.verifyRowEntry = functions.https.onCall(async (data, context) => {
       };
     }
     
+    // Estimate meters from interval info, calories, or pace if not directly visible
+    let estimatedMeters = claudeResult.extractedMeters;
+    let metersEstimated = false;
+
+    // First try: interval info (most accurate)
+    if (!estimatedMeters && claudeResult.intervalInfo?.distance && claudeResult.intervalInfo?.count) {
+      estimatedMeters = claudeResult.intervalInfo.distance * claudeResult.intervalInfo.count;
+      metersEstimated = true;
+      console.log(`Estimated meters from intervals: ${claudeResult.intervalInfo.distance}m × ${claudeResult.intervalInfo.count} = ${estimatedMeters}m`);
+    }
+
+    // Second try: calories
+    if (!estimatedMeters && claudeResult.extractedCalories && claudeResult.extractedTime) {
+      // Concept2 formula approximation: ~5.5 meters per calorie at moderate intensity
+      // Better estimate using Cal/hr if available: meters ≈ (Cal/hr / 300)^(1/0.222) * time/500 * 500
+      // Simplified: use calories * 5.5 as rough estimate
+      estimatedMeters = Math.round(claudeResult.extractedCalories * 5.5);
+      metersEstimated = true;
+      console.log(`Estimated meters from calories: ${claudeResult.extractedCalories} cal → ~${estimatedMeters}m`);
+    } else if (!estimatedMeters && claudeResult.extractedSplitPace && claudeResult.extractedTime) {
+      // Estimate from pace: if pace is "1:58.6/500m" and time is 98s
+      const paceMatch = claudeResult.extractedSplitPace.match(/(\d+):(\d+\.?\d*)/);
+      if (paceMatch) {
+        const paceSeconds = parseInt(paceMatch[1]) * 60 + parseFloat(paceMatch[2]);
+        if (paceSeconds > 0) {
+          estimatedMeters = Math.round((claudeResult.extractedTime / paceSeconds) * 500);
+          metersEstimated = true;
+          console.log(`Estimated meters from pace: ${claudeResult.extractedSplitPace} × ${claudeResult.extractedTime}s → ~${estimatedMeters}m`);
+        }
+      }
+    }
+
     // Return extraction result
     return {
       status: isExtractionMode ? 'extracted' : (claudeResult.overallConfidence >= VERIFICATION_THRESHOLDS.CONFIDENCE_MEDIUM ? 'verified' : 'pending_review'),
       imageHash,
       confidence: claudeResult.overallConfidence || 0,
-      extractedMeters: claudeResult.extractedMeters,
+      extractedMeters: estimatedMeters,
+      metersEstimated,
       extractedTime: claudeResult.extractedTime || null,
       extractedCalories: claudeResult.extractedCalories || null,
       extractedSplitPace: claudeResult.extractedSplitPace || null,

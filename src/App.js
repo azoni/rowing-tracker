@@ -2029,8 +2029,10 @@ function App() {
       
       // Reset machine type selection
       setAiMachineType('');
-      
-      setShowConfirmModal(true);
+
+      console.log('[RowCrew] Opening confirm modal. Meters:', detectedMeterValue, 'Time:', detectedTimeValue, 'Cal:', detectedCalorieValue);
+      setShowLogModal(false);
+      setTimeout(() => setShowConfirmModal(true), 100);
     };
     reader.readAsDataURL(file);
 

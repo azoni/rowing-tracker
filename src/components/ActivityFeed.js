@@ -270,7 +270,13 @@ function ActivityFeed() {
                   <div
                     key={item.id}
                     className={`feed-item feed-item-${item.type} ${item.type === 'rank' ? `tier-${getRankTier(item.rank?.rank)}` : ''} ${(item.type === 'row' || item.type === 'achievement') ? `row-tier-${itemTier}` : ''} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
-                    onClick={() => item.user && setShowUserProfileModal(item.user)}
+                    onClick={() => {
+                      if (expandedComments[item.id]) {
+                        setExpandedComments(prev => ({ ...prev, [item.id]: false }));
+                      } else {
+                        item.user && setShowUserProfileModal(item.user);
+                      }
+                    }}
                   >
                     <div className="feed-avatar">
                       <AvatarOrPhoto user={item.user} size={40} showBody />
@@ -413,10 +419,6 @@ function ActivityFeed() {
 
                         {expandedComments[item.id] && (
                           <div className="comments-compact" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              className="comments-close-btn"
-                              onClick={() => setExpandedComments(prev => ({ ...prev, [item.id]: false }))}
-                            >✕</button>
                             {getItemComments(item.id).map(comment => {
                               const commentUser = users[comment.userId];
                               return (

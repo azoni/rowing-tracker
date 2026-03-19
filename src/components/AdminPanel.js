@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
 import { useApp } from '../context/AppContext';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -48,6 +48,31 @@ function AdminPanel() {
   const [photoEntries, setPhotoEntries] = useState([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
+  const [recalcStatus, setRecalcStatus] = useState(null);
+
+  const recalcStats = async () => {
+    setRecalcStatus('Recalculating...');
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const fixed = [];
+      for (const userDoc of usersSnap.docs) {
+        const uid = userDoc.id;
+        const entriesSnap = await getDocs(query(collection(db, 'entries'), where('userId', '==', uid)));
+        const nonTest = entriesSnap.docs.filter(d => !d.data().isTest);
+        let totalMeters = 0, totalTime = 0, totalCalories = 0;
+        nonTest.forEach(e => { const d = e.data(); totalMeters += d.meters || 0; totalTime += d.time || 0; totalCalories += d.calories || 0; });
+        const old = userDoc.data();
+        if (old.totalMeters !== totalMeters || old.uploadCount !== nonTest.length) {
+          await updateDoc(doc(db, 'users', uid), { totalMeters, uploadCount: nonTest.length, totalTime, totalCalories });
+          fixed.push(`${old.name}: ${old.totalMeters}→${totalMeters}`);
+        }
+      }
+      setRecalcStatus(fixed.length > 0 ? `Fixed: ${fixed.join(', ')}` : 'All stats correct');
+      setTimeout(() => setRecalcStatus(null), 5000);
+    } catch (e) {
+      setRecalcStatus('Error: ' + e.message);
+    }
+  };
 
   const loadPhotos = async () => {
     setLoadingPhotos(true);
@@ -105,6 +130,12 @@ function AdminPanel() {
             </div>
           </div>
         )}
+
+        {/* Recalc Stats */}
+        <button className="admin-refresh-btn" onClick={recalcStats} style={{ marginBottom: '1rem' }}>
+          <Icon name="ui_refresh" size={16} /> Recalc All Stats
+        </button>
+        {recalcStatus && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>{recalcStatus}</p>}
 
         {/* Monthly Throwdowns */}
         <h3><Icon name="ui_fire" size={16} /> Monthly Throwdowns</h3>

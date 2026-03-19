@@ -2694,7 +2694,6 @@ input[type="number"] {
   display: flex;
   gap: 0.75rem;
   align-items: center;
-  overflow: hidden;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -5169,7 +5168,6 @@ input[type="number"] {
   padding-top: 0.5rem;
   border-top: 1px solid var(--border-color);
   max-width: 100%;
-  overflow: hidden;
 }
 
 .reactions-row {

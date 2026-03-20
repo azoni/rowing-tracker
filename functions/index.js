@@ -453,7 +453,6 @@ exports.getPendingReviews = functions.https.onCall(async (data, context) => {
   
   const pendingEntries = await db.collection('entries')
     .where('verificationStatus', '==', 'pending_review')
-    .orderBy('date', 'desc')
     .limit(50)
     .get();
   

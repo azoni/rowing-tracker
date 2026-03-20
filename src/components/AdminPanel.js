@@ -196,25 +196,48 @@ function AdminPanel() {
                 )}
 
                 <div className="admin-review-details">
+                  <p><strong>Claimed:</strong> {entry.meters?.toLocaleString()}m{entry.time ? ` • ${Math.floor(entry.time / 60)}:${String(Math.floor(entry.time % 60)).padStart(2, '0')}` : ''}{entry.calories ? ` • ${entry.calories} cal` : ''}</p>
                   <p><strong>Reason:</strong> {entry.verificationDetails?.reason}</p>
                   {entry.verificationDetails?.extractedMeters && (
                     <p><strong>AI Saw:</strong> {entry.verificationDetails.extractedMeters}m</p>
                   )}
+                  {entry.verificationDetails?.confidence > 0 && (
+                    <p><strong>Confidence:</strong> {entry.verificationDetails.confidence}%</p>
+                  )}
                   {entry.verificationDetails?.flags?.length > 0 && (
                     <p><strong>Flags:</strong> {entry.verificationDetails.flags.join(', ')}</p>
+                  )}
+                  {entry.sessionType && entry.sessionType !== 'free_row' && (
+                    <p><strong>Session:</strong> {entry.sessionType.replace('_', ' ')}</p>
                   )}
                   <p><strong>Date:</strong> {new Date(entry.date).toLocaleString()}</p>
                 </div>
 
                 {reviewingEntry === entry.id ? (
                   <div className="admin-review-actions-expanded">
-                    <input
-                      type="number"
-                      placeholder="Adjusted meters (optional)"
-                      value={adjustedMeters}
-                      onChange={(e) => setAdjustedMeters(e.target.value)}
-                      className="admin-input"
-                    />
+                    <div className="admin-adjust-row">
+                      <input
+                        type="number"
+                        placeholder="Meters"
+                        value={adjustedMeters}
+                        onChange={(e) => setAdjustedMeters(e.target.value)}
+                        className="admin-input"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Time (mm:ss)"
+                        defaultValue={entry.time ? `${Math.floor(entry.time / 60)}:${String(Math.floor(entry.time % 60)).padStart(2, '0')}` : ''}
+                        className="admin-input"
+                        disabled
+                      />
+                      <input
+                        type="number"
+                        placeholder="Calories"
+                        defaultValue={entry.calories || ''}
+                        className="admin-input"
+                        disabled
+                      />
+                    </div>
                     <input
                       type="text"
                       placeholder="Review note (optional)"

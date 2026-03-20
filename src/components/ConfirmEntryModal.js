@@ -17,6 +17,7 @@ function ConfirmEntryModal() {
     validationError, setValidationError,
     userProfile,
     handleConfirmEntry,
+    isProcessing,
   } = useApp();
 
   if (!showConfirmModal) return null;
@@ -214,15 +215,22 @@ function ConfirmEntryModal() {
         <p className="confirm-user">Logging as <strong>{userProfile?.name}</strong></p>
 
         <div className="modal-actions">
-          <button className="cancel-button" onClick={() => { setShowConfirmModal(false); setCapturedImage(null); setValidationError(''); setAiMachineType(''); setCustomMachineName(''); }}>
+          <button className="cancel-button" onClick={() => { if (!isProcessing) { setShowConfirmModal(false); setCapturedImage(null); setValidationError(''); setAiMachineType(''); setCustomMachineName(''); } }} disabled={isProcessing}>
             Cancel
           </button>
           <button
             className="confirm-button"
             onClick={handleConfirmEntry}
-            disabled={!editableMeters || parseInt(editableMeters, 10) <= 0}
+            disabled={isProcessing || !editableMeters || parseInt(editableMeters, 10) <= 0}
           >
-            Log {editableMeters ? `${parseInt(editableMeters, 10).toLocaleString()}m` : 'Row'}
+            {isProcessing ? (
+              <span className="confirm-button-loading">
+                <span className="spinner-small" />
+                Logging...
+              </span>
+            ) : (
+              <>Log {editableMeters ? `${parseInt(editableMeters, 10).toLocaleString()}m` : 'Row'}</>
+            )}
           </button>
         </div>
       </div>

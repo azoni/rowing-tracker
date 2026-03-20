@@ -1,33 +1,44 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 
 function RowCelebration({ meters, onComplete }) {
   const [count, setCount] = useState(0);
   const [phase, setPhase] = useState('rowing'); // rowing → complete
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
-  // Animate the meters counter
+  // Animate the meters counter — use ref to avoid re-triggering on onComplete identity change
   useEffect(() => {
     if (!meters) return;
     const duration = 2000;
-    const steps = 30;
-    const increment = meters / steps;
-    let current = 0;
-    let step = 0;
-    const interval = setInterval(() => {
-      step++;
-      current = Math.min(Math.round(increment * step), meters);
-      setCount(current);
-      if (step >= steps) {
-        clearInterval(interval);
+    const startTime = performance.now();
+
+    // Use requestAnimationFrame for smoother counting
+    let rafId;
+    const animate = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out curve for satisfying deceleration
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.round(eased * meters));
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(animate);
+      } else {
         setPhase('complete');
-        setTimeout(() => onComplete?.(), 1500);
+        setTimeout(() => onCompleteRef.current?.(), 1500);
       }
-    }, duration / steps);
-    return () => clearInterval(interval);
-  }, [meters, onComplete]);
+    };
+    rafId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafId);
+  }, [meters]);
+
+  const handleTap = () => {
+    onCompleteRef.current?.();
+  };
 
   return (
-    <div className={`row-celebration ${phase}`} onClick={() => onComplete?.()}>
+    <div className={`row-celebration ${phase}`} onClick={handleTap}>
       {/* Sky gradient */}
       <div className="rc-sky" />
 

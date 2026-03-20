@@ -1948,97 +1948,110 @@ function App() {
 
       // Extract base64 for Claude verification
       const imageBase64 = imageData.split(',')[1];
-      
+
       let claudeResult = null;
       let detectedMeterValue = null;
       let detectedTimeValue = null;
       let detectedCalorieValue = null;
-      
-      // Try Claude verification first
-      setProcessingStatus('AI analyzing image...');
+
       try {
-        const verifyRowEntry = httpsCallable(functions, 'verifyRowEntry');
-        const result = await verifyRowEntry({
-          imageBase64,
-          claimedMeters: 0,
-          sessionType: sessionType,
+        // Try Claude verification first
+        setProcessingStatus('AI analyzing image...');
+        try {
+          const verifyRowEntry = httpsCallable(functions, 'verifyRowEntry');
+          // Race the Cloud Function against a 30s timeout
+          const result = await Promise.race([
+            verifyRowEntry({
+              imageBase64,
+              claimedMeters: 0,
+              sessionType: sessionType,
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('AI analysis timed out')), 30000)),
+          ]);
+          claudeResult = result.data;
+          console.log('[RowCrew] Claude result:', JSON.stringify({ meters: claudeResult.extractedMeters, time: claudeResult.extractedTime, cal: claudeResult.extractedCalories, confidence: claudeResult.confidence, display: claudeResult.displayType, status: claudeResult.status }));
+
+          // If Claude extracted meters successfully
+          if (claudeResult.extractedMeters && claudeResult.confidence >= 60) {
+            detectedMeterValue = claudeResult.extractedMeters;
+            const typeLabel = claudeResult.workoutType === 'interval' ? ' (interval)' : '';
+            const estLabel = claudeResult.metersEstimated ? ' (estimated)' : '';
+            setProcessingStatus(`AI detected: ${detectedMeterValue}m${typeLabel}${estLabel}`);
+          } else if (claudeResult.extractedMeters) {
+            detectedMeterValue = claudeResult.extractedMeters;
+            const estLabel = claudeResult.metersEstimated ? ' (estimated from calories)' : ' (low confidence)';
+            setProcessingStatus(`AI detected meters${estLabel}`);
+          }
+
+          // Also grab time and calories if AI detected them
+          if (claudeResult.extractedTime) {
+            detectedTimeValue = claudeResult.extractedTime;
+          }
+          if (claudeResult.extractedCalories) {
+            detectedCalorieValue = claudeResult.extractedCalories;
+          }
+        } catch (verifyError) {
+          console.error('[RowCrew] Claude verification error:', verifyError?.message || verifyError);
+          setProcessingStatus('AI unavailable, using OCR...');
+
+          // Fallback to Tesseract OCR
+          try {
+            detectedMeterValue = await extractMetersFromImage(imageData);
+          } catch (ocrError) {
+            console.error('[RowCrew] OCR fallback also failed:', ocrError);
+          }
+        }
+
+        // Store Claude result for later use
+        setCapturedImage({
+          data: imageData,
+          base64: imageBase64,
+          claudeResult,
+          photoDate
         });
-        claudeResult = result.data;
-        console.log('[RowCrew] Claude result:', JSON.stringify({ meters: claudeResult.extractedMeters, time: claudeResult.extractedTime, cal: claudeResult.extractedCalories, confidence: claudeResult.confidence, display: claudeResult.displayType, status: claudeResult.status }));
 
-        // If Claude extracted meters successfully
-        if (claudeResult.extractedMeters && claudeResult.confidence >= 60) {
-          detectedMeterValue = claudeResult.extractedMeters;
-          const typeLabel = claudeResult.workoutType === 'interval' ? ' (interval)' : '';
-          const estLabel = claudeResult.metersEstimated ? ' (estimated)' : '';
-          setProcessingStatus(`AI detected: ${detectedMeterValue}m${typeLabel}${estLabel}`);
-        } else if (claudeResult.extractedMeters) {
-          detectedMeterValue = claudeResult.extractedMeters;
-          const estLabel = claudeResult.metersEstimated ? ' (estimated from calories)' : ' (low confidence)';
-          setProcessingStatus(`AI detected meters${estLabel}`);
+        // Set detected values
+        if (detectedMeterValue) {
+          setDetectedMeters(detectedMeterValue.toString());
+          setEditableMeters(detectedMeterValue.toString());
+        } else {
+          setDetectedMeters('');
+          setEditableMeters('');
         }
 
-        // Also grab time and calories if AI detected them
-        if (claudeResult.extractedTime) {
-          detectedTimeValue = claudeResult.extractedTime;
+        // Set detected time (format as MM:SS if it's in seconds)
+        if (detectedTimeValue) {
+          const mins = Math.floor(detectedTimeValue / 60);
+          const secs = Math.floor(detectedTimeValue % 60);
+          const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+          setDetectedTime(timeStr);
+          setEditableTime(timeStr);
+        } else {
+          setDetectedTime('');
+          setEditableTime('');
         }
-        if (claudeResult.extractedCalories) {
-          detectedCalorieValue = claudeResult.extractedCalories;
+
+        // Set detected calories
+        if (detectedCalorieValue) {
+          setDetectedCalories(detectedCalorieValue.toString());
+          setEditableCalories(detectedCalorieValue.toString());
+        } else {
+          setDetectedCalories('');
+          setEditableCalories('');
         }
-      } catch (verifyError) {
-        console.error('[RowCrew] Claude verification error:', verifyError?.message || verifyError);
-        setProcessingStatus('AI unavailable, using OCR...');
-        
-        // Fallback to Tesseract OCR
-        detectedMeterValue = await extractMetersFromImage(imageData);
-      }
 
-      setIsProcessing(false);
-      
-      // Store Claude result for later use
-      setCapturedImage({
-        data: imageData,
-        base64: imageBase64,
-        claudeResult,
-        photoDate 
-      });
-      
-      // Set detected values
-      if (detectedMeterValue) {
-        setDetectedMeters(detectedMeterValue.toString());
-        setEditableMeters(detectedMeterValue.toString());
-      } else {
-        setDetectedMeters('');
-        setEditableMeters('');
-      }
-      
-      // Set detected time (format as MM:SS if it's in seconds)
-      if (detectedTimeValue) {
-        const mins = Math.floor(detectedTimeValue / 60);
-        const secs = Math.floor(detectedTimeValue % 60);
-        const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-        setDetectedTime(timeStr);
-        setEditableTime(timeStr);
-      } else {
-        setDetectedTime('');
-        setEditableTime('');
-      }
-      
-      // Set detected calories
-      if (detectedCalorieValue) {
-        setDetectedCalories(detectedCalorieValue.toString());
-        setEditableCalories(detectedCalorieValue.toString());
-      } else {
-        setDetectedCalories('');
-        setEditableCalories('');
-      }
-      
-      // Reset machine type selection
-      setAiMachineType('');
+        // Reset machine type selection
+        setAiMachineType('');
 
-      console.log('[RowCrew] Opening confirm modal. Meters:', detectedMeterValue, 'Time:', detectedTimeValue, 'Cal:', detectedCalorieValue);
-      setShowLogModal(false);
-      setTimeout(() => setShowConfirmModal(true), 100);
+        console.log('[RowCrew] Opening confirm modal. Meters:', detectedMeterValue, 'Time:', detectedTimeValue, 'Cal:', detectedCalorieValue);
+        setShowLogModal(false);
+        setTimeout(() => setShowConfirmModal(true), 100);
+      } catch (outerError) {
+        console.error('[RowCrew] Image processing failed:', outerError);
+        showToast('Something went wrong processing your image. Try again.');
+      } finally {
+        setIsProcessing(false);
+      }
     };
     reader.readAsDataURL(file);
 
@@ -2424,48 +2437,43 @@ function App() {
       // Determine if corrections were made (for toast)
       const hasCorrections = metersDiffer || timeDiffer || caloriesDiffer;
 
-      // Always save feedback — every interaction helps the AI learn
-      try {
-          await saveAiFeedback({
-            aiExtracted: {
-              meters: aiResult.extractedMeters || null,
-              time: aiDetectedTime,
-              calories: aiDetectedCalories,
-              confidence: aiResult.confidence,
-              displayType: aiResult.displayType,
-              isRowingMachine: aiResult.isRowingMachineDisplay,
-            },
-            userConfirmed: {
-              meters,
-              time: timeSeconds,
-              calories,
-            },
-            corrections: {
-              meters: metersDiffer,
-              time: timeDiffer,
-              calories: caloriesDiffer,
-              providedMissingTime: userProvidedMissingTime,
-              providedMissingCalories: userProvidedMissingCalories,
-            },
-            machine: {
-              type: effectiveMachineType,
-              customName: effectiveCustomName,
-              displayName: getMachineName(effectiveMachineType, effectiveCustomName),
-              // Normalize to help with grouping similar machines
-              normalizedId: normalizeMachineName(effectiveCustomName) || effectiveMachineType,
-            },
-            imageHash: aiResult.imageHash,
-          });
-          
-          // Show thank you toast if user made any correction
-          if (hasCorrections) {
-            setShowAiFeedbackToast(true);
-            setTimeout(() => setShowAiFeedbackToast(false), 3000);
-          }
-        } catch (error) {
-          console.error('Error saving AI feedback:', error);
-          // Don't block the entry submission
+      // Fire-and-forget: save feedback without blocking the entry submission
+      saveAiFeedback({
+        aiExtracted: {
+          meters: aiResult.extractedMeters || null,
+          time: aiDetectedTime,
+          calories: aiDetectedCalories,
+          confidence: aiResult.confidence,
+          displayType: aiResult.displayType,
+          isRowingMachine: aiResult.isRowingMachineDisplay,
+        },
+        userConfirmed: {
+          meters,
+          time: timeSeconds,
+          calories,
+        },
+        corrections: {
+          meters: metersDiffer,
+          time: timeDiffer,
+          calories: caloriesDiffer,
+          providedMissingTime: userProvidedMissingTime,
+          providedMissingCalories: userProvidedMissingCalories,
+        },
+        machine: {
+          type: effectiveMachineType,
+          customName: effectiveCustomName,
+          displayName: getMachineName(effectiveMachineType, effectiveCustomName),
+          normalizedId: normalizeMachineName(effectiveCustomName) || effectiveMachineType,
+        },
+        imageHash: aiResult.imageHash,
+      }).then(() => {
+        if (hasCorrections) {
+          setShowAiFeedbackToast(true);
+          setTimeout(() => setShowAiFeedbackToast(false), 3000);
         }
+      }).catch((error) => {
+        console.error('Error saving AI feedback:', error);
+      });
     }
     
     // Pass machine info to addEntry

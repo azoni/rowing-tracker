@@ -2259,6 +2259,20 @@ function App() {
             source: 'rowcrew',
           }),
         }).catch(() => {});
+
+        // Log sync event to portfolio dashboard (triggers avatar walk to benchpress station)
+        fetch('https://azoni.netlify.app/.netlify/functions/log-agent-activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'cross_app_sync',
+            title: `Synced ${finalMeters.toLocaleString()}m to BenchOnly`,
+            source: 'rowcrew',
+            description: 'Row Crew → BenchOnly cardio sync',
+            metadata: { targetStation: 'benchpress' },
+            secret: 'moltbook-azoni-secret-123',
+          }),
+        }).catch(() => {});
       }
 
       // Check for new distance record (500m, 1K, 2K, 5K, 10K, 15K)

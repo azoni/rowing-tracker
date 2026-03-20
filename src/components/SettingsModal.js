@@ -283,6 +283,28 @@ function SettingsModal() {
               </div>
             )}
 
+            {/* App Sync */}
+            <div className="settings-section">
+              <h3>App Sync</h3>
+              <label className="settings-toggle-row">
+                <span className="settings-toggle-label">
+                  <Icon name="ui_bolt" size={16} /> Sync rows to BenchOnly
+                </span>
+                <input
+                  type="checkbox"
+                  checked={userProfile?.syncToBenchOnly || false}
+                  onChange={async (e) => {
+                    try {
+                      await updateDoc(doc(db, 'users', currentUser.uid), { syncToBenchOnly: e.target.checked });
+                    } catch (err) {
+                      console.error('Sync toggle error:', err);
+                    }
+                  }}
+                />
+              </label>
+              <p className="settings-hint">Automatically log rowing sessions as cardio on BenchOnly (uses your Google email to match accounts)</p>
+            </div>
+
             {/* Sign Out */}
             <button className="settings-signout-btn" onClick={() => { handleSignOut(); setShowSettingsModal(false); }}>
               Sign Out

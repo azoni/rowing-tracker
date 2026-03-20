@@ -2244,6 +2244,23 @@ function App() {
         totalMeters: newTotalMeters,
       });
 
+      // Sync to BenchOnly if enabled (fire-and-forget)
+      if (userProfile?.syncToBenchOnly && currentUser?.email) {
+        fetch('https://benchpressonly.com/.netlify/functions/log-external-cardio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            secret: 'rowcrew-benchonly-sync-2026',
+            email: currentUser.email,
+            meters: finalMeters,
+            time: timeSeconds || null,
+            calories: calories || null,
+            date: new Date().toISOString(),
+            source: 'rowcrew',
+          }),
+        }).catch(() => {});
+      }
+
       // Check for new distance record (500m, 1K, 2K, 5K, 10K, 15K)
       if (timeSeconds && timeSeconds > 0 && verification.status !== 'unverified') {
         const distCat = getDistanceCategory(finalMeters);

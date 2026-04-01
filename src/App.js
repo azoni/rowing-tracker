@@ -231,6 +231,7 @@ function App() {
   const [showMonthlyRecap, setShowMonthlyRecap] = useState(false);
   const [monthlyRecapSlide, setMonthlyRecapSlide] = useState(0);
   const monthlyRecapCardRef = useRef(null);
+  const [monthlyRecapMonth, setMonthlyRecapMonth] = useState(null); // null = previous month, {month, year} = override
 
   const fileInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -3938,6 +3939,7 @@ function App() {
     showMonthlyRecap, setShowMonthlyRecap,
     monthlyRecapSlide, setMonthlyRecapSlide,
     monthlyRecapCardRef,
+    monthlyRecapMonth, setMonthlyRecapMonth,
     showWelcomeModal, setShowWelcomeModal,
     showChangelogModal, setShowChangelogModal,
     showNotifications, setShowNotifications,

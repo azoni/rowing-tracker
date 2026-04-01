@@ -11,25 +11,28 @@ function MonthlyRecapModal() {
     monthlyRecapCardRef,
     currentUser, userProfile,
     getMonthlyRecapStats, showToast,
+    monthlyRecapMonth, setMonthlyRecapMonth,
   } = useApp();
 
   if (!showMonthlyRecap || !currentUser) return null;
 
-  // Determine which month to recap (previous month)
+  // Determine which month to recap (override or previous month)
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  const recapMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-  const recapYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+  const isOverride = monthlyRecapMonth !== null;
+  const recapMonth = isOverride ? monthlyRecapMonth.month : (currentMonth === 0 ? 11 : currentMonth - 1);
+  const recapYear = isOverride ? monthlyRecapMonth.year : (currentMonth === 0 ? currentYear - 1 : currentYear);
   const recapKey = `monthlyRecap_seen_${recapYear}_${String(recapMonth).padStart(2, '0')}`;
 
   const stats = getMonthlyRecapStats(currentUser.uid, recapMonth, recapYear);
   if (!stats) return null;
 
   const handleClose = () => {
-    localStorage.setItem(recapKey, 'true');
+    if (!isOverride) localStorage.setItem(recapKey, 'true');
     setShowMonthlyRecap(false);
     setMonthlyRecapSlide(0);
+    setMonthlyRecapMonth(null);
   };
 
   // No-data slides (user didn't row that month)

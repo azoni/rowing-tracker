@@ -17,7 +17,7 @@ function AdminPanel() {
     adjustedMeters, setAdjustedMeters,
     reviewNote, setReviewNote,
     handleReviewEntry, setShowPhotoModal,
-    setShowMonthlyRecap, setMonthlyRecapSlide,
+    setShowMonthlyRecap, setMonthlyRecapSlide, setMonthlyRecapMonth,
   } = useApp();
 
   const [photoEntries, setPhotoEntries] = useState([]);
@@ -147,7 +147,7 @@ function AdminPanel() {
         <button
           className="admin-refresh-btn"
           style={{ marginBottom: '0.5rem' }}
-          onClick={() => { setShowMonthlyRecap(true); setMonthlyRecapSlide(0); }}
+          onClick={() => { setMonthlyRecapMonth({ month: new Date().getMonth(), year: new Date().getFullYear() }); setShowMonthlyRecap(true); setMonthlyRecapSlide(0); }}
         >
           <Icon name="ui_calendar" size={16} /> Preview Monthly Recap
         </button>

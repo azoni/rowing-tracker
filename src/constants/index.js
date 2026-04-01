@@ -9,4 +9,5 @@ export * from './changelog';
 export * from './themes';
 export * from './distances';
 export * from './holidays';
+export * from './monthly';
 export * from './avatarParts';

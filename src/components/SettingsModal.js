@@ -14,6 +14,7 @@ function SettingsModal() {
     newUsername, handleUsernameChange, usernameStatus,
     currentTheme, setCurrentTheme,
     setShowSessionHistory, setShowWrapped, setWrappedSlide,
+    setShowMonthlyRecap, setMonthlyRecapSlide,
     getWrappedStats, handleSignOut,
     setNewUsername, setUsernameStatus,
   } = useApp();
@@ -282,6 +283,17 @@ function SettingsModal() {
                 </button>
               </div>
             )}
+
+            {/* Monthly Recap */}
+            <div className="settings-section">
+              <h3>Monthly Recap</h3>
+              <button
+                className="settings-wrapped-btn"
+                onClick={() => { setShowMonthlyRecap(true); setShowSettingsModal(false); setMonthlyRecapSlide(0); }}
+              >
+                <Icon name="ui_calendar" size={16} /> View Last Month's Recap
+              </button>
+            </div>
 
             {/* App Sync */}
             <div className="settings-section">

@@ -6774,6 +6774,344 @@ input[type="number"] {
 }
 
 /* =============================================
+   MONTHLY RECAP MODAL
+   ============================================= */
+
+/* Recap intro */
+.recap-slide-content {
+  padding: 2rem 1rem;
+}
+
+.recap-slide-content.dark-text {
+  color: #1a1a2e;
+}
+
+.recap-slide-content.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.recap-month-label {
+  font-size: 3.5rem;
+  font-weight: 900;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.recap-logo {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  opacity: 0.9;
+}
+
+.recap-slide-content.intro h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.recap-slide-content.intro p {
+  font-size: 1rem;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.recap-tap-hint {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  margin-top: 2rem;
+  animation: pulse 2s ease infinite;
+}
+
+/* Recap shared text styles */
+.recap-small-label {
+  font-size: 1rem;
+  opacity: 0.9;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.recap-big-text {
+  font-size: 3rem;
+  font-weight: 900;
+  font-family: 'Bebas Neue', sans-serif;
+  line-height: 1;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  animation: countUp 0.5s ease;
+}
+
+.recap-fun-fact {
+  margin-top: 2rem;
+  font-size: 1rem;
+  opacity: 0.85;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+}
+
+/* Throwdown slide */
+.recap-throwdown-result {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1rem 0;
+}
+
+.recap-throwdown-result.complete {
+  color: #fff;
+}
+
+.recap-throwdown-bar {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.recap-throwdown-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.recap-throwdown-progress {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin-top: 0.5rem;
+}
+
+/* Challenge leaderboard */
+.recap-leaderboard {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.recap-leader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
+.recap-leader.is-you {
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.recap-leader-rank {
+  flex-shrink: 0;
+}
+
+.recap-leader-name {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+.recap-leader-score {
+  font-weight: 700;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+}
+
+.recap-your-rank {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.recap-your-rank.muted {
+  opacity: 0.6;
+}
+
+/* Personal stats grid */
+.recap-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.recap-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.recap-stat-value {
+  font-size: 1.5rem;
+  font-weight: 900;
+  font-family: 'Bebas Neue', sans-serif;
+  line-height: 1;
+  animation: countUp 0.5s ease;
+}
+
+.recap-stat-label {
+  font-size: 0.7rem;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+/* Comparison slide */
+.recap-comparison {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.recap-comparison-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+}
+
+.recap-comparison-label {
+  font-weight: 600;
+  width: 70px;
+  text-align: left;
+}
+
+.recap-comparison-delta {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: 'Bebas Neue', sans-serif;
+}
+
+.recap-comparison-delta.up {
+  color: #11998e;
+}
+
+.recap-comparison-delta.down {
+  color: #e74c3c;
+}
+
+.recap-comparison-detail {
+  flex: 1;
+  text-align: right;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+/* What's Next / Summary slide */
+.recap-slide-content.summary {
+  background: linear-gradient(180deg, #0a0e17 0%, #1a1f2e 100%);
+  border-radius: 20px;
+  padding: 2rem 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.recap-summary-header {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--accent-primary);
+  margin-bottom: 0.75rem;
+}
+
+.recap-summary-name {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.recap-summary-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1.25rem;
+}
+
+.recap-summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.recap-summary-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.recap-summary-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.recap-whats-next {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.recap-whats-next h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.9;
+  margin: 0 0 0.25rem;
+}
+
+.recap-next-label {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: 'Bebas Neue', sans-serif;
+}
+
+.recap-next-target {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  margin-bottom: 0.25rem;
+}
+
+.recap-next-desc {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.recap-summary-footer {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 1rem;
+}
+
+/* Mobile adjustments */
+@media (max-width: 380px) {
+  .recap-month-label {
+    font-size: 2.75rem;
+  }
+  .recap-big-text {
+    font-size: 2.5rem;
+  }
+  .recap-stat-value {
+    font-size: 1.25rem;
+  }
+}
+
+/* =============================================
    MANUAL ENTRY STYLES
    ============================================= */
 

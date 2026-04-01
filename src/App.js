@@ -47,11 +47,15 @@ import {
   STANDARD_DISTANCES,
   getDistanceCategory,
   getActiveHoliday,
+  THROWDOWNS,
+  MONTHLY_CHALLENGES,
+  MONTH_NAMES,
 } from './constants';
 
 // Import utilities
 import {
   formatMeters,
+  formatTimeDisplay,
   parseTimeInput,
 } from './utils';
 
@@ -75,6 +79,7 @@ import AdminPanel from './components/AdminPanel';
 import UserProfileModal from './components/UserProfileModal';
 import ChallengeDetailModal from './components/ChallengeDetailModal';
 import WrappedModal from './components/WrappedModal';
+import MonthlyRecapModal from './components/MonthlyRecapModal';
 import { CreateGroupModal, JoinGroupModal, InviteUserModal, ManageMembersModal, CreateChallengeModal } from './components/GroupModals';
 import { PRModal, BustedModal, JourneyModal, AchievementModal, PhotoModal, InstallPrompt, WelcomeModal, ChangelogModal } from './components/SmallModals';
 import MilestoneCelebration from './components/MilestoneCelebration';
@@ -223,7 +228,10 @@ function App() {
   });
   
   const wrappedCardRef = useRef(null);
-  
+  const [showMonthlyRecap, setShowMonthlyRecap] = useState(false);
+  const [monthlyRecapSlide, setMonthlyRecapSlide] = useState(0);
+  const monthlyRecapCardRef = useRef(null);
+
   const fileInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const previousTotalRef = useRef(0);
@@ -690,6 +698,27 @@ function App() {
       localStorage.setItem('rowcrew_version', APP_VERSION);
     }
   }, []);
+
+  // Auto-show monthly recap for the previous month
+  useEffect(() => {
+    if (!currentUser || !entries.length) return;
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const recapMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const recapYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    const recapKey = `monthlyRecap_seen_${recapYear}_${String(recapMonth).padStart(2, '0')}`;
+    if (localStorage.getItem(recapKey) === 'true') return;
+    const recapStart = new Date(recapYear, recapMonth, 1);
+    const recapEnd = new Date(recapYear, recapMonth + 1, 0, 23, 59, 59, 999);
+    const hasEntries = entries.some(e => {
+      const d = new Date(e.date);
+      return e.userId === currentUser.uid && d >= recapStart && d <= recapEnd;
+    });
+    if (!hasEntries) return;
+    const timer = setTimeout(() => setShowMonthlyRecap(true), 1500);
+    return () => clearTimeout(timer);
+  }, [currentUser, entries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if user missed a milestone celebration (shows on next visit)
   useEffect(() => {
@@ -3527,6 +3556,174 @@ function App() {
     };
   };
 
+  // Get monthly recap stats for a completed month
+  const getMonthlyRecapStats = (userId, month, year) => {
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    // All entries for the recapped month
+    const allMonthEntries = entries.filter(e => {
+      const d = new Date(e.date);
+      return d >= monthStart && d <= monthEnd;
+    });
+    const userMonthEntries = allMonthEntries.filter(e => e.userId === userId);
+
+    const hasData = userMonthEntries.length > 0;
+    const monthName = MONTH_NAMES[month];
+
+    // Next month info (wraps Dec -> Jan)
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const nextMonthName = MONTH_NAMES[nextMonth];
+    const nextThrowdown = THROWDOWNS[nextMonth];
+    const nextChallenge = MONTHLY_CHALLENGES[nextMonth];
+
+    if (!hasData) {
+      return { hasData: false, monthName, year, nextMonthName, nextThrowdown, nextChallenge };
+    }
+
+    // --- Throwdown result ---
+    const throwdown = THROWDOWNS[month];
+    let throwdownCurrent = 0;
+    if (throwdown.field === 'meters') throwdownCurrent = userMonthEntries.reduce((s, e) => s + e.meters, 0);
+    else if (throwdown.field === 'sessions') throwdownCurrent = userMonthEntries.length;
+    else if (throwdown.field === 'calories') throwdownCurrent = userMonthEntries.reduce((s, e) => s + (e.calories || 0), 0);
+    else if (throwdown.field === 'streak') {
+      // Compute best consecutive-day streak within the month
+      const uniqueDays = [...new Set(userMonthEntries.map(e => new Date(e.date).toDateString()))]
+        .map(d => new Date(d)).sort((a, b) => a - b);
+      let best = uniqueDays.length > 0 ? 1 : 0;
+      let run = 1;
+      for (let i = 1; i < uniqueDays.length; i++) {
+        const diff = (uniqueDays[i] - uniqueDays[i - 1]) / 86400000;
+        if (diff === 1) { run++; best = Math.max(best, run); }
+        else run = 1;
+      }
+      throwdownCurrent = best;
+    }
+    const throwdownPct = Math.min((throwdownCurrent / throwdown.target) * 100, 100);
+    const throwdownComplete = throwdownCurrent >= throwdown.target;
+
+    // --- Challenge leaderboard ---
+    const challenge = MONTHLY_CHALLENGES[month];
+    const getScore = (uid) => {
+      const userEntries = allMonthEntries.filter(e => e.userId === uid && e.time && e.time > 0 && e.meters > 0);
+      if (challenge.type === 'fastest_distance') {
+        const tolerance = challenge.distance * 0.1;
+        const qualifying = userEntries.filter(e => Math.abs(e.meters - challenge.distance) <= tolerance);
+        if (qualifying.length === 0) return null;
+        const best = qualifying.reduce((b, e) => (!b || e.time < b.time) ? e : b, null);
+        return best ? { value: best.time, display: formatTimeDisplay(best.time), sort: best.time, bestDate: new Date(best.date), attempts: qualifying.length } : null;
+      } else if (challenge.type === 'longest_row') {
+        const allUserEntries = allMonthEntries.filter(e => e.userId === uid);
+        if (allUserEntries.length === 0) return null;
+        const bestEntry = allUserEntries.reduce((b, e) => (!b || e.meters > b.meters) ? e : b, null);
+        return { value: bestEntry.meters, display: formatMeters(bestEntry.meters), sort: -bestEntry.meters, bestDate: new Date(bestEntry.date), attempts: allUserEntries.length };
+      } else if (challenge.type === 'most_meters') {
+        const allUserEntries = allMonthEntries.filter(e => e.userId === uid);
+        const total = allUserEntries.reduce((s, e) => s + e.meters, 0);
+        if (total === 0) return null;
+        const lastEntry = [...allUserEntries].sort((a, b) => new Date(a.date) - new Date(b.date)).pop();
+        return { value: total, display: formatMeters(total), sort: -total, bestDate: new Date(lastEntry.date), attempts: allUserEntries.length };
+      } else if (challenge.type === 'best_pace') {
+        if (userEntries.length === 0) return null;
+        const bestEntry = userEntries.reduce((b, e) => {
+          const pace = (e.time / e.meters) * 500;
+          return (!b || pace < b.pace) ? { ...e, pace } : b;
+        }, null);
+        const mins = Math.floor(bestEntry.pace / 60);
+        const secs = (bestEntry.pace % 60).toFixed(1).padStart(4, '0');
+        return { value: bestEntry.pace, display: `${mins}:${secs}/500m`, sort: bestEntry.pace, bestDate: new Date(bestEntry.date), attempts: userEntries.length };
+      }
+      return null;
+    };
+
+    const challengeLeaderboard = Object.keys(users)
+      .map(uid => {
+        const score = getScore(uid);
+        if (!score) return null;
+        return { userId: uid, user: users[uid], ...score };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.sort - b.sort || a.bestDate - b.bestDate);
+
+    const userChallengeRank = challengeLeaderboard.findIndex(l => l.userId === userId) + 1 || null;
+    const userChallengeScore = getScore(userId);
+
+    // --- Personal stats ---
+    const totalMeters = userMonthEntries.reduce((s, e) => s + e.meters, 0);
+    const sessionCount = userMonthEntries.length;
+    const totalTime = userMonthEntries.reduce((s, e) => s + (e.time || 0), 0);
+    const totalCalories = userMonthEntries.reduce((s, e) => s + (e.calories || 0), 0);
+    const bestSingleRow = Math.max(...userMonthEntries.map(e => e.meters));
+    const bestSingleRowEntry = userMonthEntries.find(e => e.meters === bestSingleRow);
+    const bestSingleRowDate = bestSingleRowEntry ? new Date(bestSingleRowEntry.date) : null;
+    const uniqueDaysRowed = new Set(userMonthEntries.map(e => new Date(e.date).toDateString())).size;
+    const avgMetersPerSession = sessionCount > 0 ? Math.round(totalMeters / sessionCount) : 0;
+
+    // Best streak within the month
+    const uniqueDays = [...new Set(userMonthEntries.map(e => new Date(e.date).toDateString()))]
+      .map(d => new Date(d)).sort((a, b) => a - b);
+    let bestStreak = uniqueDays.length > 0 ? 1 : 0;
+    let streakRun = 1;
+    for (let i = 1; i < uniqueDays.length; i++) {
+      const diff = (uniqueDays[i] - uniqueDays[i - 1]) / 86400000;
+      if (diff === 1) { streakRun++; bestStreak = Math.max(bestStreak, streakRun); }
+      else streakRun = 1;
+    }
+
+    // --- Month-over-month comparison ---
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevYear = month === 0 ? year - 1 : year;
+    const prevStart = new Date(prevYear, prevMonth, 1);
+    const prevEnd = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59, 999);
+    const prevEntries = entries.filter(e => {
+      const d = new Date(e.date);
+      return e.userId === userId && d >= prevStart && d <= prevEnd;
+    });
+
+    let comparison = null;
+    if (prevEntries.length > 0) {
+      const prevMeters = prevEntries.reduce((s, e) => s + e.meters, 0);
+      const prevSessions = prevEntries.length;
+      comparison = {
+        prevMonthName: MONTH_NAMES[prevMonth],
+        metersDelta: totalMeters - prevMeters,
+        metersDeltaPct: prevMeters > 0 ? Math.round(((totalMeters - prevMeters) / prevMeters) * 100) : 100,
+        sessionsDelta: sessionCount - prevSessions,
+        sessionsDeltaPct: prevSessions > 0 ? Math.round(((sessionCount - prevSessions) / prevSessions) * 100) : 100,
+        prevMeters,
+        prevSessions,
+      };
+    }
+
+    return {
+      hasData: true,
+      monthName,
+      year,
+      throwdown,
+      throwdownCurrent,
+      throwdownComplete,
+      throwdownPct,
+      challenge,
+      challengeLeaderboard: challengeLeaderboard.slice(0, 3),
+      userChallengeRank,
+      userChallengeScore,
+      totalMeters,
+      sessionCount,
+      totalTime,
+      totalCalories,
+      bestSingleRow,
+      bestSingleRowDate,
+      uniqueDaysRowed,
+      avgMetersPerSession,
+      bestStreak,
+      comparison,
+      nextThrowdown,
+      nextChallenge,
+      nextMonthName,
+    };
+  };
+
   // Get weekly stats for current user
   const getWeeklyStats = (userId) => {
     const now = new Date();
@@ -3738,6 +3935,9 @@ function App() {
     showSessionHistory, setShowSessionHistory,
     showWrapped, setShowWrapped,
     wrappedSlide, setWrappedSlide,
+    showMonthlyRecap, setShowMonthlyRecap,
+    monthlyRecapSlide, setMonthlyRecapSlide,
+    monthlyRecapCardRef,
     showWelcomeModal, setShowWelcomeModal,
     showChangelogModal, setShowChangelogModal,
     showNotifications, setShowNotifications,
@@ -3799,7 +3999,7 @@ function App() {
     calculateStreak, calculateLongestStreak, calculateWeeklyAverage,
     getPersonalRecord, getTotalDaysRowed, getFirstRowDate,
     getUserAchievements, getAchievementProgress,
-    getUserSessionHistory, getActivityFeed, getWeeklyStats, getWrappedStats,
+    getUserSessionHistory, getActivityFeed, getWeeklyStats, getWrappedStats, getMonthlyRecapStats,
 
     // Machine
     aiMachineType, setAiMachineType,
@@ -4111,6 +4311,7 @@ function App() {
       <CreateChallengeModal />
       <ChallengeDetailModal />
       <WrappedModal />
+      <MonthlyRecapModal />
       <InstallPrompt />
       <WelcomeModal />
       <ChangelogModal />

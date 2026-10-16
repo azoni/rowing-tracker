@@ -1,5 +1,22 @@
+import { getHabitMetrics, getSameHourStreak, hasPersonalDistanceRecord } from '../utils/rowingGoals';
+
+// These badges celebrate repeatable habits and retain progress across calendar resets.
+const HABIT_BADGES = [
+  { id: 'distance_passport', name: 'Distance Passport', desc: 'Collect a 500m, 1,000m and 2,000m row, each within 10m', emoji: 'ui_globe', category: 'fun', metric: 'distanceStamps', target: 3 },
+  { id: 'mix_tape', name: 'Mix Tape', desc: 'Try 3 workout types: free row, timed, distance or intervals', emoji: 'achievement_full_rotation', category: 'habits', metric: 'workoutTypes', target: 3 },
+  { id: 'small_wins', name: 'Small Wins', desc: 'Log 5 rows between 500m and 1,500m', emoji: 'ui_sparkle', category: 'sessions', metric: 'shortRows', target: 5 },
+  { id: 'pocket_sessions', name: 'Pocket Sessions', desc: 'Find time for 3 rows lasting 5–15 minutes', emoji: 'ui_timer', category: 'time', metric: 'pocketRows', target: 3 },
+  { id: 'steady_company', name: 'Steady Company', desc: 'Row on 2 different days a week for 3 consecutive Monday–Sunday weeks', emoji: 'achievement_consistency', category: 'habits', metric: 'bestSteadyWeeks', target: 3 },
+  { id: 'bookends', name: 'Bookends', desc: 'Row on a weekday and a weekend day in the same Monday–Sunday week', emoji: 'ui_calendar', category: 'fun', metric: 'bookendWeeks', target: 1 },
+];
+
 // Achievement definitions
 export const ACHIEVEMENTS = [
+  ...HABIT_BADGES.map(({ metric, target, ...badge }) => ({
+    ...badge,
+    check: (user, entries) => getHabitMetrics(entries)[metric] >= target,
+    getProgress: (user, entries) => ({ current: Math.min(getHabitMetrics(entries)[metric], target), target }),
+  })),
   // Session count achievements
   {
     id: 'first_row', name: 'First Strokes', desc: 'Log your first row', emoji: 'achievement_first_strokes', category: 'sessions',
@@ -422,25 +439,8 @@ export const ACHIEVEMENTS = [
     emoji: 'achievement_creature_habit',
     category: 'habits',
     desc: 'Row within the same hour for 7 days straight',
-    check: (user, entries) => {
-      if (entries.length < 7) return false;
-      const sorted = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
-      for (let i = 0; i <= sorted.length - 7; i++) {
-        const window = sorted.slice(i, i + 7);
-        const hours = window.map(e => e.localHour !== undefined ? e.localHour : new Date(e.date).getHours());
-        const days = window.map(e => new Date(e.date));
-        let consecutive = true;
-        for (let j = 1; j < 7; j++) {
-          const diff = Math.round((days[j] - days[j-1]) / (1000 * 60 * 60 * 24));
-          if (diff !== 1) { consecutive = false; break; }
-        }
-        if (!consecutive) continue;
-        const baseHour = hours[0];
-        if (hours.every(h => Math.abs(h - baseHour) <= 1 || Math.abs(h - baseHour) >= 23)) return true;
-      }
-      return false;
-    },
-    getProgress: (user, entries) => ({ current: entries.length >= 7 ? 1 : 0, target: 1 }),
+    check: (user, entries) => getSameHourStreak(entries) >= 7,
+    getProgress: (user, entries) => ({ current: Math.min(getSameHourStreak(entries), 7), target: 7 }),
   },
 
   // Improvement achievements
@@ -450,17 +450,8 @@ export const ACHIEVEMENTS = [
     emoji: 'achievement_record_breaker',
     category: 'milestones',
     desc: 'Set a new personal best distance (after your first row)',
-    check: (user, entries) => {
-      if (entries.length < 2) return false;
-      const sorted = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
-      let maxSoFar = sorted[0].meters;
-      for (let i = 1; i < sorted.length; i++) {
-        if (sorted[i].meters > maxSoFar) return true;
-        maxSoFar = Math.max(maxSoFar, sorted[i].meters);
-      }
-      return false;
-    },
-    getProgress: (user, entries) => ({ current: entries.length >= 2 ? 1 : 0, target: 1 }),
+    check: (user, entries) => hasPersonalDistanceRecord(entries),
+    getProgress: (user, entries) => ({ current: hasPersonalDistanceRecord(entries) ? 1 : 0, target: 1 }),
   },
   {
     id: 'progressive',

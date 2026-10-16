@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { collection, query, where, orderBy, limit, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
-import { THROWDOWNS, MONTHLY_CHALLENGES } from '../constants';
+import { getMonthlyProgram } from '../constants';
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -115,7 +115,8 @@ function AdminPanel() {
         {/* Monthly Throwdowns */}
         <h3><Icon name="ui_fire" size={16} /> Monthly Throwdowns</h3>
         <div className="admin-throwdowns">
-          {THROWDOWNS.map((t, i) => {
+          {SHORT_MONTHS.map((monthName, i) => {
+            const { throwdown: t } = getMonthlyProgram(new Date(new Date().getFullYear(), i, 1));
             const isCurrent = i === new Date().getMonth();
             return (
               <div key={i} className={`admin-throwdown-row ${isCurrent ? 'current' : ''}`}>
@@ -131,7 +132,8 @@ function AdminPanel() {
         {/* Monthly Challenges */}
         <h3><Icon name="ui_trophy" size={16} /> Monthly Challenges</h3>
         <div className="admin-throwdowns">
-          {MONTHLY_CHALLENGES.map((c, i) => {
+          {SHORT_MONTHS.map((monthName, i) => {
+            const { challenge: c } = getMonthlyProgram(new Date(new Date().getFullYear(), i, 1));
             const isCurrent = i === new Date().getMonth();
             return (
               <div key={i} className={`admin-throwdown-row ${isCurrent ? 'current' : ''}`}>

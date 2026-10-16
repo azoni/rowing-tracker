@@ -4,37 +4,7 @@ import { ACHIEVEMENTS, getUserRank, getMachineName } from '../constants';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import Icon from './Icon';
 import AvatarOrPhoto from './Avatar';
-
-const MONTHLY_CHALLENGES = [
-  { label: 'Fastest 2K', type: 'fastest_distance', distance: 2000 },
-  { label: 'Longest Row', type: 'longest_row' },
-  { label: 'Fastest 500m', type: 'fastest_distance', distance: 500 },
-  { label: 'Most Meters', type: 'most_meters' },
-  { label: 'Fastest 1K', type: 'fastest_distance', distance: 1000 },
-  { label: 'Best Pace', type: 'best_pace' },
-  { label: 'Fastest 5K', type: 'fastest_distance', distance: 5000 },
-  { label: 'Longest Row', type: 'longest_row' },
-  { label: 'Fastest 2K', type: 'fastest_distance', distance: 2000 },
-  { label: 'Most Meters', type: 'most_meters' },
-  { label: 'Fastest 500m', type: 'fastest_distance', distance: 500 },
-  { label: 'Best Pace', type: 'best_pace' },
-];
-
-const THROWDOWNS = [
-  { target: 50000, label: 'Row 50K', field: 'meters', icon: 'ui_fire' },
-  { target: 14, label: '14-Day Streak', field: 'streak', icon: 'ui_fire' },
-  { target: 20, label: '20 Sessions', field: 'sessions', icon: 'ui_fire' },
-  { target: 75000, label: 'Row 75K', field: 'meters', icon: 'ui_fire' },
-  { target: 10000, label: 'Burn 10K Cal', field: 'calories', icon: 'ui_fire' },
-  { target: 100000, label: 'Row 100K', field: 'meters', icon: 'ui_fire' },
-  { target: 25, label: '25 Sessions', field: 'sessions', icon: 'ui_fire' },
-  { target: 21, label: '21-Day Streak', field: 'streak', icon: 'ui_fire' },
-  { target: 60000, label: 'Row 60K', field: 'meters', icon: 'ui_fire' },
-  { target: 15000, label: 'Burn 15K Cal', field: 'calories', icon: 'ui_fire' },
-  { target: 22, label: '22 Sessions', field: 'sessions', icon: 'ui_fire' },
-  { target: 80000, label: 'Row 80K', field: 'meters', icon: 'ui_fire' },
-];
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+import { getMonthlyRewards } from '../utils/rowingGoals';
 
 function UserProfileModal() {
   const {
@@ -146,79 +116,7 @@ function UserProfileModal() {
 
               {/* Rewards — Throwdown Completions + Challenge Placements */}
               {(() => {
-                const now = new Date();
-                const rewards = [];
-
-                // Throwdown completions
-                for (let m = 0; m <= Math.min(now.getMonth(), 11); m++) {
-                  const yr = now.getFullYear();
-                  const mStart = new Date(yr, m, 1);
-                  const mEnd = new Date(yr, m + 1, 0, 23, 59, 59);
-                  const mEntries = entries.filter(e => e.userId === user.id && new Date(e.date) >= mStart && new Date(e.date) <= mEnd);
-                  const td = THROWDOWNS[m];
-                  let val = 0;
-                  if (td.field === 'meters') val = mEntries.reduce((s, e) => s + e.meters, 0);
-                  else if (td.field === 'sessions') val = mEntries.length;
-                  else if (td.field === 'calories') val = mEntries.reduce((s, e) => s + (e.calories || 0), 0);
-                  else if (td.field === 'streak') val = calculateStreak(user.id);
-                  if (val >= td.target) {
-                    rewards.push({ key: `td-${m}`, month: m, type: 'throwdown', label: td.label, monthName: MONTH_NAMES[m], year: yr });
-                  }
-                }
-
-                // Challenge placements (only completed months)
-                const lastCompletedMonth = now.getMonth() - 1;
-                for (let m = 0; m <= lastCompletedMonth && m < 12; m++) {
-                  const yr = now.getFullYear();
-                  const mStart = new Date(yr, m, 1);
-                  const mEnd = new Date(yr, m + 1, 0, 23, 59, 59);
-                  const challenge = MONTHLY_CHALLENGES[m];
-                  const mEntries = entries.filter(e => new Date(e.date) >= mStart && new Date(e.date) <= mEnd);
-
-                  const getScore = (uid) => {
-                    const ue = mEntries.filter(e => e.userId === uid && e.time && e.time > 0 && e.meters > 0);
-                    if (challenge.type === 'fastest_distance') {
-                      const tol = challenge.distance * 0.1;
-                      const q = ue.filter(e => Math.abs(e.meters - challenge.distance) <= tol);
-                      if (!q.length) return null;
-                      return Math.min(...q.map(e => e.time));
-                    } else if (challenge.type === 'longest_row') {
-                      const all = mEntries.filter(e => e.userId === uid);
-                      if (!all.length) return null;
-                      return -Math.max(...all.map(e => e.meters));
-                    } else if (challenge.type === 'most_meters') {
-                      const all = mEntries.filter(e => e.userId === uid);
-                      const total = all.reduce((s, e) => s + e.meters, 0);
-                      return total > 0 ? -total : null;
-                    } else if (challenge.type === 'best_pace') {
-                      if (!ue.length) return null;
-                      return Math.min(...ue.map(e => (e.time / e.meters) * 500));
-                    }
-                    return null;
-                  };
-
-                  const lb = Object.keys(users)
-                    .map(uid => ({ uid, score: getScore(uid) }))
-                    .filter(x => x.score !== null)
-                    .sort((a, b) => a.score - b.score)
-                    .slice(0, 3);
-
-                  const place = lb.findIndex(x => x.uid === user.id);
-                  if (place >= 0) {
-                    const icons = ['ui_gold', 'ui_silver', 'ui_bronze'];
-                    const placeLabels = ['1st', '2nd', '3rd'];
-                    rewards.push({
-                      key: `ch-${m}`,
-                      month: m,
-                      type: 'challenge',
-                      place: place + 1,
-                      icon: icons[place],
-                      label: `${placeLabels[place]} — ${challenge.label}`,
-                      monthName: MONTH_NAMES[m],
-                      year: yr,
-                    });
-                  }
-                }
+                const rewards = getMonthlyRewards({ entries, users, userId: user.id });
 
                 if (rewards.length === 0) return null;
                 return (

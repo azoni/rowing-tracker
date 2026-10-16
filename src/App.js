@@ -47,15 +47,13 @@ import {
   STANDARD_DISTANCES,
   getDistanceCategory,
   getActiveHoliday,
-  THROWDOWNS,
-  MONTHLY_CHALLENGES,
+  getMonthlyProgram,
   MONTH_NAMES,
 } from './constants';
 
 // Import utilities
 import {
   formatMeters,
-  formatTimeDisplay,
   parseTimeInput,
 } from './utils';
 
@@ -64,6 +62,7 @@ import { AppContext } from './context/AppContext';
 
 // Import components
 import Header from './components/Header';
+import { getMonthlySummary, getMonthEntries, getThrowdownProgress, getBestRowStreak } from './utils/rowingGoals';
 import EntryForm from './components/EntryForm';
 import HomeTab from './components/HomeTab';
 import ActivityFeed from './components/ActivityFeed';
@@ -2638,16 +2637,22 @@ function App() {
       if (currentUser) {
         const user = users[currentUser.uid];
         if (user?.unlockedAchievements) {
-          const remainingEntries = entries.filter(e => e.id !== entryId && e.userId === currentUser.uid);
+          const previousEntries = entries.filter(e => e.userId === currentUser.uid);
+          const remainingEntries = previousEntries.filter(e => e.id !== entryId);
           const updatedUser = {
             ...user,
             totalMeters: (user.totalMeters || 0) - meters,
             uploadCount: (user.uploadCount || 0) - 1,
           };
-          const streak = calculateStreak(currentUser.uid);
+          const previousStreak = getBestRowStreak(previousEntries);
+          const remainingStreak = getBestRowStreak(remainingEntries);
           const toRemove = [];
           for (const achievement of ACHIEVEMENTS) {
-            if (user.unlockedAchievements[achievement.id] && !achievement.check(updatedUser, remainingEntries, streak)) {
+            // Only revoke a badge if this deletion changes a met requirement.
+            // A lapsed rolling goal must not erase an earlier earned award.
+            if (user.unlockedAchievements[achievement.id] &&
+                achievement.check(user, previousEntries, previousStreak) &&
+                !achievement.check(updatedUser, remainingEntries, remainingStreak)) {
               toRemove.push(achievement.id);
             }
           }
@@ -2655,7 +2660,7 @@ function App() {
             const cleaned = { ...user.unlockedAchievements };
             toRemove.forEach(id => delete cleaned[id]);
             const userRef = doc(db, 'users', currentUser.uid);
-            await setDoc(userRef, { unlockedAchievements: cleaned }, { merge: true });
+            await updateDoc(userRef, { unlockedAchievements: cleaned });
           }
         }
       }
@@ -2926,7 +2931,7 @@ function App() {
       if (!user) { cache[userId] = 0; return; }
       const userEntries = entries.filter(e => e.userId === userId);
       const streak = streakCache[userId] || 0;
-      cache[userId] = ACHIEVEMENTS.filter(a => a.check(user, userEntries, streak)).length;
+      cache[userId] = ACHIEVEMENTS.filter(a => user.unlockedAchievements?.[a.id] || a.check(user, userEntries, streak)).length;
     });
     return cache;
   }, [users, entries, streakCache]);
@@ -3110,9 +3115,9 @@ function App() {
     const userEntries = entries.filter(e => e.userId === userId);
     const streak = calculateStreak(userId);
     
-    return ACHIEVEMENTS.filter(a => a.check(user, userEntries, streak)).map(a => ({
+    return ACHIEVEMENTS.filter(a => user.unlockedAchievements?.[a.id] || a.check(user, userEntries, streak)).map(a => ({
       ...a,
-      progress: a.getProgress(user, userEntries, streak),
+      progress: getAchievementProgress(userId, a),
       unlockedDate: user.unlockedAchievements?.[a.id] || null,
     }));
   };
@@ -3125,7 +3130,13 @@ function App() {
     const userEntries = entries.filter(e => e.userId === userId);
     const streak = calculateStreak(userId);
     
-    return achievement.getProgress(user, userEntries, streak);
+    const progress = achievement.getProgress(user, userEntries, streak);
+    if (progress.target === 1) {
+      return { ...progress, current: user.unlockedAchievements?.[achievement.id] || achievement.check(user, userEntries, streak) ? 1 : 0 };
+    }
+    return user.unlockedAchievements?.[achievement.id]
+      ? { ...progress, current: Math.max(progress.current, progress.target) }
+      : progress;
   };
 
   // Check and save new achievements
@@ -3314,50 +3325,21 @@ function App() {
 
     // Detect monthly throwdown completions
     const now = new Date();
-    const throwdowns = [
-      { target: 50000, label: 'Row 50K', field: 'meters' },
-      { target: 14, label: '14-Day Streak', field: 'streak' },
-      { target: 20, label: '20 Sessions', field: 'sessions' },
-      { target: 75000, label: 'Row 75K', field: 'meters' },
-      { target: 10000, label: 'Burn 10K Cal', field: 'calories' },
-      { target: 100000, label: 'Row 100K', field: 'meters' },
-      { target: 25, label: '25 Sessions', field: 'sessions' },
-      { target: 21, label: '21-Day Streak', field: 'streak' },
-      { target: 60000, label: 'Row 60K', field: 'meters' },
-      { target: 15000, label: 'Burn 15K Cal', field: 'calories' },
-      { target: 22, label: '22 Sessions', field: 'sessions' },
-      { target: 80000, label: 'Row 80K', field: 'meters' },
-    ];
     const currentMonth = now.getMonth();
-    const throwdown = throwdowns[currentMonth];
-    const monthStart = new Date(now.getFullYear(), currentMonth, 1);
+    const program = getMonthlyProgram(now);
+    const throwdown = program.throwdown;
+    const monthEntries = getMonthEntries(filteredEntries, now, now, program.legacy);
     const monthName = now.toLocaleDateString('en-US', { month: 'long' });
 
     Object.values(filteredUsers).forEach(user => {
-      const userMonthEntries = filteredEntries.filter(e => e.userId === user.id && new Date(e.date) >= monthStart);
-      if (userMonthEntries.length === 0) return;
-      let current = 0;
-      if (throwdown.field === 'meters') current = userMonthEntries.reduce((s, e) => s + e.meters, 0);
-      else if (throwdown.field === 'sessions') current = userMonthEntries.length;
-      else if (throwdown.field === 'calories') current = userMonthEntries.reduce((s, e) => s + (e.calories || 0), 0);
-      else if (throwdown.field === 'streak') current = calculateStreak(user.id);
-      if (current >= throwdown.target) {
-        // Find the entry that pushed them over
-        let runningTotal = 0;
-        let completionDate = null;
-        if (throwdown.field === 'meters' || throwdown.field === 'calories') {
-          const sorted = [...userMonthEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
-          for (const e of sorted) {
-            runningTotal += throwdown.field === 'meters' ? e.meters : (e.calories || 0);
-            if (runningTotal >= throwdown.target) { completionDate = new Date(e.date); break; }
-          }
-        } else if (throwdown.field === 'sessions') {
-          const sorted = [...userMonthEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
-          if (sorted.length >= throwdown.target) completionDate = new Date(sorted[throwdown.target - 1].date);
-        }
-        if (!completionDate) completionDate = new Date(userMonthEntries[userMonthEntries.length - 1].date);
+      const userMonthEntries = monthEntries.filter(e => e.userId === user.id)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      if (getThrowdownProgress(throwdown, userMonthEntries, now) >= throwdown.target) {
+        const completionIndex = userMonthEntries.findIndex((_, index) =>
+          getThrowdownProgress(throwdown, userMonthEntries.slice(0, index + 1), now) >= throwdown.target);
+        const completionDate = new Date(userMonthEntries[completionIndex].date);
         feedItems.push({
-          id: `throwdown-${user.id}-${currentMonth}`,
+          id: program.legacy ? `throwdown-${user.id}-${currentMonth}` : `throwdown-${user.id}-${now.getFullYear()}-${currentMonth}`,
           type: 'throwdown_completed',
           userId: user.id,
           user,
@@ -3371,7 +3353,7 @@ function App() {
 
     feedItems.sort((a, b) => b.sortDate - a.sortDate);
     return feedItems;
-  }, [filteredEntries, filteredUsers, activities, users, selectedGroupId, calculateStreak]);
+  }, [filteredEntries, filteredUsers, activities, users, selectedGroupId]);
 
   // Lightweight filter/paginate on the memoized base
   const getActivityFeed = useCallback((filterQuery = '', page = 1, typeFilter = 'all') => {
@@ -3574,14 +3556,8 @@ function App() {
   // Get monthly recap stats for a completed month
   const getMonthlyRecapStats = (userId, month, year) => {
     const monthStart = new Date(year, month, 1);
-    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-    // All entries for the recapped month
-    const allMonthEntries = entries.filter(e => {
-      const d = new Date(e.date);
-      return d >= monthStart && d <= monthEnd;
-    });
-    const userMonthEntries = allMonthEntries.filter(e => e.userId === userId);
+    const summary = getMonthlySummary({ entries, users, userId, date: monthStart });
+    const userMonthEntries = summary.userEntries;
 
     const hasData = userMonthEntries.length > 0;
     const monthName = MONTH_NAMES[month];
@@ -3589,80 +3565,23 @@ function App() {
     // Next month info (wraps Dec -> Jan)
     const nextMonth = month === 11 ? 0 : month + 1;
     const nextMonthName = MONTH_NAMES[nextMonth];
-    const nextThrowdown = THROWDOWNS[nextMonth];
-    const nextChallenge = MONTHLY_CHALLENGES[nextMonth];
+    const nextProgram = getMonthlyProgram(new Date(year, month + 1, 1));
+    const nextThrowdown = nextProgram.throwdown;
+    const nextChallenge = nextProgram.challenge;
 
     if (!hasData) {
       return { hasData: false, monthName, year, nextMonthName, nextThrowdown, nextChallenge };
     }
 
-    // --- Throwdown result ---
-    const throwdown = THROWDOWNS[month];
-    let throwdownCurrent = 0;
-    if (throwdown.field === 'meters') throwdownCurrent = userMonthEntries.reduce((s, e) => s + e.meters, 0);
-    else if (throwdown.field === 'sessions') throwdownCurrent = userMonthEntries.length;
-    else if (throwdown.field === 'calories') throwdownCurrent = userMonthEntries.reduce((s, e) => s + (e.calories || 0), 0);
-    else if (throwdown.field === 'streak') {
-      // Compute best consecutive-day streak within the month
-      const uniqueDays = [...new Set(userMonthEntries.map(e => new Date(e.date).toDateString()))]
-        .map(d => new Date(d)).sort((a, b) => a - b);
-      let best = uniqueDays.length > 0 ? 1 : 0;
-      let run = 1;
-      for (let i = 1; i < uniqueDays.length; i++) {
-        const diff = (uniqueDays[i] - uniqueDays[i - 1]) / 86400000;
-        if (diff === 1) { run++; best = Math.max(best, run); }
-        else run = 1;
-      }
-      throwdownCurrent = best;
-    }
-    const throwdownPct = Math.min((throwdownCurrent / throwdown.target) * 100, 100);
-    const throwdownComplete = throwdownCurrent >= throwdown.target;
-
-    // --- Challenge leaderboard ---
-    const challenge = MONTHLY_CHALLENGES[month];
-    const getScore = (uid) => {
-      const userEntries = allMonthEntries.filter(e => e.userId === uid && e.time && e.time > 0 && e.meters > 0);
-      if (challenge.type === 'fastest_distance') {
-        const tolerance = challenge.distance * 0.1;
-        const qualifying = userEntries.filter(e => Math.abs(e.meters - challenge.distance) <= tolerance);
-        if (qualifying.length === 0) return null;
-        const best = qualifying.reduce((b, e) => (!b || e.time < b.time) ? e : b, null);
-        return best ? { value: best.time, display: formatTimeDisplay(best.time), sort: best.time, bestDate: new Date(best.date), attempts: qualifying.length } : null;
-      } else if (challenge.type === 'longest_row') {
-        const allUserEntries = allMonthEntries.filter(e => e.userId === uid);
-        if (allUserEntries.length === 0) return null;
-        const bestEntry = allUserEntries.reduce((b, e) => (!b || e.meters > b.meters) ? e : b, null);
-        return { value: bestEntry.meters, display: formatMeters(bestEntry.meters), sort: -bestEntry.meters, bestDate: new Date(bestEntry.date), attempts: allUserEntries.length };
-      } else if (challenge.type === 'most_meters') {
-        const allUserEntries = allMonthEntries.filter(e => e.userId === uid);
-        const total = allUserEntries.reduce((s, e) => s + e.meters, 0);
-        if (total === 0) return null;
-        const lastEntry = [...allUserEntries].sort((a, b) => new Date(a.date) - new Date(b.date)).pop();
-        return { value: total, display: formatMeters(total), sort: -total, bestDate: new Date(lastEntry.date), attempts: allUserEntries.length };
-      } else if (challenge.type === 'best_pace') {
-        if (userEntries.length === 0) return null;
-        const bestEntry = userEntries.reduce((b, e) => {
-          const pace = (e.time / e.meters) * 500;
-          return (!b || pace < b.pace) ? { ...e, pace } : b;
-        }, null);
-        const mins = Math.floor(bestEntry.pace / 60);
-        const secs = (bestEntry.pace % 60).toFixed(1).padStart(4, '0');
-        return { value: bestEntry.pace, display: `${mins}:${secs}/500m`, sort: bestEntry.pace, bestDate: new Date(bestEntry.date), attempts: userEntries.length };
-      }
-      return null;
-    };
-
-    const challengeLeaderboard = Object.keys(users)
-      .map(uid => {
-        const score = getScore(uid);
-        if (!score) return null;
-        return { userId: uid, user: users[uid], ...score };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.sort - b.sort || a.bestDate - b.bestDate);
-
-    const userChallengeRank = challengeLeaderboard.findIndex(l => l.userId === userId) + 1 || null;
-    const userChallengeScore = getScore(userId);
+    // Shared scoring keeps Home, profile rewards and the recap in agreement.
+    const throwdown = summary.throwdown;
+    const throwdownCurrent = summary.current;
+    const throwdownPct = summary.pct;
+    const throwdownComplete = summary.complete;
+    const challenge = summary.challenge;
+    const challengeLeaderboard = summary.leaderboard;
+    const userChallengeRank = summary.userRank;
+    const userChallengeScore = summary.userScore;
 
     // --- Personal stats ---
     const totalMeters = userMonthEntries.reduce((s, e) => s + e.meters, 0);
@@ -3675,26 +3594,16 @@ function App() {
     const uniqueDaysRowed = new Set(userMonthEntries.map(e => new Date(e.date).toDateString())).size;
     const avgMetersPerSession = sessionCount > 0 ? Math.round(totalMeters / sessionCount) : 0;
 
-    // Best streak within the month
-    const uniqueDays = [...new Set(userMonthEntries.map(e => new Date(e.date).toDateString()))]
-      .map(d => new Date(d)).sort((a, b) => a - b);
-    let bestStreak = uniqueDays.length > 0 ? 1 : 0;
-    let streakRun = 1;
-    for (let i = 1; i < uniqueDays.length; i++) {
-      const diff = (uniqueDays[i] - uniqueDays[i - 1]) / 86400000;
-      if (diff === 1) { streakRun++; bestStreak = Math.max(bestStreak, streakRun); }
-      else streakRun = 1;
-    }
+    // Calendar days stay consecutive across daylight-saving changes.
+    const bestStreak = getBestRowStreak(userMonthEntries);
 
     // --- Month-over-month comparison ---
     const prevMonth = month === 0 ? 11 : month - 1;
     const prevYear = month === 0 ? year - 1 : year;
     const prevStart = new Date(prevYear, prevMonth, 1);
-    const prevEnd = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59, 999);
-    const prevEntries = entries.filter(e => {
-      const d = new Date(e.date);
-      return e.userId === userId && d >= prevStart && d <= prevEnd;
-    });
+    const prevProgram = getMonthlyProgram(prevStart);
+    const prevEntries = getMonthEntries(entries, prevStart, new Date(), prevProgram.legacy)
+      .filter(e => e.userId === userId);
 
     let comparison = null;
     if (prevEntries.length > 0) {

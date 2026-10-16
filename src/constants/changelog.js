@@ -1,6 +1,14 @@
 // Changelog entries
 export const CHANGELOG = [
   {
+    version: '4.7.1',
+    date: '2026-10-16',
+    changes: [
+      'Your Home card now pairs a compact weekly summary with the crew’s live around-the-world journey.',
+      'See the boat, next destination and world progress at a glance. Tap the preview to explore the full map.',
+    ],
+  },
+  {
     version: '4.7.0',
     date: '2026-10-15',
     changes: [

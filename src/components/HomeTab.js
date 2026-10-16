@@ -1,6 +1,6 @@
 import React from 'react';
 import Icon from './Icon';
-import WorldProgress from './WorldProgress';
+import JourneyPreview from './JourneyPreview';
 import MonthlyMissions from './MonthlyMissions';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
@@ -12,7 +12,7 @@ import './HomeTab.css';
 function HomeTab() {
   const { currentUser, userProfile, entries, users, getUserAchievements, getAchievementProgress,
     setShowRankProgressModal, setShowAchievementModal, setShowLogModal, setShowSessionHistory,
-    setActiveTab, setShowCrewMap } = useApp();
+    setActiveTab, setShowCrewMap, totalMeters } = useApp();
   if (!currentUser || !userProfile) return null;
 
   const now = new Date();
@@ -47,26 +47,21 @@ function HomeTab() {
       </div>
 
       <section className="weekly-card" aria-labelledby="weekly-title">
-        <div className="weekly-top"><h3 id="weekly-title">This week on the water</h3><Icon name="ui_rowing" size={26} /></div>
-        <div className="weekly-numbers"><div className="weekly-distance"><strong>{(week.meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })}</strong><span>km rowed</span></div>
-          <div className="weekly-small"><strong>{week.sessions}</strong><span>{week.sessions === 1 ? 'session' : 'sessions'}</span></div>
-          <div className="weekly-small"><strong>{week.activeDays}</strong><span>{week.activeDays === 1 ? 'active day' : 'active days'}</span></div>
+        <div className="weekly-overview">
+          <div><h3 id="weekly-title">Your week</h3><div className="weekly-distance"><strong>{(week.meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })}</strong><span>km</span></div></div>
+          <div className="weekly-tally"><strong>{week.sessions} {week.sessions === 1 ? 'row' : 'rows'}</strong><span>{week.activeDays} {week.activeDays === 1 ? 'active day' : 'active days'}</span></div>
+          <button className="weekly-history" onClick={() => setShowSessionHistory(true)}><Icon name="ui_history" size={17} /><span>Logbook</span><span aria-hidden="true">↗</span></button>
         </div>
-        <div className="week-rhythm" aria-label="Your activity this week, Monday to Sunday">
+        <div className="week-rhythm" role="list" aria-label="Your activity this week, Monday to Sunday">
           {week.days.map(day => <div key={day.date.toISOString()} className={`week-day ${day.sessions ? 'has-row' : ''} ${day.today ? 'is-today' : ''} ${day.future ? 'is-future' : ''}`}
-            aria-label={`${day.date.toLocaleDateString('en-US', { weekday: 'long' })}: ${day.meters.toLocaleString()} meters${day.today ? ', today' : ''}`}>
-            <span>{day.date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1)}</span>
-            <span className="week-day-mark">{day.sessions ? <Icon name="ui_check" size={15} /> : <span />}</span>
+            role="listitem" aria-label={`${day.date.toLocaleDateString('en-US', { weekday: 'long' })}: ${day.meters.toLocaleString()} meters${day.today ? ', today' : day.future ? ', upcoming' : ''}`}>
+            <span aria-hidden="true">{day.date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1)}</span>
+            <span className="week-day-mark" aria-hidden="true">{day.sessions ? <Icon name="ui_check" size={11} /> : <span />}</span>
           </div>)}
         </div>
-        <p className="weekly-note">{week.sessions ? 'A little rhythm goes a long way. Every row is yours.' : 'Your next chapter starts with one row. Go at your pace.'}</p>
+        <JourneyPreview totalMeters={totalMeters} onOpen={() => setShowCrewMap(true)} />
         <button className="dashboard-log" onClick={showLog}><Icon name="ui_plus" size={20} /> Log a row <span>Photo or manual</span></button>
       </section>
-
-      <div className="dashboard-shortcuts">
-        <button onClick={() => setShowSessionHistory(true)}><Icon name="ui_history" size={18} /> My logbook <span>→</span></button>
-        <button onClick={() => setShowCrewMap(true)}><Icon name="ui_globe" size={18} /> Crew journey <span>→</span></button>
-      </div>
 
       <MonthlyMissions missions={monthly.missions} onLog={showLog} />
 
@@ -122,7 +117,6 @@ function HomeTab() {
         </div>) : <div className="dashboard-empty"><Icon name="ui_rowing" size={30} /><p>Nothing in your logbook yet.<br />A photo of your monitor is all you need.</p><button onClick={showLog}>Log your first row →</button></div>}
       </section>
 
-      <details className="dashboard-journey"><summary><Icon name="ui_globe" size={20} /><span>Every meter moves the whole crew</span><span className="details-chevron">⌄</span></summary><WorldProgress /></details>
     </section>
   );
 }

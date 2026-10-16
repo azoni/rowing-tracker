@@ -1953,6 +1953,7 @@ function App() {
 
   // Handle image upload - verify with Claude first
   const handleImageUpload = async (event) => {
+    if (isProcessing || isSubmittingManual || !currentUser || !userProfile) return;
     const file = event.target.files[0];
     if (!file) return;
 
@@ -1972,6 +1973,14 @@ function App() {
     }
 
     const reader = new FileReader();
+    const handleReadFailure = () => {
+      setIsProcessing(false);
+      setProcessingStatus('');
+      setValidationError('This photo could not be opened. Choose it again or try another image.');
+      setCapturedImage(null);
+    };
+    reader.onerror = handleReadFailure;
+    reader.onabort = handleReadFailure;
     reader.onload = async (e) => {
       const imageData = e.target.result;
       setCapturedImage(imageData);
@@ -2083,7 +2092,11 @@ function App() {
         setIsProcessing(false);
       }
     };
-    reader.readAsDataURL(file);
+    try {
+      reader.readAsDataURL(file);
+    } catch {
+      handleReadFailure();
+    }
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -2368,6 +2381,7 @@ function App() {
 
   // Handle manual meter entry (no photo)
   const handleManualSubmit = async () => {
+    if (isSubmittingManual || isProcessing || !currentUser || !userProfile) return;
     const meters = parseInt(manualMeters, 10);
     
     if (!meters || isNaN(meters)) {
@@ -2375,8 +2389,8 @@ function App() {
       return;
     }
     
-    if (meters < 100 || meters > 30000) {
-      setValidationError('Meters must be between 100 and 30,000');
+    if (meters < MIN_METERS || meters > MAX_METERS) {
+      setValidationError(`Meters must be between ${MIN_METERS.toLocaleString()} and ${MAX_METERS.toLocaleString()}`);
       return;
     }
 

@@ -20,3 +20,24 @@ test('Sunday still belongs to the week starting the previous Monday, across year
   expect(stats.start.getDate()).toBe(28);
   expect(stats.days[6].today).toBe(true);
 });
+
+test('matches mission and analytics eligibility for manual and verified rows without counting review or test uploads', () => {
+  const now = new Date(2026, 9, 15, 12);
+  const row = extra => ({ userId: 'me', meters: 1000, date: new Date(2026, 9, 14, 9).toISOString(), ...extra });
+  const rows = [row({ verificationStatus: 'verified' }), row({ verificationStatus: 'unverified', meters: '2000' }),
+    ...['pending', 'pending_review', 'rejected'].map(verificationStatus => row({ verificationStatus })),
+    row({ isTest: true }), row({ meters: Infinity }), row({ meters: 0 }), row({ meters: -1 }), row({ date: 'bad' })];
+  expect(getWeeklyStats(rows, 'me', now)).toMatchObject({ meters: 3000, sessions: 2, activeDays: 1 });
+});
+
+test('supports Firestore dates and keeps the complete Sunday at a daylight-saving boundary', () => {
+  const now = new Date(2026, 10, 1, 23, 30);
+  const row = date => ({ userId: 'me', meters: 1000, date });
+  const rows = [row({ toDate: () => new Date(2026, 9, 26) }),
+    row(new Date(2026, 10, 1, 0, 30).toISOString()), row(new Date(2026, 10, 1, 23).toISOString()),
+    row({ toDate: () => new Date(2026, 10, 2) }), row({ toDate: () => new Date(NaN) })];
+  const stats = getWeeklyStats(rows, 'me', now);
+  expect(stats.start).toEqual(new Date(2026, 9, 26));
+  expect(stats).toMatchObject({ meters: 3000, sessions: 3, activeDays: 2 });
+  expect(stats.days[6]).toMatchObject({ sessions: 2, today: true });
+});

@@ -1,5 +1,8 @@
+import { getEligibleEntries } from './rowingGoals';
+
 // Calendar weeks start on Monday in the rower's local timezone.
 export function getWeeklyStats(entries, userId, now = new Date()) {
+  const eligibleRows = getEligibleEntries(entries, now).filter(row => row.userId === userId);
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - (start.getDay() + 6) % 7);
@@ -8,8 +11,10 @@ export function getWeeklyStats(entries, userId, now = new Date()) {
     date.setDate(date.getDate() + index);
     const end = new Date(date);
     end.setDate(end.getDate() + 1);
-    const rows = entries.filter(row => row.userId === userId && Number(row.meters) > 0 &&
-      new Date(row.date) >= date && new Date(row.date) < end && new Date(row.date) <= now);
+    const rows = eligibleRows.filter(row => {
+      const rowDate = row.date?.toDate ? row.date.toDate() : new Date(row.date);
+      return rowDate >= date && rowDate < end;
+    });
     return { date, meters: rows.reduce((sum, row) => sum + Number(row.meters), 0), sessions: rows.length,
       today: date.toDateString() === now.toDateString(), future: date > now };
   });

@@ -238,6 +238,7 @@ export function AchievementModal() {
         <div className="achievement-modal-content">
           <span className="achievement-modal-emoji"><Icon name={showAchievementModal.emoji} size={48} /></span>
           <h2 id="achievement-title">{showAchievementModal.name}</h2>
+          {showAchievementModal.difficulty && <span className={`badge-difficulty is-${showAchievementModal.difficulty}`}>{showAchievementModal.difficulty}</span>}
           <p className="achievement-modal-desc" id="achievement-description">{showAchievementModal.desc}</p>
 
           {currentUser && (() => {

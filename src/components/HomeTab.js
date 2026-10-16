@@ -4,9 +4,9 @@ import WorldProgress from './WorldProgress';
 import MonthlyMissions from './MonthlyMissions';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
-import { getUserRank, getNextRank, ACHIEVEMENTS } from '../constants';
+import { getUserRank, getNextRank, getMonthlyProgram, ACHIEVEMENTS } from '../constants';
 import { getWeeklyStats } from '../utils/weeklyStats';
-import { getMonthlySummary } from '../utils/rowingGoals';
+import { getDistanceStamps, getMonthlySummary } from '../utils/rowingGoals';
 import './HomeTab.css';
 
 function HomeTab() {
@@ -18,6 +18,11 @@ function HomeTab() {
   const now = new Date();
   const week = getWeeklyStats(entries, currentUser.uid, now);
   const monthly = getMonthlySummary({ entries, users, userId: currentUser.uid, date: now, now });
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const upcoming = getMonthlyProgram(nextMonth);
+  const tourStamps = monthly.challenge.type === 'benchmark_tour'
+    ? getDistanceStamps(monthly.userEntries.filter(entry => Number(entry.time) > 0), monthly.challenge.distances, monthly.challenge.tolerance)
+    : null;
   const rank = getUserRank(userProfile.totalMeters || 0);
   const nextRank = getNextRank(userProfile.totalMeters || 0);
   const earned = new Set(getUserAchievements(currentUser.uid).map(a => a.id));
@@ -77,12 +82,18 @@ function HomeTab() {
           <div className="dashboard-competition">
             <p className="dashboard-eyebrow">Crew competition</p><h3>{monthly.challenge.label}</h3><p>{monthly.challenge.description}</p>
             {monthly.userScore ? <p className="dashboard-your-score">Your score <strong>{monthly.userScore.display}</strong><span>#{monthly.userRank}</span></p>
-              : <p className="dashboard-goal-progress">Your next qualifying row enters automatically.</p>}
+              : <p className="dashboard-goal-progress">{tourStamps ? 'Complete all three timed distances to enter the standings.' : 'Your next qualifying row enters automatically.'}</p>}
+            {tourStamps && <div className="mission-stamps" aria-label="Your monthly tour distances">{tourStamps.map(stamp => <span key={stamp.distance} className={stamp.entry ? 'collected' : ''}>{stamp.entry && <Icon name="ui_check" size={12} />}{stamp.distance / 1000}K<span className="mission-sr-only">{stamp.entry ? ' completed' : ' remaining'}</span></span>)}</div>}
             {monthly.leaderboard.length > 0 && <ol className="dashboard-podium">
               {monthly.leaderboard.slice(0, 3).map((row, i) => <li key={row.userId}>
                 <span className="podium-position">{i + 1}</span><span>{row.user?.name?.split(' ')[0] || 'Rower'}{row.userId === currentUser.uid ? ' (you)' : ''}</span><strong>{row.display}</strong>
               </li>)}
             </ol>}
+          </div>
+          <div className="dashboard-upcoming">
+            <p className="dashboard-eyebrow">Coming {nextMonth.toLocaleDateString('en-US', { month: 'long' })} 1</p>
+            <h3>{upcoming.challenge.label}</h3><p>{upcoming.challenge.description}</p>
+            <p><strong>Your throwdown: {upcoming.throwdown.label}.</strong> {upcoming.throwdown.description}</p>
           </div>
         </div>
       </details>
@@ -92,7 +103,7 @@ function HomeTab() {
         {nextBadges.length ? nextBadges.map(badge => <button className="dashboard-badge" key={badge.id}
           onClick={() => setShowAchievementModal({ ...badge, progress: badge.progress })}>
           <span className="dashboard-badge-icon"><Icon name={badge.emoji} size={25} /></span>
-          <span className="dashboard-badge-copy"><strong>{badge.name}</strong><small>{badge.desc}</small>
+          <span className="dashboard-badge-copy"><strong>{badge.name}</strong>{badge.difficulty && <span className={`badge-difficulty is-${badge.difficulty}`}>{badge.difficulty}</span>}<small>{badge.desc}</small>
             <progress aria-label={`${badge.name} progress`} value={Math.min(badge.pct, 1)} max="1" /></span>
           <span className="dashboard-badge-percent">{Math.round(Math.min(badge.pct, 1) * 100)}%</span>
         </button>) : <p>Every badge earned. What a journey!</p>}

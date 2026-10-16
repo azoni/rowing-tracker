@@ -1,4 +1,4 @@
-import { getHabitMetrics, getSameHourStreak, hasPersonalDistanceRecord } from '../utils/rowingGoals';
+import { getAdvancedHabitMetrics, getHabitMetrics, getSameHourStreak, hasPersonalDistanceRecord } from '../utils/rowingGoals';
 
 // These badges celebrate repeatable habits and retain progress across calendar resets.
 const HABIT_BADGES = [
@@ -10,10 +10,25 @@ const HABIT_BADGES = [
   { id: 'bookends', name: 'Bookends', desc: 'Row on a weekday and a weekend day in the same Monday–Sunday week', emoji: 'ui_calendar', category: 'fun', metric: 'bookendWeeks', target: 1 },
 ];
 
+// New rungs extend the collection without changing the criteria of earned badges.
+const ADVANCED_BADGES = [
+  { id: 'benchmark_tour', name: 'Tour Finisher', desc: 'Log a timed 1K, 2K and 5K, each within 10m', emoji: 'ui_globe', category: 'distance', difficulty: 'build', metric: 'benchmarkStamps', target: 3 },
+  { id: 'twelve_day_rhythm', name: 'The Steady Dozen', desc: 'Log a row of at least 1K on 12 different days in one calendar month', emoji: 'achievement_consistency', category: 'habits', difficulty: 'build', metric: 'bestMonthDays', target: 12 },
+  { id: 'three_month_rhythm', name: 'Season Ticket', desc: 'Log a row of at least 1K on 8 different days in each of 3 calendar months', emoji: 'ui_calendar', category: 'habits', difficulty: 'stretch', metric: 'eightDayMonths', target: 3 },
+  { id: 'eight_week_rhythm', name: 'Built to Last', desc: 'Log a row of at least 1K on 2 different days a week for 8 consecutive Monday–Sunday weeks', emoji: 'achievement_consistency', category: 'habits', difficulty: 'stretch', metric: 'bestSteadyWeeks', target: 8 },
+  { id: 'extended_benchmark_tour', name: 'The Long Tour', desc: 'Log a timed 1K, 2K, 5K and 10K, each within 10m', emoji: 'achievement_the_ten_k', category: 'distance', difficulty: 'stretch', metric: 'extendedBenchmarkStamps', target: 4 },
+];
+
 // Achievement definitions
 export const ACHIEVEMENTS = [
+  ...ADVANCED_BADGES.map(({ metric, target, ...badge }) => ({
+    ...badge,
+    check: (user, entries) => getAdvancedHabitMetrics(entries)[metric] >= target,
+    getProgress: (user, entries) => ({ current: Math.min(getAdvancedHabitMetrics(entries)[metric], target), target }),
+  })),
   ...HABIT_BADGES.map(({ metric, target, ...badge }) => ({
     ...badge,
+    difficulty: ['steady_company'].includes(badge.id) ? 'build' : 'starter',
     check: (user, entries) => getHabitMetrics(entries)[metric] >= target,
     getProgress: (user, entries) => ({ current: Math.min(getHabitMetrics(entries)[metric], target), target }),
   })),

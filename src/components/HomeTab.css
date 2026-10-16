@@ -1,5 +1,5 @@
 .dashboard { display: flex; flex-direction: column; gap: 20px; }
-.dashboard button { font: inherit; cursor: pointer; }
+.dashboard button { font-family: inherit; cursor: pointer; }
 .dashboard-heading { display: flex; align-items: center; justify-content: space-between; }
 .dashboard-eyebrow { color: var(--text-secondary); font-size: .62rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 600; }
 .dashboard-heading h2 { font-size: 1.7rem; line-height: 1.25; margin-top: 5px; letter-spacing: -.04em; }
@@ -77,3 +77,5 @@ details[open] > summary .details-chevron { transform: rotate(180deg); }
   .weekly-card { padding: 16px; } .weekly-numbers { gap: 15px; }
   .dashboard-log > span { font-size: .6rem; } .dashboard-shortcuts button { padding: 8px; gap: 6px; }
 }
+.dashboard-upcoming { margin-top: 22px; padding: 18px 0 0; border-top: 1px dashed var(--border-color); }
+.dashboard-upcoming > p:last-child { font-size: .78rem; }

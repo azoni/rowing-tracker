@@ -61,26 +61,26 @@ export const REFRESHED_CHALLENGES = [
   benchmark('benchmark-rematch', '2K Benchmark Rematch', 2000),
   timedRow('ten-minute-rematch', 'Ten-Minute Rematch', 10),
   {
-    id: 'distance-passport', label: 'Distance Passport', type: 'distance_ladder',
-    distances: [500, 1000, 2000], tolerance: 10,
-    description: 'Collect a 500m, 1,000m and 2,000m row, each within 10m. Most stamps wins; ties go to the first to collect them.',
+    id: 'three-distance-tour', label: 'The Three-Distance Tour', type: 'benchmark_tour',
+    distances: [1000, 2000, 5000], tolerance: 10,
+    description: 'Log a timed 1K, 2K and 5K this month, each within 10m. All three are required. Lowest average of your best /500m pace at each distance wins; each distance has equal weight. Scores round to 0.1 seconds; ties go to the first to achieve that score. Spread the rows across the month.',
   },
   timedRow('year-end-voyage', 'Year-End Voyage', 20),
 ];
 
 export const REFRESHED_THROWDOWNS = [
-  { type: 'rhythm', field: 'active_days', target: 8, unit: ' days', label: 'Find Your Rhythm', description: 'Row on 8 different days. Choose the days that work for you.' },
-  { type: 'rhythm', field: 'steady_weeks', target: 3, unit: ' weeks', label: 'A Little, Often', description: 'Row on 2 different days in 3 Monday–Sunday weeks this month.' },
-  { type: 'variety', field: 'workout_types', target: 3, unit: ' types', label: 'Mix It Up', description: 'Try 3 workout types: free row, timed, distance or intervals.' },
-  { type: 'variety', field: 'distance_ladder', distances: [500, 1000, 2000], tolerance: 10, target: 3, unit: ' stamps', label: 'Three Stops', description: 'Collect a 500m, 1,000m and 2,000m row, each within 10m.' },
-  { type: 'time', field: 'timed_sessions', target: 6, unit: ' rows', label: 'Keep the Details', description: 'Include your time with 6 rows so you can follow your pace.' },
-  { type: 'rhythm', field: 'active_days', target: 8, unit: ' days', label: 'Eight Is Great', description: 'Find 8 days to row this month. No streak required.' },
-  { type: 'time', field: 'minutes', target: 90, unit: ' min', label: 'Ninety Minutes, Your Way', description: 'Build up 90 minutes across as many rows as you like.' },
-  { type: 'rhythm', field: 'steady_weeks', target: 3, unit: ' weeks', label: 'Keep Coming Back', description: 'Row on 2 different days in 3 Monday–Sunday weeks this month.' },
-  { type: 'distance', field: 'meters', target: 25000, unit: 'm', label: 'The 25K Journey', description: 'Collect 25,000 meters at your own pace.' },
-  { type: 'variety', field: 'workout_types', target: 3, unit: ' types', label: 'Change the Playlist', description: 'Log 3 different workout types this month.' },
-  { type: 'rhythm', field: 'active_days', target: 6, unit: ' days', label: 'Six Good Days', description: 'Row on 6 different days this month. Rest days fit right in.' },
-  { type: 'time', field: 'minutes', target: 120, unit: ' min', label: 'Make Time for You', description: 'Collect 120 minutes this month, in sessions that fit your day.' },
+  { type: 'rhythm', field: 'active_days', minimumMeters: 1000, target: 10, unit: ' days', label: 'Find Your Rhythm', description: 'Log a row of at least 1K on 10 different days. Choose the days that work for you.' },
+  { type: 'rhythm', field: 'steady_weeks', minimumMeters: 1000, target: 3, unit: ' weeks', label: 'A Little, Often', description: 'Log a row of at least 1K on 2 different days in 3 Monday–Sunday weeks this month.' },
+  { type: 'distance', field: 'active_days', minimumMeters: 5000, target: 5, unit: ' days', label: 'Five by Five', description: 'Log a row of at least 5K on 5 different days this month.' },
+  { type: 'distance', field: 'meters', target: 40000, unit: 'm', label: 'The 40K Crossing', description: 'Build up 40,000 meters this month, one row at a time.' },
+  { type: 'time', field: 'quality_days', target: 8, unit: ' days', label: 'Make It Count', description: 'Log a timed row of at least 10 minutes and 1K on 8 different days.' },
+  { type: 'rhythm', field: 'active_days', minimumMeters: 1000, target: 10, unit: ' days', label: 'Ten Good Days', description: 'Log a row of at least 1K on 10 different days this month. No streak required.' },
+  { type: 'time', field: 'minutes', target: 180, unit: ' min', label: 'Three Hours, Your Way', description: 'Build up 180 minutes across the month. Choose your own session length.' },
+  { type: 'rhythm', field: 'steady_weeks', minimumMeters: 1000, target: 4, unit: ' weeks', label: 'Keep Coming Back', description: 'Log a row of at least 1K on 2 different days in 4 Monday–Sunday weeks this month.' },
+  { type: 'distance', field: 'meters', target: 50000, unit: 'm', label: 'The 50K Journey', description: 'Collect 50,000 meters at your own pace.' },
+  { type: 'time', field: 'quality_days', target: 10, unit: ' days', label: 'The Steady Ten', description: 'Log a timed row of at least 10 minutes and 1K on 10 different days.' },
+  { type: 'rhythm', field: 'active_days', minimumMeters: 1000, target: 10, unit: ' days', label: 'Ten Good Days', description: 'Log a row of at least 1K on 10 different days this month. Rest days fit right in.' },
+  { type: 'time', field: 'minutes', target: 180, unit: ' min', label: 'Make Time for You', description: 'Collect 180 minutes this month, in sessions that fit your day.' },
 ];
 
 export const getMonthlyProgram = (date = new Date()) => {

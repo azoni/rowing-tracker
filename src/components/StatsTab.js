@@ -3,306 +3,102 @@ import Icon from './Icon';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import { ACHIEVEMENTS } from '../constants';
+import { formatAchievementProgress } from '../utils/achievementDisplay';
+import './ProgressAndCrew.css';
 
-const PAGE_SIZE = 12;
-
-const CATEGORIES = [
-  { key: 'all', label: 'All' },
-  { key: 'distance', label: 'Distance' },
-  { key: 'sessions', label: 'Sessions' },
-  { key: 'streaks', label: 'Streaks' },
-  { key: 'time', label: 'Time' },
-  { key: 'calories', label: 'Calories' },
-  { key: 'pace', label: 'Pace' },
-  { key: 'habits', label: 'Habits' },
-  { key: 'fun', label: 'Fun' },
-  { key: 'milestones', label: 'Milestones' },
-];
+const PAGE_SIZE = 6;
+const CATEGORIES = ['distance', 'sessions', 'streaks', 'time', 'calories', 'pace', 'habits', 'fun', 'milestones'];
 
 function StatsTab() {
   const {
     currentUser, isAdmin, entries,
-    getUserAchievements, getAchievementProgress,
-    setShowAchievementModal,
-    setShowSessionHistory, setShowRankProgressModal,
-    setShowAdminPanel, loadPendingReviews,
-    handleSignOut, calculateStreak, calculateLongestStreak,
+    getUserAchievements, getAchievementProgress, setShowAchievementModal,
+    setShowSessionHistory, setShowRankProgressModal, setShowSettingsModal,
+    setShowAdminPanel, loadPendingReviews, handleSignOut, handleSignIn,
+    calculateLongestStreak, setShowLogModal,
   } = useApp();
-
-  const [achievementFilter, setAchievementFilter] = React.useState('all');
+  const [achievementFilter, setAchievementFilter] = React.useState('next');
   const [categoryFilter, setCategoryFilter] = React.useState('all');
   const [page, setPage] = React.useState(0);
-
-  const filteredAchievements = ACHIEVEMENTS
-    .filter(achievement => {
-      // Status filter
-      if (achievementFilter !== 'all') {
-        const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
-        if (achievementFilter === 'completed' && !unlocked) return false;
-        if (achievementFilter === 'locked' && unlocked) return false;
-        if (achievementFilter === 'incomplete') {
-          if (unlocked) return false;
-          const progress = getAchievementProgress(currentUser.uid, achievement);
-          if (progress.current <= 0) return false;
-        }
-      }
-      // Category filter
-      if (categoryFilter !== 'all' && achievement.category !== categoryFilter) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      if (achievementFilter === 'incomplete' && currentUser) {
-        const progA = getAchievementProgress(currentUser.uid, a);
-        const progB = getAchievementProgress(currentUser.uid, b);
-        const pctA = progA.target > 0 ? progA.current / progA.target : 0;
-        const pctB = progB.target > 0 ? progB.current / progB.target : 0;
-        return pctB - pctA;
-      }
-      return 0;
-    });
-
-  const totalPages = Math.ceil(filteredAchievements.length / PAGE_SIZE) || 1;
-  const pageItems = filteredAchievements.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const filter = currentUser ? achievementFilter : 'all';
+  const earned = currentUser ? getUserAchievements(currentUser.uid) : [];
+  const earnedById = new Map(earned.map(achievement => [achievement.id, achievement]));
+  const achievementItems = ACHIEVEMENTS.map(achievement => ({
+    achievement,
+    earned: earnedById.get(achievement.id),
+    progress: currentUser ? getAchievementProgress(currentUser.uid, achievement) : { current: 0, target: 1 },
+  })).filter(item => (
+    (filter === 'all' || (filter === 'earned' ? !!item.earned : !item.earned)) &&
+    (categoryFilter === 'all' || item.achievement.category === categoryFilter)
+  )).sort((a, b) => {
+    if (filter === 'next') {
+      return (b.progress.target > 0 ? b.progress.current / b.progress.target : 0) -
+        (a.progress.target > 0 ? a.progress.current / a.progress.target : 0);
+    }
+    if (filter === 'earned') return (new Date(b.earned?.unlockedDate).getTime() || 0) - (new Date(a.earned?.unlockedDate).getTime() || 0);
+    return 0;
+  });
+  const totalPages = Math.max(1, Math.ceil(achievementItems.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const pageItems = achievementItems.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const userEntries = currentUser ? entries.filter(entry => entry.userId === currentUser.uid) : [];
+  const totalMeters = userEntries.reduce((sum, entry) => sum + (Number(entry.meters) || 0), 0);
+  const totalTime = userEntries.reduce((sum, entry) => sum + (Number(entry.time) || 0), 0);
+  const activeDays = new Set(userEntries.map(entry => new Date(entry.date).toDateString())).size;
+  const longestRow = userEntries.reduce((best, entry) => Math.max(best, Number(entry.meters) || 0), 0);
+  const averageRow = userEntries.length ? Math.round(totalMeters / userEntries.length) : 0;
 
   return (
-    <section className="more-section">
-      <h2>Achievements & More</h2>
-
-      {/* Achievements Section */}
-      <div className="achievements-full-section">
-        <h3><Icon name="ui_medal" size={18} /> {currentUser ? 'Your Achievements' : 'Achievements'}
-          {currentUser && (
-            <span className="achievements-count-inline"> {getUserAchievements(currentUser.uid).length}/{ACHIEVEMENTS.length}</span>
+    <section className="more-section progress-screen" aria-labelledby="progress-heading">
+      <div className="progress-page-heading">
+        <div><span className="crew-eyebrow">Every row adds up</span><h2 id="progress-heading">Your progress</h2></div>
+        {currentUser && <button className="progress-history-link" onClick={() => setShowSessionHistory(true)}><Icon name="ui_history" size={16} /> History</button>}
+      </div>
+      {currentUser ? (
+        <>
+          <div className="progress-overview">
+            <div className="progress-total"><span>Lifetime distance</span><strong>{formatMeters(totalMeters)}<small>m</small></strong><span>{userEntries.length.toLocaleString()} {userEntries.length === 1 ? 'row' : 'rows'} in the books</span></div>
+            <div className="progress-overview-secondary"><div><strong>{activeDays}</strong><span>days rowed</span></div><div><strong>{totalTime > 0 ? formatTimeDisplay(totalTime) : '—'}</strong><span>recorded time</span></div></div>
+          </div>
+          {userEntries.length > 0 ? (
+            <div className="progress-records" aria-label="Your rowing records">
+              <div><Icon name="ui_trophy" size={17} /><strong>{formatMeters(longestRow)}m</strong><span>longest row</span></div>
+              <div><Icon name="ui_rowing" size={17} /><strong>{formatMeters(averageRow)}m</strong><span>average row</span></div>
+              <div><Icon name="ui_fire" size={17} /><strong>{calculateLongestStreak(currentUser.uid)} days</strong><span>best streak</span></div>
+            </div>
+          ) : (
+            <div className="progress-first-row"><p>Your first row starts the story. Add a monitor photo or enter your distance.</p><button onClick={() => setShowLogModal(true)}>Log your first row <span aria-hidden="true">→</span></button></div>
           )}
-        </h3>
-
-        {/* Status filters */}
-        <div className="achievement-filters">
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'incomplete', label: 'Almost There' },
-            { key: 'completed', label: 'Completed' },
-            { key: 'locked', label: 'Locked' },
-          ].map(f => (
-            <button
-              key={f.key}
-              className={`achievement-filter-btn ${achievementFilter === f.key ? 'active' : ''}`}
-              onClick={() => { setAchievementFilter(f.key); setPage(0); }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Category filters */}
-        <div className="achievement-category-filters">
-          {CATEGORIES.map(c => (
-            <button
-              key={c.key}
-              className={`achievement-category-btn ${categoryFilter === c.key ? 'active' : ''}`}
-              onClick={() => { setCategoryFilter(c.key); setPage(0); }}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Achievement grid */}
-        <div className="achievements-grid-full">
-          {pageItems.map((achievement) => {
-            const unlocked = currentUser ? getUserAchievements(currentUser.uid).some(a => a.id === achievement.id) : false;
-            const progress = currentUser ? getAchievementProgress(currentUser.uid, achievement) : { current: 0, target: 1 };
-            const unlockedAchievement = currentUser ? getUserAchievements(currentUser.uid).find(a => a.id === achievement.id) : null;
-            const progressPercent = Math.min((progress.current / progress.target) * 100, 100);
-
-            return (
-              <div
-                key={achievement.id}
-                className={`achievement-card ${unlocked ? 'unlocked' : 'locked'}`}
-                onClick={() => setShowAchievementModal({ ...achievement, progress, unlockedDate: unlockedAchievement?.unlockedDate })}
-              >
-                <span className="achievement-card-emoji"><Icon name={achievement.emoji} size={24} /></span>
-                <span className="achievement-card-name">{achievement.name}</span>
-                {!unlocked && currentUser && (
-                  <div className="achievement-card-progress">
-                    <div className="achievement-progress-bar">
-                      <div className="achievement-progress-fill" style={{ width: `${progressPercent}%` }} />
-                    </div>
-                    <span className="achievement-progress-text">
-                      {progress.target >= 1000 ? `${formatMeters(progress.current)}/${formatMeters(progress.target)}` : `${progress.current}/${progress.target}`}
-                    </span>
-                  </div>
-                )}
-                {unlocked && <span className="achievement-card-check">✓ Unlocked</span>}
-              </div>
-            );
+        </>
+      ) : (
+        <div className="progress-guest"><p>Keep your rowing history, see your progress, and collect achievements along the way.</p><button onClick={handleSignIn}>Sign in to track your rows</button></div>
+      )}
+      <div className="progress-achievements">
+        <div className="progress-section-heading"><div><span className="crew-eyebrow">Small wins. Great stories.</span><h3>Achievements</h3></div><span className="progress-earned-count">{currentUser ? `${earned.length} / ${ACHIEVEMENTS.length} earned` : `${ACHIEVEMENTS.length} to discover`}</span></div>
+        {currentUser && <div className="progress-status-filters" role="group" aria-label="Achievement status">
+          {[{ key: 'next', label: 'Next up' }, { key: 'earned', label: 'Earned' }, { key: 'all', label: 'All badges' }].map(item => <button key={item.key} aria-pressed={filter === item.key} className={filter === item.key ? 'active' : ''} onClick={() => { setAchievementFilter(item.key); setPage(0); }}>{item.label}</button>)}
+        </div>}
+        <div className="progress-library-tools"><p>{filter === 'next' ? 'Your closest milestones, with a few new ideas.' : filter === 'earned' ? 'The milestones you have made your own.' : 'Pick a challenge that fits your next row.'}</p><label><span className="crew-sr-only">Achievement category</span><select value={categoryFilter} onChange={event => { setCategoryFilter(event.target.value); setPage(0); }}><option value="all">All categories</option>{CATEGORIES.map(category => <option key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1)}</option>)}</select></label></div>
+        <div className="progress-badge-list">
+          {pageItems.map(({ achievement, progress, earned: unlocked }) => {
+            const percent = Math.min(100, Math.max(0, progress.target > 0 ? progress.current / progress.target * 100 : 0));
+            return <button key={achievement.id} className={`progress-badge-card ${unlocked ? 'is-earned' : ''}`} onClick={() => setShowAchievementModal({ ...achievement, progress, unlockedDate: unlocked?.unlockedDate })}>
+              <span className="progress-badge-icon"><Icon name={achievement.emoji} size={27} /></span>
+              <span className="progress-badge-copy"><strong>{achievement.name}</strong><span className="progress-badge-description">{achievement.desc}</span>
+                {unlocked ? <span className="progress-badge-earned"><Icon name="ui_check" size={12} /> Earned{unlocked.unlockedDate ? ` · ${new Date(unlocked.unlockedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}</span> : currentUser && <><span className="progress-badge-meter" aria-hidden="true"><span style={{ width: `${percent}%` }} /></span><span className="progress-badge-numbers">{formatAchievementProgress(achievement, progress)}<span>{Math.floor(percent)}%</span></span></>}
+              </span><span className="progress-badge-arrow" aria-hidden="true">›</span>
+            </button>;
           })}
         </div>
-
-        {/* Pagination */}
-        <div className="achievements-pagination">
-          <button className="achievements-page-btn" onClick={() => setPage(p => p - 1)} disabled={page === 0}>← Prev</button>
-          <span className="achievements-page-info">
-            {filteredAchievements.length > 0 ? `${page + 1} / ${totalPages}` : 'No matches'}
-          </span>
-          <button className="achievements-page-btn" onClick={() => setPage(p => p + 1)} disabled={page + 1 >= totalPages}>Next →</button>
-        </div>
+        {pageItems.length === 0 && <div className="progress-no-badges"><Icon name="ui_medal" size={28} /><p>{filter === 'earned' ? 'Your collection starts with your next row.' : 'No badges in this view.'}</p><button onClick={() => { setAchievementFilter('all'); setCategoryFilter('all'); setPage(0); }}>Explore all badges</button></div>}
+        {totalPages > 1 && <div className="progress-pagination"><button onClick={() => setPage(currentPage - 1)} disabled={currentPage === 0} aria-label="Previous achievements">← Previous</button><span aria-live="polite">{currentPage + 1} of {totalPages}</span><button onClick={() => setPage(currentPage + 1)} disabled={currentPage + 1 >= totalPages} aria-label="Next achievements">Next →</button></div>}
       </div>
-
-      {/* Fun Stats Section */}
-      {currentUser && (() => {
-        const userEntries = entries.filter(e => e.userId === currentUser.uid);
-        if (userEntries.length < 3) return null;
-
-        const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-        // Day of week with most meters
-        const dayMeters = [0, 0, 0, 0, 0, 0, 0];
-        const daySessions = [0, 0, 0, 0, 0, 0, 0];
-        userEntries.forEach(e => {
-          const day = new Date(e.date).getDay();
-          dayMeters[day] += e.meters;
-          daySessions[day]++;
-        });
-        const bestDayIdx = dayMeters.indexOf(Math.max(...dayMeters));
-        const bestDay = DAY_NAMES[bestDayIdx];
-
-        // Average meters per session
-        const totalMeters = userEntries.reduce((s, e) => s + e.meters, 0);
-        const avgMeters = Math.round(totalMeters / userEntries.length);
-
-        // Longest single row
-        const longestRow = Math.max(...userEntries.map(e => e.meters));
-
-        // Most meters in a single day
-        const dayTotals = {};
-        userEntries.forEach(e => {
-          const key = new Date(e.date).toDateString();
-          dayTotals[key] = (dayTotals[key] || 0) + e.meters;
-        });
-        const bestSingleDay = Math.max(...Object.values(dayTotals));
-        const bestSingleDayDate = Object.entries(dayTotals).find(([, v]) => v === bestSingleDay)?.[0];
-
-        // Most productive month
-        const monthTotals = {};
-        userEntries.forEach(e => {
-          const d = new Date(e.date);
-          const key = `${d.getFullYear()}-${d.getMonth()}`;
-          const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-          if (!monthTotals[key]) monthTotals[key] = { meters: 0, label };
-          monthTotals[key].meters += e.meters;
-        });
-        const bestMonth = Object.values(monthTotals).sort((a, b) => b.meters - a.meters)[0];
-
-        // Total time & calories
-        const totalTime = userEntries.reduce((s, e) => s + (e.time || 0), 0);
-        const totalCalories = userEntries.reduce((s, e) => s + (e.calories || 0), 0);
-
-        // Current & longest streak
-        const currentStreak = calculateStreak(currentUser.uid);
-        const longestStreak = calculateLongestStreak(currentUser.uid);
-
-        // Unique days rowed
-        const uniqueDays = new Set(userEntries.map(e => new Date(e.date).toDateString())).size;
-
-        // Sessions per day of week (bar chart data)
-        const maxDaySessions = Math.max(...daySessions);
-
-        return (
-          <div className="fun-stats-section">
-            <h3><Icon name="ui_records" size={18} /> Your Stats</h3>
-            <div className="fun-stats-grid">
-              <div className="fun-stat-card highlight">
-                <span className="fun-stat-label">Best Day</span>
-                <span className="fun-stat-value">{bestDay}s</span>
-                <span className="fun-stat-sub">{formatMeters(dayMeters[bestDayIdx])} total</span>
-              </div>
-              <div className="fun-stat-card">
-                <span className="fun-stat-label">Avg / Session</span>
-                <span className="fun-stat-value">{formatMeters(avgMeters)}</span>
-              </div>
-              <div className="fun-stat-card">
-                <span className="fun-stat-label">Best Single Day</span>
-                <span className="fun-stat-value">{formatMeters(bestSingleDay)}</span>
-                <span className="fun-stat-sub">{bestSingleDayDate ? new Date(bestSingleDayDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
-              </div>
-              <div className="fun-stat-card">
-                <span className="fun-stat-label">Best Month</span>
-                <span className="fun-stat-value">{formatMeters(bestMonth?.meters || 0)}</span>
-                <span className="fun-stat-sub">{bestMonth?.label}</span>
-              </div>
-              <div className="fun-stat-card">
-                <span className="fun-stat-label">Longest Row</span>
-                <span className="fun-stat-value">{formatMeters(longestRow)}</span>
-              </div>
-              <div className="fun-stat-card">
-                <span className="fun-stat-label">Longest Streak</span>
-                <span className="fun-stat-value">{longestStreak} days</span>
-                {currentStreak > 0 && <span className="fun-stat-sub"><Icon name="ui_fire" size={12} /> {currentStreak} now</span>}
-              </div>
-              <div className="fun-stat-card">
-                <span className="fun-stat-label">Days Rowed</span>
-                <span className="fun-stat-value">{uniqueDays}</span>
-              </div>
-              {totalTime > 0 && (
-                <div className="fun-stat-card">
-                  <span className="fun-stat-label">Total Time</span>
-                  <span className="fun-stat-value">{formatTimeDisplay(totalTime)}</span>
-                </div>
-              )}
-              {totalCalories > 0 && (
-                <div className="fun-stat-card">
-                  <span className="fun-stat-label">Total Calories</span>
-                  <span className="fun-stat-value">{totalCalories.toLocaleString()}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Day of Week Distribution */}
-            <div className="fun-stats-dow">
-              <h4>Sessions by Day</h4>
-              <div className="dow-bars">
-                {DAY_NAMES.map((name, i) => (
-                  <div key={i} className={`dow-bar-col ${i === bestDayIdx ? 'best' : ''}`}>
-                    <div className="dow-bar-wrapper">
-                      <div
-                        className="dow-bar-fill"
-                        style={{ height: `${maxDaySessions > 0 ? (daySessions[i] / maxDaySessions) * 100 : 0}%` }}
-                      />
-                    </div>
-                    <span className="dow-bar-label">{name.charAt(0)}</span>
-                    <span className="dow-bar-count">{daySessions[i]}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Account Section */}
-      {currentUser && (
-        <div className="account-section">
-          <h3><Icon name="ui_user" size={18} /> Account</h3>
-          <div className="account-buttons">
-            <button className="account-btn" onClick={() => setShowSessionHistory(true)}>
-              <span className="account-btn-icon"><Icon name="ui_history" size={16} /></span><span className="account-btn-text">Session History</span><span className="account-btn-arrow">→</span>
-            </button>
-            <button className="account-btn" onClick={() => setShowRankProgressModal(true)}>
-              <span className="account-btn-icon"><Icon name="ui_medal" size={16} /></span><span className="account-btn-text">Rank Progress</span><span className="account-btn-arrow">→</span>
-            </button>
-            {isAdmin && (
-              <button className="account-btn admin" onClick={() => { setShowAdminPanel(true); loadPendingReviews(); }}>
-                <span className="account-btn-icon"><Icon name="ui_shield" size={16} /></span><span className="account-btn-text">Admin Panel</span><span className="account-btn-arrow">→</span>
-              </button>
-            )}
-            <button className="account-btn danger" onClick={handleSignOut}>
-              <span className="account-btn-icon"><Icon name="ui_signout" size={16} /></span><span className="account-btn-text">Sign Out</span><span className="account-btn-arrow">→</span>
-            </button>
-          </div>
-        </div>
-      )}
-
+      {currentUser && <div className="account-section progress-account"><h3>Your rowing toolkit</h3><div className="account-buttons">
+        <button className="account-btn" onClick={() => setShowSessionHistory(true)}><span className="account-btn-icon"><Icon name="ui_history" size={18} /></span><span className="account-btn-text">Session history</span><span aria-hidden="true">→</span></button>
+        <button className="account-btn" onClick={() => setShowRankProgressModal(true)}><span className="account-btn-icon"><Icon name="ui_medal" size={18} /></span><span className="account-btn-text">Ranks & next level</span><span aria-hidden="true">→</span></button>
+        <button className="account-btn" onClick={() => setShowSettingsModal(true)}><span className="account-btn-icon"><Icon name="ui_settings" size={18} /></span><span className="account-btn-text">Profile & settings</span><span aria-hidden="true">→</span></button>
+        {isAdmin && <button className="account-btn admin" onClick={() => { setShowAdminPanel(true); loadPendingReviews(); }}><span className="account-btn-icon"><Icon name="ui_shield" size={18} /></span><span className="account-btn-text">Admin panel</span><span aria-hidden="true">→</span></button>}
+      </div><button className="progress-signout" onClick={handleSignOut}>Sign out</button></div>}
     </section>
   );
 }

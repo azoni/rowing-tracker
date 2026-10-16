@@ -5,6 +5,7 @@ import { JOURNEY_CHECKPOINTS, getJourneyPathD, getJourneyPosition } from '../con
 import { formatMeters } from '../utils';
 import Icon from './Icon';
 import { Avatar } from './Avatar';
+import { formatAchievementProgress } from '../utils/achievementDisplay';
 
 export function PRModal() {
   const { showPRModal, setShowPRModal } = useApp();
@@ -206,23 +207,43 @@ export function AchievementModal() {
     showAchievementModal, setShowAchievementModal,
     currentUser, getUserAchievements, getAchievementProgress,
   } = useApp();
+  const modalRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!showAchievementModal) return undefined;
+    const previousFocus = document.activeElement;
+    const modal = modalRef.current;
+    modal?.querySelector('button')?.focus();
+    const onKeyDown = event => {
+      if (event.key === 'Escape') setShowAchievementModal(null);
+      if (event.key !== 'Tab') return;
+      const buttons = modal?.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex="0"]');
+      if (!buttons?.length) return;
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => { document.removeEventListener('keydown', onKeyDown); previousFocus?.focus(); };
+  }, [showAchievementModal, setShowAchievementModal]);
 
   if (!showAchievementModal) return null;
 
   return (
     <div className="modal-overlay" onClick={() => setShowAchievementModal(null)}>
-      <div className="modal achievement-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={() => setShowAchievementModal(null)}>✕</button>
+      <div className="modal achievement-modal" ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="achievement-title" aria-describedby="achievement-description" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" aria-label="Close achievement details" onClick={() => setShowAchievementModal(null)}>✕</button>
 
         <div className="achievement-modal-content">
           <span className="achievement-modal-emoji"><Icon name={showAchievementModal.emoji} size={48} /></span>
-          <h2>{showAchievementModal.name}</h2>
-          <p className="achievement-modal-desc">{showAchievementModal.desc}</p>
+          <h2 id="achievement-title">{showAchievementModal.name}</h2>
+          <p className="achievement-modal-desc" id="achievement-description">{showAchievementModal.desc}</p>
 
           {currentUser && (() => {
             const isUnlocked = getUserAchievements(currentUser.uid).some(a => a.id === showAchievementModal.id);
             const progress = showAchievementModal.progress || getAchievementProgress(currentUser.uid, showAchievementModal);
-            const progressPercent = Math.min((progress.current / progress.target) * 100, 100);
+            const progressPercent = isUnlocked ? 100 : Math.min(progress.target > 0 ? (progress.current / progress.target) * 100 : 0, 100);
 
             return (
               <>
@@ -235,10 +256,7 @@ export function AchievementModal() {
                     />
                   </div>
                   <span className="achievement-modal-progress-text">
-                    {progress.target >= 1000
-                      ? `${formatMeters(progress.current)} / ${formatMeters(progress.target)}`
-                      : `${progress.current} / ${progress.target}`
-                    }
+                    {formatAchievementProgress(showAchievementModal, isUnlocked ? { current: progress.target, target: progress.target } : progress)}
                   </span>
                 </div>
 

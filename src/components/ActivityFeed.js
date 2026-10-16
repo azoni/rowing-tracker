@@ -4,11 +4,11 @@ import { formatMeters, formatTime, formatTimeDisplay, formatTimeAgo } from '../u
 import { getUserRank, getRankTier, TIER_COLORS } from '../constants';
 import Icon from './Icon';
 import AvatarOrPhoto from './Avatar';
+import './ProgressAndCrew.css';
 
 function ActivityFeed() {
   const {
     currentUser, users, isAdmin, deleteActivity,
-    getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard,
     selectedGroupId, getSelectedGroup,
     isGroupAdmin, challenges,
     getChallengeStatus, getChallengeProgress,
@@ -18,7 +18,7 @@ function ActivityFeed() {
     feedSearchQuery, setFeedSearchQuery,
     feedTypeFilter, setFeedTypeFilter,
     feedPage, setFeedPage,
-    getActivityFeed, calculateStreak,
+    getActivityFeed,
     handleSignIn,
     setShowUserProfileModal,
     showReactionPicker, setShowReactionPicker,
@@ -32,52 +32,13 @@ function ActivityFeed() {
     entries,
   } = useApp();
 
-  // Build top-3 badges across all leaderboard categories
-  const userBadges = React.useMemo(() => {
-    const badges = {}; // userId -> [{icon, category}]
-    const addBadges = (list, icon) => {
-      if (!list) return;
-      list.slice(0, 3).forEach((user, i) => {
-        const medalIcon = i === 0 ? 'ui_gold' : i === 1 ? 'ui_silver' : 'ui_bronze';
-        if (!badges[user.id]) badges[user.id] = [];
-        badges[user.id].push({ medal: medalIcon, category: icon });
-      });
-    };
-    addBadges(getLeaderboard, 'ui_trophy');     // All-time meters
-    addBadges(getWeeklyLeaderboard, 'ui_calendar'); // Weekly
-    addBadges(getStreakLeaderboard, 'ui_fire');   // Streak
-    return badges;
-  }, [getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard]);
-
   return (
-    <section className="feed-section">
-      <h2>
-        {selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Feed` : 'Activity Feed'}
-      </h2>
-
-
-      {/* 2025 Wrapped Banner */}
-      {currentUser && !wrappedDismissed && !selectedGroupId && getWrappedStats(currentUser.uid) && (
-        <div className="wrapped-banner">
-          <div className="wrapped-banner-content">
-            <span className="wrapped-banner-icon"><Icon name="ui_gift" size={20} /></span>
-            <div className="wrapped-banner-text">
-              <strong>Your 2025 Wrapped is here!</strong>
-              <span>See your year in rowing</span>
-            </div>
-          </div>
-          <div className="wrapped-banner-actions">
-            <button className="wrapped-banner-view" onClick={() => setShowWrapped(true)}>View</button>
-            <button
-              className="wrapped-banner-dismiss"
-              onClick={() => {
-                setWrappedDismissed(true);
-                localStorage.setItem('wrappedDismissed2025', 'true');
-              }}
-            >✕</button>
-          </div>
-        </div>
-      )}
+    <section className="feed-section crew-feed">
+      <div className="feed-heading">
+        <span className="crew-eyebrow">Better together</span>
+        <h2>{selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Feed` : 'Crew activity'}</h2>
+        <p>Fresh rows, personal wins, and a little encouragement.</p>
+      </div>
 
       {/* Group Info & Challenges (when group selected) */}
       {selectedGroupId && getSelectedGroup() && (
@@ -125,7 +86,7 @@ function ActivityFeed() {
                   const status = getChallengeStatus(challenge);
                   const progress = getChallengeProgress(challenge);
                   return (
-                    <div
+                    <button
                       key={challenge.id}
                       className={`challenge-card challenge-${status}`}
                       onClick={() => setShowChallengeDetail(challenge)}
@@ -178,7 +139,7 @@ function ActivityFeed() {
                       <div className="challenge-dates">
                         {new Date(challenge.startDate).toLocaleDateString()} - {new Date(challenge.endDate).toLocaleDateString()}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -199,13 +160,14 @@ function ActivityFeed() {
         <span className="search-icon"><Icon name="ui_search" size={16} /></span>
         <input
           type="text"
+          aria-label="Search rowers in the activity feed"
           placeholder="Search rowers..."
           value={feedSearchQuery}
           onChange={(e) => { setFeedSearchQuery(e.target.value); setFeedPage(1); }}
           className="search-input"
         />
         {feedSearchQuery && (
-          <button className="search-clear" onClick={() => { setFeedSearchQuery(''); setFeedPage(1); }}>✕</button>
+          <button className="search-clear" aria-label="Clear rower search" onClick={() => { setFeedSearchQuery(''); setFeedPage(1); }}>✕</button>
         )}
       </div>
 
@@ -219,6 +181,7 @@ function ActivityFeed() {
           <button
             key={f.key}
             className={`feed-filter-pill ${feedTypeFilter === f.key ? 'active' : ''}`}
+            aria-pressed={feedTypeFilter === f.key}
             onClick={() => { setFeedTypeFilter(f.key); setFeedPage(1); }}
           >{f.label}</button>
         ))}
@@ -261,49 +224,30 @@ function ActivityFeed() {
           <>
             <div className="activity-feed">
               {feedData.items.map((item) => {
-                const itemStreak = item.user ? calculateStreak(item.user.id) : 0;
                 const itemRank = item.user ? getUserRank(item.user.totalMeters) : null;
                 const itemTier = itemRank?.tier || 'bronze';
-                const lbBadges = item.user ? (userBadges[item.user.id] || []) : [];
 
                 return (
-                  <div
+                  <article
                     key={item.id}
-                    className={`feed-item feed-item-${item.type} ${item.type === 'rank' ? `tier-${getRankTier(item.rank?.rank)}` : ''} ${(item.type === 'row' || item.type === 'achievement') ? `row-tier-${itemTier}` : ''} ${item.userId === currentUser?.uid ? 'is-you' : ''} clickable`}
-                    onClick={() => {
-                      if (expandedComments[item.id]) {
-                        setExpandedComments(prev => ({ ...prev, [item.id]: false }));
-                      } else {
-                        item.user && setShowUserProfileModal(item.user);
-                      }
-                    }}
+                    className={`feed-item feed-item-${item.type} ${item.type === 'rank' ? `tier-${getRankTier(item.rank?.rank)}` : ''} ${(item.type === 'row' || item.type === 'achievement') ? `row-tier-${itemTier}` : ''} ${item.userId === currentUser?.uid ? 'is-you' : ''}`}
                   >
-                    <div className="feed-avatar">
+                    <button className="feed-avatar feed-avatar-button" aria-label={`View ${item.user?.name || 'rower'} profile`} onClick={() => item.user && setShowUserProfileModal(item.user)}>
                       <AvatarOrPhoto user={item.user} size={40} showBody />
-                    </div>
+                    </button>
                     <div className="feed-content">
                       <div className="feed-header">
-                        <span className="feed-name">
-                          {item.user?.name}
-                          {lbBadges.length > 0 && (
-                            <span className="feed-lb-badges">
-                              {lbBadges.map((b, i) => (
-                                <span key={i} className="feed-lb-badge" title={`Top 3 ${b.category}`}>
-                                  <Icon name={b.medal} size={10} /><Icon name={b.category} size={8} />
-                                </span>
-                              ))}
-                            </span>
-                          )}
-                          {itemRank && <span className="feed-rank-badge"><Icon name={itemRank.emoji} size={14} /></span>}
-                        </span>
+                        <button className="feed-name feed-profile-link" onClick={() => item.user && setShowUserProfileModal(item.user)}>
+                          <span>{item.user?.name || 'Crew member'}</span>
+                          {itemRank && <span className="feed-rank-badge" title={`Current rank: ${itemRank.title}`}><Icon name={itemRank.emoji} size={14} /></span>}
+                        </button>
                         <span className="feed-time">{formatTimeAgo(new Date(item.date))}</span>
                       </div>
                       <div className="feed-action">
                         {item.type === 'row' && (
                           <>
                             rowed <span className="feed-meters">{item.meters.toLocaleString()}m</span>
-                            {item.time && <span className="feed-time-cal"> in {formatTimeDisplay(item.time)}</span>}
-                            {item.calories && <span className="feed-time-cal"> • {item.calories} cal</span>}
+                            {item.time > 0 && <span className="feed-time-cal"> in {formatTimeDisplay(item.time)}</span>}
                             {item.sessionType && item.sessionType !== 'free_row' && (
                               <span className="feed-session-type">{item.sessionType.replace('_', ' ')}</span>
                             )}
@@ -368,9 +312,6 @@ function ActivityFeed() {
                           </span>
                         )}
                       </div>
-                      {item.type === 'row' && itemStreak > 1 && (
-                        <div className="feed-streak-badge"><Icon name="ui_fire" size={14} /> {itemStreak} day streak</div>
-                      )}
                     </div>
                     {/* Reactions & Comments */}
                     {currentUser && (
@@ -380,6 +321,8 @@ function ActivityFeed() {
                             <button
                               key={emoji}
                               className={`reaction-pill ${hasUserReacted(item.id, emoji) ? 'active' : ''}`}
+                              aria-label={`${emoji}: ${getReactionCounts(item.id)[emoji]} reactions`}
+                              aria-pressed={hasUserReacted(item.id, emoji)}
                               onClick={(e) => { e.stopPropagation(); toggleReaction(item.id, emoji); }}
                             >
                               {emoji} {getReactionCounts(item.id)[emoji]}
@@ -388,6 +331,8 @@ function ActivityFeed() {
                           <div className="reaction-picker-wrapper">
                             <button
                               className="add-reaction-btn"
+                              aria-label="Add a reaction"
+                              aria-expanded={showReactionPicker === item.id}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setShowReactionPicker(showReactionPicker === item.id ? null : item.id);
@@ -401,6 +346,8 @@ function ActivityFeed() {
                                     <button
                                       key={emoji}
                                       className={`picker-emoji ${hasUserReacted(item.id, emoji) ? 'active' : ''}`}
+                                      aria-label={`React with ${emoji}`}
+                                      aria-pressed={hasUserReacted(item.id, emoji)}
                                       onClick={() => { toggleReaction(item.id, emoji); setShowReactionPicker(null); }}
                                     >{emoji}</button>
                                   ))}
@@ -410,11 +357,13 @@ function ActivityFeed() {
                           </div>
                           <button
                             className={`comment-link ${expandedComments[item.id] ? 'active' : ''}`}
+                            aria-label={`${expandedComments[item.id] ? 'Hide' : 'Show'} comments (${getItemComments(item.id).length})`}
+                            aria-expanded={!!expandedComments[item.id]}
                             onClick={(e) => {
                               e.stopPropagation();
                               setExpandedComments(prev => ({ ...prev, [item.id]: !prev[item.id] }));
                             }}
-                          ><Icon name="ui_comment" size={14} /> {getItemComments(item.id).length || ''}</button>
+                          ><Icon name="ui_comment" size={14} /> {getItemComments(item.id).length || 'Reply'}</button>
                         </div>
 
                         {expandedComments[item.id] && (
@@ -437,7 +386,7 @@ function ActivityFeed() {
                                     title="Reply"
                                   >↩</button>
                                   {comment.userId === currentUser?.uid && (
-                                    <button className="comment-delete-inline" onClick={() => deleteComment(comment.id, comment.userId)}>✕</button>
+                                    <button className="comment-delete-inline" aria-label="Delete your comment" onClick={() => deleteComment(comment.id, comment.userId)}>✕</button>
                                   )}
                                 </div>
                               );
@@ -445,23 +394,24 @@ function ActivityFeed() {
                             {replyingTo[item.id] && (
                               <div className="replying-to-indicator">
                                 <span>Replying to @{replyingTo[item.id].userName?.split(' ')[0]}</span>
-                                <button onClick={() => setReplyingTo(prev => ({ ...prev, [item.id]: null }))}>✕</button>
+                                <button aria-label="Cancel reply" onClick={() => setReplyingTo(prev => ({ ...prev, [item.id]: null }))}>✕</button>
                               </div>
                             )}
                             <div className="comment-add-row">
                               <input
                                 type="text"
+                                aria-label={replyingTo[item.id] ? `Reply to ${replyingTo[item.id].userName}` : 'Add a comment'}
                                 placeholder={replyingTo[item.id] ? `Reply to ${replyingTo[item.id].userName?.split(' ')[0]}...` : "Add a comment..."}
                                 value={newComment[item.id] || ''}
                                 onChange={(e) => setNewComment(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                onKeyPress={(e) => {
+                                onKeyDown={(e) => {
                                   if (e.key === 'Enter' && newComment[item.id]?.trim()) {
                                     addComment(item.id, item.userId);
                                   }
                                 }}
                                 maxLength={200}
                               />
-                              <button onClick={() => addComment(item.id, item.userId)} disabled={!newComment[item.id]?.trim()}>↵</button>
+                              <button aria-label="Post comment" onClick={() => addComment(item.id, item.userId)} disabled={!newComment[item.id]?.trim()}>↵</button>
                             </div>
                           </div>
                         )}
@@ -477,11 +427,12 @@ function ActivityFeed() {
                           }
                         }}
                         title="Admin: Delete"
+                        aria-label="Admin: delete feed item"
                       >
                         <Icon name="ui_unverified" size={12} />
                       </button>
                     )}
-                  </div>
+                  </article>
                 );
               })}
             </div>
@@ -493,6 +444,12 @@ function ActivityFeed() {
           </>
         );
       })()}
+      {currentUser && !wrappedDismissed && !selectedGroupId && getWrappedStats(currentUser.uid) && (
+        <div className="crew-wrapped-archive">
+          <button onClick={() => setShowWrapped(true)}><Icon name="ui_gift" size={16} /> Revisit your 2025 Wrapped</button>
+          <button aria-label="Dismiss 2025 Wrapped link" onClick={() => { setWrappedDismissed(true); localStorage.setItem('wrappedDismissed2025', 'true'); }}>Dismiss</button>
+        </div>
+      )}
     </section>
   );
 }

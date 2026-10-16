@@ -1,427 +1,118 @@
 import React from 'react';
 import Icon from './Icon';
 import WorldProgress from './WorldProgress';
+import MonthlyMissions from './MonthlyMissions';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
-import { getUserRank, getNextRank, ACHIEVEMENTS, TIER_COLORS, THROWDOWNS, MONTHLY_CHALLENGES } from '../constants';
+import { getUserRank, getNextRank, ACHIEVEMENTS } from '../constants';
+import { getWeeklyStats } from '../utils/weeklyStats';
+import { getMonthlySummary } from '../utils/rowingGoals';
+import './HomeTab.css';
 
 function HomeTab() {
-  const {
-    currentUser, userProfile, entries, users,
-    calculateStreak, getPersonalRecord,
-    getUserAchievements, getAchievementProgress,
-    setShowRankProgressModal, setShowAchievementModal,
-  } = useApp();
-
+  const { currentUser, userProfile, entries, users, getUserAchievements, getAchievementProgress,
+    setShowRankProgressModal, setShowAchievementModal, setShowLogModal, setShowSessionHistory,
+    setActiveTab, setShowCrewMap } = useApp();
   if (!currentUser || !userProfile) return null;
 
-  const rank = getUserRank(userProfile.totalMeters);
-  const nextRank = getNextRank(userProfile.totalMeters);
-  const streak = calculateStreak(currentUser.uid);
-  const pr = getPersonalRecord(currentUser.uid);
-  const tierColor = TIER_COLORS[rank.tier] || '#00d4aa';
-
-  // Get top 3 "almost there" achievements
-  const almostThere = ACHIEVEMENTS
-    .filter(a => !getUserAchievements(currentUser.uid).some(ua => ua.id === a.id))
-    .map(a => {
-      const progress = getAchievementProgress(currentUser.uid, a);
-      const pct = progress.target > 0 ? progress.current / progress.target : 0;
-      return { ...a, progress, pct };
-    })
-    .filter(a => a.pct > 0)
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 3);
-
-  // Recent rows (last 5)
-  const recentRows = entries
-    .filter(e => e.userId === currentUser.uid)
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 5);
+  const now = new Date();
+  const week = getWeeklyStats(entries, currentUser.uid, now);
+  const monthly = getMonthlySummary({ entries, users, userId: currentUser.uid, date: now, now });
+  const rank = getUserRank(userProfile.totalMeters || 0);
+  const nextRank = getNextRank(userProfile.totalMeters || 0);
+  const earned = new Set(getUserAchievements(currentUser.uid).map(a => a.id));
+  const nextBadges = ACHIEVEMENTS.filter(a => !earned.has(a.id)).map(a => {
+    const progress = getAchievementProgress(currentUser.uid, a);
+    return { ...a, progress, pct: progress.target > 0 ? progress.current / progress.target : 0 };
+  }).sort((a, b) => b.pct - a.pct).slice(0, 2);
+  const recent = entries.filter(e => e.userId === currentUser.uid && new Date(e.date) <= now)
+    .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
+  const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+  const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate() + 1;
+  const rankPct = nextRank ? Math.min(100, Math.max(0, ((userProfile.totalMeters || 0) - rank.minMeters) /
+    (nextRank.minMeters - rank.minMeters) * 100)) : 100;
+  const showLog = () => setShowLogModal(true);
 
   return (
-    <section className="home-section">
-      <WorldProgress />
-
-      {/* Monthly Throwdown */}
-      {(() => {
-        const now = new Date();
-        const month = now.getMonth();
-        const monthName = now.toLocaleDateString('en-US', { month: 'long' });
-        const daysLeft = new Date(now.getFullYear(), month + 1, 0).getDate() - now.getDate();
-        const throwdown = THROWDOWNS[month];
-
-        const monthStart = new Date(now.getFullYear(), month, 1);
-        const monthEntries = entries.filter(e => e.userId === currentUser.uid && new Date(e.date) >= monthStart);
-        let current = 0;
-        if (throwdown.field === 'meters') current = monthEntries.reduce((s, e) => s + e.meters, 0);
-        else if (throwdown.field === 'sessions') current = monthEntries.length;
-        else if (throwdown.field === 'calories') current = monthEntries.reduce((s, e) => s + (e.calories || 0), 0);
-        else if (throwdown.field === 'streak') current = calculateStreak(currentUser.uid);
-        const pct = Math.min((current / throwdown.target) * 100, 100);
-        const complete = current >= throwdown.target;
-
-        return (
-          <div className={`throwdown-banner ${complete ? 'complete' : ''}`}>
-            <div className="throwdown-header">
-              <span className="throwdown-title"><Icon name="ui_fire" size={14} /> {monthName} Throwdown</span>
-              <span className="throwdown-days">{daysLeft}d left</span>
-            </div>
-            <div className="throwdown-goal">
-              {complete ? <><Icon name="ui_check" size={14} /> Completed!</> : throwdown.label}
-            </div>
-            <div className="throwdown-bar">
-              <div className="throwdown-fill" style={{ width: `${pct}%` }} />
-            </div>
-            <div className="throwdown-progress">
-              {throwdown.field === 'meters' ? formatMeters(current) : current.toLocaleString()}{throwdown.unit} / {throwdown.field === 'meters' ? formatMeters(throwdown.target) : throwdown.target.toLocaleString()}{throwdown.unit}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Monthly Challenge */}
-      {(() => {
-        const now = new Date();
-        const month = now.getMonth();
-        const monthName = now.toLocaleDateString('en-US', { month: 'long' });
-        const challenge = MONTHLY_CHALLENGES[month];
-        const daysLeft = new Date(now.getFullYear(), month + 1, 0).getDate() - now.getDate();
-        const monthStart = new Date(now.getFullYear(), month, 1);
-
-        // Compute leaderboard for this challenge
-        const allMonthEntries = entries.filter(e => new Date(e.date) >= monthStart);
-
-        const getScore = (userId) => {
-          const userEntries = allMonthEntries.filter(e => e.userId === userId && e.time && e.time > 0 && e.meters > 0);
-          if (challenge.type === 'fastest_distance') {
-            const tolerance = challenge.distance * 0.1;
-            const qualifying = userEntries.filter(e => Math.abs(e.meters - challenge.distance) <= tolerance);
-            if (qualifying.length === 0) return null;
-            const best = qualifying.reduce((best, e) => (!best || e.time < best.time) ? e : best, null);
-            return best ? { value: best.time, display: formatTimeDisplay(best.time), sort: best.time, bestDate: new Date(best.date), attempts: qualifying.length } : null;
-          } else if (challenge.type === 'longest_row') {
-            const allUserEntries = allMonthEntries.filter(e => e.userId === userId);
-            if (allUserEntries.length === 0) return null;
-            const bestEntry = allUserEntries.reduce((best, e) => (!best || e.meters > best.meters) ? e : best, null);
-            return { value: bestEntry.meters, display: formatMeters(bestEntry.meters), sort: -bestEntry.meters, bestDate: new Date(bestEntry.date), attempts: allUserEntries.length };
-          } else if (challenge.type === 'most_meters') {
-            const allUserEntries = allMonthEntries.filter(e => e.userId === userId);
-            const total = allUserEntries.reduce((s, e) => s + e.meters, 0);
-            if (total === 0) return null;
-            const lastEntry = allUserEntries.sort((a, b) => new Date(a.date) - new Date(b.date)).pop();
-            return { value: total, display: formatMeters(total), sort: -total, bestDate: new Date(lastEntry.date), attempts: allUserEntries.length };
-          } else if (challenge.type === 'best_pace') {
-            if (userEntries.length === 0) return null;
-            const bestEntry = userEntries.reduce((best, e) => {
-              const pace = (e.time / e.meters) * 500;
-              return (!best || pace < best.pace) ? { ...e, pace } : best;
-            }, null);
-            const mins = Math.floor(bestEntry.pace / 60);
-            const secs = (bestEntry.pace % 60).toFixed(1).padStart(4, '0');
-            return { value: bestEntry.pace, display: `${mins}:${secs}/500m`, sort: bestEntry.pace, bestDate: new Date(bestEntry.date), attempts: userEntries.length };
-          }
-          return null;
-        };
-
-        // Build leaderboard from all users
-        const leaderboard = Object.keys(users)
-          .map(uid => {
-            const score = getScore(uid);
-            if (!score) return null;
-            return { userId: uid, user: users[uid], ...score };
-          })
-          .filter(Boolean)
-          .sort((a, b) => a.sort - b.sort || a.bestDate - b.bestDate)
-          .slice(0, 3);
-
-        // Current user's score
-        const myScore = currentUser ? getScore(currentUser.uid) : null;
-        const myRank = currentUser ? leaderboard.findIndex(l => l.userId === currentUser.uid) + 1 : 0;
-
-        return (
-          <div className="challenge-banner">
-            <div className="challenge-banner-header">
-              <span className="challenge-banner-title"><Icon name="ui_trophy" size={14} /> {monthName} Challenge</span>
-              <span className="challenge-banner-days">{daysLeft}d left</span>
-            </div>
-            <div className="challenge-banner-name">{challenge.label}</div>
-            <div className="challenge-banner-desc">{challenge.description}</div>
-
-            {myScore && (
-              <div className="challenge-banner-my-score">
-                Your best: <strong>{myScore.display}</strong>
-                {myRank > 0 && <span className="challenge-banner-my-rank"> (#{myRank})</span>}
-                <span className="challenge-banner-attempts">{myScore.attempts} {myScore.attempts === 1 ? 'attempt' : 'attempts'}</span>
-              </div>
-            )}
-            {!myScore && (
-              <div className="challenge-banner-my-score muted">No qualifying entries yet</div>
-            )}
-
-            {leaderboard.length > 0 && (
-              <div className="challenge-banner-leaders">
-                {leaderboard.map((entry, i) => (
-                  <div key={entry.userId} className={`challenge-leader ${entry.userId === currentUser?.uid ? 'is-you' : ''}`}>
-                    <span className="challenge-leader-rank">
-                      {i === 0 ? <Icon name="ui_gold" size={14} /> : i === 1 ? <Icon name="ui_silver" size={14} /> : <Icon name="ui_bronze" size={14} />}
-                    </span>
-                    <span className="challenge-leader-name">{entry.user?.name?.split(' ')[0] || 'User'}</span>
-                    <span className="challenge-leader-attempts">{entry.attempts}x</span>
-                    <span className="challenge-leader-score">{entry.display}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Rank Card */}
-      <div className="home-rank-card" style={{ borderColor: tierColor }} onClick={() => setShowRankProgressModal(true)}>
-        <div className="home-rank-top">
-          <Icon name={rank.emoji} size={36} />
-          <div className="home-rank-info">
-            <span className="home-rank-title">{rank.title}</span>
-            <span className="home-rank-tier" style={{ color: tierColor }}>{rank.tier?.toUpperCase()}</span>
-          </div>
-        </div>
-        {nextRank && (
-          <div className="home-rank-progress">
-            <div className="home-rank-bar">
-              <div className="home-rank-fill" style={{ width: `${Math.min(((userProfile.totalMeters - rank.minMeters) / (nextRank.minMeters - rank.minMeters)) * 100, 100)}%`, background: tierColor }} />
-            </div>
-            <span className="home-rank-next">{formatMeters(nextRank.minMeters - userProfile.totalMeters)} to {nextRank.title}</span>
-          </div>
-        )}
+    <section className="home-section dashboard">
+      <div className="dashboard-heading">
+        <div><p className="dashboard-eyebrow">Your corner of the crew</p>
+          <h2>Hey, {userProfile.name?.split(' ')[0] || 'rower'}.</h2></div>
+        <span className="dashboard-date">{now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
       </div>
 
-      {/* Stats Grid */}
-      <div className="home-stats-grid">
-        <div className="home-stat">
-          <span className="home-stat-value">{formatMeters(userProfile.totalMeters)}</span>
-          <span className="home-stat-label">total meters</span>
+      <section className="weekly-card" aria-labelledby="weekly-title">
+        <div className="weekly-top"><h3 id="weekly-title">This week on the water</h3><Icon name="ui_rowing" size={26} /></div>
+        <div className="weekly-numbers"><div className="weekly-distance"><strong>{(week.meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })}</strong><span>km rowed</span></div>
+          <div className="weekly-small"><strong>{week.sessions}</strong><span>{week.sessions === 1 ? 'session' : 'sessions'}</span></div>
+          <div className="weekly-small"><strong>{week.activeDays}</strong><span>{week.activeDays === 1 ? 'active day' : 'active days'}</span></div>
         </div>
-        <div className="home-stat">
-          <span className="home-stat-value">{userProfile.uploadCount || 0}</span>
-          <span className="home-stat-label">sessions</span>
+        <div className="week-rhythm" aria-label="Your activity this week, Monday to Sunday">
+          {week.days.map(day => <div key={day.date.toISOString()} className={`week-day ${day.sessions ? 'has-row' : ''} ${day.today ? 'is-today' : ''} ${day.future ? 'is-future' : ''}`}
+            aria-label={`${day.date.toLocaleDateString('en-US', { weekday: 'long' })}: ${day.meters.toLocaleString()} meters${day.today ? ', today' : ''}`}>
+            <span>{day.date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1)}</span>
+            <span className="week-day-mark">{day.sessions ? <Icon name="ui_check" size={15} /> : <span />}</span>
+          </div>)}
         </div>
-        <div className="home-stat">
-          <span className="home-stat-value">{pr > 0 ? formatMeters(pr) : '—'}</span>
-          <span className="home-stat-label">best row</span>
-        </div>
-        <div className="home-stat">
-          <span className="home-stat-value" style={{ color: streak > 0 ? '#ff6b35' : 'var(--text-muted)' }}>
-            {streak > 0 ? streak : '0'}
-          </span>
-          <span className="home-stat-label">{streak === 1 ? 'day streak' : 'day streak'}</span>
-        </div>
+        <p className="weekly-note">{week.sessions ? 'A little rhythm goes a long way. Every row is yours.' : 'Your next chapter starts with one row. Go at your pace.'}</p>
+        <button className="dashboard-log" onClick={showLog}><Icon name="ui_plus" size={20} /> Log a row <span>Photo or manual</span></button>
+      </section>
+
+      <div className="dashboard-shortcuts">
+        <button onClick={() => setShowSessionHistory(true)}><Icon name="ui_history" size={18} /> My logbook <span>→</span></button>
+        <button onClick={() => setShowCrewMap(true)}><Icon name="ui_globe" size={18} /> Crew journey <span>→</span></button>
       </div>
 
-      {/* Row Streak Heatmap */}
-      {(() => {
-        const userEntries = entries.filter(e => e.userId === currentUser.uid);
-        if (userEntries.length === 0) return null;
+      <MonthlyMissions missions={monthly.missions} onLog={showLog} />
 
-        // Local date key to avoid UTC timezone shift
-        const toLocalKey = (d) => {
-          const date = new Date(d);
-          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        };
-
-        // Build day → meters map for last 3 months
-        const dayMap = {};
-        userEntries.forEach(e => {
-          const key = toLocalKey(e.date);
-          dayMap[key] = (dayMap[key] || 0) + e.meters;
-        });
-
-        // Generate last 12 weeks of days
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const weeks = [];
-        const startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - (12 * 7 - 1) - startDate.getDay()); // Start on Sunday, 12 weeks ago
-
-        for (let w = 0; w < 12; w++) {
-          const week = [];
-          for (let d = 0; d < 7; d++) {
-            const date = new Date(startDate);
-            date.setDate(startDate.getDate() + w * 7 + d);
-            const key = toLocalKey(date);
-            const meters = dayMap[key] || 0;
-            const isFuture = date > today;
-            week.push({ date, key, meters, isFuture });
-          }
-          weeks.push(week);
-        }
-
-        // Max meters for color scaling
-        const maxMeters = Math.max(...Object.values(dayMap), 1);
-
-        const getColor = (meters) => {
-          if (!meters) return 'var(--bg-dark)';
-          const intensity = Math.min(meters / maxMeters, 1);
-          if (intensity < 0.25) return 'rgba(0, 212, 170, 0.2)';
-          if (intensity < 0.5) return 'rgba(0, 212, 170, 0.4)';
-          if (intensity < 0.75) return 'rgba(0, 212, 170, 0.65)';
-          return 'rgba(0, 212, 170, 0.9)';
-        };
-
-        const monthLabels = [];
-        let lastMonth = -1;
-        weeks.forEach((week, wi) => {
-          const m = week[0].date.getMonth();
-          if (m !== lastMonth) {
-            monthLabels.push({ index: wi, label: week[0].date.toLocaleDateString('en-US', { month: 'short' }) });
-            lastMonth = m;
-          }
-        });
-
-        return (
-          <div className="home-heatmap">
-            <h3>Activity</h3>
-            <div className="heatmap-month-labels">
-              {monthLabels.map((ml, i) => (
-                <span key={i} className="heatmap-month" style={{ gridColumn: ml.index + 1 }}>{ml.label}</span>
-              ))}
-            </div>
-            <div className="heatmap-grid">
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                <span key={i} className="heatmap-day-label">{i % 2 === 1 ? d : ''}</span>
-              ))}
-              {[0, 1, 2, 3, 4, 5, 6].map(dayOfWeek => (
-                <React.Fragment key={dayOfWeek}>
-                  {weeks.map((week, wi) => {
-                    const cell = week[dayOfWeek];
-                    return (
-                      <div
-                        key={cell.key}
-                        className={`heatmap-cell ${cell.isFuture ? 'future' : ''}`}
-                        style={{ background: cell.isFuture ? 'transparent' : getColor(cell.meters) }}
-                        title={cell.meters ? `${cell.date.toLocaleDateString()}: ${cell.meters.toLocaleString()}m` : cell.date.toLocaleDateString()}
-                      />
-                    );
-                  })}
-                </React.Fragment>
-              ))}
-            </div>
+      <details className="dashboard-month">
+        <summary><span className="dashboard-month-icon"><Icon name="ui_trophy" size={22} /></span>
+          <span><strong>{monthName} crew challenges</strong><small>{monthly.challenge.label} · {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left</small></span><span className="details-chevron">⌄</span></summary>
+        <div className="dashboard-month-content">
+          <p className="dashboard-eyebrow">Personal throwdown</p>
+          <h3>{monthly.throwdown.label}</h3>
+          {monthly.throwdown.description && <p>{monthly.throwdown.description}</p>}
+          <progress aria-label={monthly.throwdown.label} value={Math.min(monthly.current, monthly.throwdown.target)} max={monthly.throwdown.target} />
+          <p className="dashboard-goal-progress">{monthly.complete ? 'Completed — nicely rowed!' : `${monthly.current.toLocaleString()} / ${monthly.throwdown.target.toLocaleString()} ${monthly.throwdown.unit || ''}`}</p>
+          <div className="dashboard-competition">
+            <p className="dashboard-eyebrow">Crew competition</p><h3>{monthly.challenge.label}</h3><p>{monthly.challenge.description}</p>
+            {monthly.userScore ? <p className="dashboard-your-score">Your score <strong>{monthly.userScore.display}</strong><span>#{monthly.userRank}</span></p>
+              : <p className="dashboard-goal-progress">Your next qualifying row enters automatically.</p>}
+            {monthly.leaderboard.length > 0 && <ol className="dashboard-podium">
+              {monthly.leaderboard.slice(0, 3).map((row, i) => <li key={row.userId}>
+                <span className="podium-position">{i + 1}</span><span>{row.user?.name?.split(' ')[0] || 'Rower'}{row.userId === currentUser.uid ? ' (you)' : ''}</span><strong>{row.display}</strong>
+              </li>)}
+            </ol>}
           </div>
-        );
-      })()}
-
-      {/* Pace Trend */}
-      {(() => {
-        const paceEntries = entries
-          .filter(e => e.userId === currentUser.uid && e.time && e.time > 0 && e.meters && e.meters > 0)
-          .sort((a, b) => new Date(a.date) - new Date(b.date))
-          .slice(-20) // Last 20 sessions with pace data
-          .map(e => ({
-            date: new Date(e.date),
-            pace: (e.time / e.meters) * 500, // seconds per 500m
-          }));
-
-        if (paceEntries.length < 3) return null;
-
-        const minPace = Math.min(...paceEntries.map(p => p.pace));
-        const maxPace = Math.max(...paceEntries.map(p => p.pace));
-        const range = maxPace - minPace || 1;
-        const width = 280;
-        const height = 80;
-        const padding = 4;
-
-        const points = paceEntries.map((p, i) => {
-          const x = padding + (i / (paceEntries.length - 1)) * (width - padding * 2);
-          const y = padding + ((p.pace - minPace) / range) * (height - padding * 2);
-          return `${x},${y}`;
-        }).join(' ');
-
-        // Format pace as M:SS
-        const formatPace = (secs) => {
-          const m = Math.floor(secs / 60);
-          const s = Math.floor(secs % 60);
-          return `${m}:${s.toString().padStart(2, '0')}`;
-        };
-
-        const latestPace = paceEntries[paceEntries.length - 1].pace;
-        const firstPace = paceEntries[0].pace;
-        const improvement = firstPace - latestPace;
-
-        return (
-          <div className="home-pace-trend">
-            <h3>Pace Trend <span className="pace-trend-label">/500m</span></h3>
-            <div className="pace-trend-chart">
-              <svg viewBox={`0 0 ${width} ${height}`} className="pace-svg">
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke="var(--accent-primary)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {/* Latest point dot */}
-                {(() => {
-                  const lastPt = points.split(' ').pop().split(',');
-                  return <circle cx={lastPt[0]} cy={lastPt[1]} r="3" fill="var(--accent-primary)" />;
-                })()}
-              </svg>
-              <div className="pace-trend-labels">
-                <span>{formatPace(maxPace)}</span>
-                <span>{formatPace(minPace)}</span>
-              </div>
-            </div>
-            <div className="pace-trend-summary">
-              <span>Current: <strong>{formatPace(latestPace)}</strong>/500m</span>
-              {improvement > 2 && (
-                <span className="pace-improvement"><Icon name="ui_streak" size={12} /> {formatPace(improvement)} faster</span>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Almost There Achievements */}
-      {almostThere.length > 0 && (
-        <div className="home-almost-there">
-          <h3>Almost There</h3>
-          {almostThere.map(a => (
-            <div key={a.id} className="home-achievement-row" onClick={() => setShowAchievementModal({ ...a, progress: a.progress })}>
-              <Icon name={a.emoji} size={20} />
-              <div className="home-achievement-info">
-                <span className="home-achievement-name">{a.name}</span>
-                <div className="home-achievement-bar">
-                  <div className="home-achievement-fill" style={{ width: `${Math.min(a.pct * 100, 100)}%` }} />
-                </div>
-              </div>
-              <span className="home-achievement-pct">{Math.round(a.pct * 100)}%</span>
-            </div>
-          ))}
         </div>
-      )}
+      </details>
 
-      {/* Recent Rows */}
-      {recentRows.length > 0 && (
-        <div className="home-recent">
-          <h3>Recent Rows</h3>
-          {recentRows.map((row, i) => (
-            <div key={row.id || i} className="home-recent-row">
-              <span className="home-recent-date">
-                {new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-              <span className="home-recent-meters">{row.meters.toLocaleString()}m</span>
-              {row.time && <span className="home-recent-time">{formatTimeDisplay(row.time)}</span>}
-              <span className={`home-recent-status ${row.verificationStatus || 'unverified'}`}>
-                {row.verificationStatus === 'verified' ? <Icon name="ui_check" size={12} /> :
-                 row.verificationStatus === 'pending_review' ? <Icon name="ui_pending" size={12} /> :
-                 <Icon name="ui_unverified" size={12} />}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      <section className="dashboard-badges">
+        <div className="dashboard-section-heading"><h3>Your next wins</h3><button onClick={() => setActiveTab('more')}>All progress <span>→</span></button></div>
+        {nextBadges.length ? nextBadges.map(badge => <button className="dashboard-badge" key={badge.id}
+          onClick={() => setShowAchievementModal({ ...badge, progress: badge.progress })}>
+          <span className="dashboard-badge-icon"><Icon name={badge.emoji} size={25} /></span>
+          <span className="dashboard-badge-copy"><strong>{badge.name}</strong><small>{badge.desc}</small>
+            <progress aria-label={`${badge.name} progress`} value={Math.min(badge.pct, 1)} max="1" /></span>
+          <span className="dashboard-badge-percent">{Math.round(Math.min(badge.pct, 1) * 100)}%</span>
+        </button>) : <p>Every badge earned. What a journey!</p>}
+        <button className="dashboard-rank" onClick={() => setShowRankProgressModal(true)}>
+          <Icon name={rank.emoji} size={27} /><span><strong>{rank.title}</strong><small>{nextRank ? `${formatMeters(nextRank.minMeters - (userProfile.totalMeters || 0))}m to ${nextRank.title}` : 'Top rank reached'}
+          </small><progress aria-label="Progress to next rank" value={rankPct} max="100" /></span><span>→</span>
+        </button>
+      </section>
+
+      <section className="dashboard-recent">
+        <div className="dashboard-section-heading"><h3>Fresh from your logbook</h3><button onClick={() => setShowSessionHistory(true)}>View all <span>→</span></button></div>
+        {recent.length ? recent.map((row, index) => <div key={row.id || index} className="dashboard-row">
+          <span className="dashboard-row-date">{new Date(row.date).toLocaleDateString('en-US', { month: 'short' })}<strong>{new Date(row.date).getDate()}</strong></span>
+          <span><strong>{Number(row.meters).toLocaleString()} <small>m</small></strong><small>{row.time ? `${formatTimeDisplay(row.time)} · ` : ''}{row.verificationStatus === 'verified' ? 'Photo verified' : row.verificationStatus === 'pending_review' ? 'In review' : 'Unverified'}</small></span>
+          <Icon name={row.verificationStatus === 'verified' ? 'ui_check' : 'ui_rowing'} size={19} />
+        </div>) : <div className="dashboard-empty"><Icon name="ui_rowing" size={30} /><p>Nothing in your logbook yet.<br />A photo of your monitor is all you need.</p><button onClick={showLog}>Log your first row →</button></div>}
+      </section>
+
+      <details className="dashboard-journey"><summary><Icon name="ui_globe" size={20} /><span>Every meter moves the whole crew</span><span className="details-chevron">⌄</span></summary><WorldProgress /></details>
     </section>
   );
 }
-
 export default HomeTab;

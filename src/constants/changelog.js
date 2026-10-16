@@ -1,6 +1,19 @@
 // Changelog entries
 export const CHANGELOG = [
   {
+    version: '4.5.0',
+    date: '2026-10-15',
+    changes: [
+      'Your Home dashboard now puts this week, your logbook and your next wins first.',
+      'Keep Home, Crew, Log row, Board and Progress within reach with bottom navigation.',
+      'Choose Photo or Manual, then review your row before saving. Optional details stay tucked away.',
+      'Three monthly missions and six new badges reward rhythm, variety and shorter sessions.',
+      'Fresh monthly competitions begin in November; earlier challenge rules stay intact.',
+      'Progress shows your stats and badge criteria, with a quieter crew feed.',
+      'Earned badges stay earned, and historical celebrations no longer interrupt your arrival.',
+    ],
+  },
+  {
     version: '4.4.0',
     date: '2026-03-10',
     changes: [

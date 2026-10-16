@@ -62,6 +62,7 @@ import { AppContext } from './context/AppContext';
 
 // Import components
 import Header from './components/Header';
+import AppNavigation from './components/AppNavigation';
 import { getMonthlySummary, getMonthEntries, getThrowdownProgress, getBestRowStreak } from './utils/rowingGoals';
 import EntryForm from './components/EntryForm';
 import HomeTab from './components/HomeTab';
@@ -269,21 +270,24 @@ function App() {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       // Listen for messages from service worker
-      navigator.serviceWorker.addEventListener('message', (event) => {
+      const hadActiveWorker = Boolean(navigator.serviceWorker.controller);
+      const handleWorkerMessage = (event) => {
         if (event.data && event.data.type === 'SW_UPDATED') {
           console.log('App updated to version:', event.data.version);
-          // Automatically reload to get the new version
-          window.location.reload();
+          // First installation already has the newest assets.
+          if (hadActiveWorker) window.location.reload();
         }
-      });
+      };
+      navigator.serviceWorker.addEventListener('message', handleWorkerMessage);
 
       // Check for updates periodically (every 5 minutes)
-      const checkForUpdates = () => {
-        navigator.serviceWorker.getRegistration().then((registration) => {
-          if (registration) {
-            registration.update();
-          }
-        });
+      const checkForUpdates = async () => {
+        try {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration?.active && !registration.installing) await registration.update();
+        } catch {
+          // Offline or transitioning workers can retry at the next interval.
+        }
       };
 
       // Check immediately on mount
@@ -292,7 +296,10 @@ function App() {
       // Then check every 5 minutes
       const interval = setInterval(checkForUpdates, 5 * 60 * 1000);
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        navigator.serviceWorker.removeEventListener('message', handleWorkerMessage);
+      };
     }
   }, []);
 
@@ -679,24 +686,10 @@ function App() {
     previousTotalRef.current = currentTotal;
   }, [getTotalMeters]);
 
-  // Check for first visit or new version
+  // Keep welcome and release notes available in the header without blocking arrival.
   useEffect(() => {
-    const hasVisited = localStorage.getItem('rowcrew_visited');
-    const lastSeenVersion = localStorage.getItem('rowcrew_version');
-
-    // First time visitor - show welcome
-    if (!hasVisited) {
-      setShowWelcomeModal(true);
-      localStorage.setItem('rowcrew_visited', 'true');
-      localStorage.setItem('rowcrew_version', APP_VERSION);
-      return;
-    }
-
-    // Returning user with new version - show changelog
-    if (lastSeenVersion !== APP_VERSION) {
-      setShowChangelogModal(true);
-      localStorage.setItem('rowcrew_version', APP_VERSION);
-    }
+    localStorage.setItem('rowcrew_visited', 'true');
+    localStorage.setItem('rowcrew_version', APP_VERSION);
   }, []);
 
   // Auto-show monthly recap for the previous month
@@ -720,22 +713,14 @@ function App() {
     return () => clearTimeout(timer);
   }, [currentUser, entries]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Check if user missed a milestone celebration (shows on next visit)
+  // Historical milestones remain in the journey; only live crossings celebrate.
   useEffect(() => {
     if (isLoading || authLoading) return;
     const total = getTotalMeters();
     if (total === 0) return;
 
     const currentMilestoneIdx = getMilestoneIndex(total);
-    const lastSeen = parseInt(localStorage.getItem('rowcrew_lastSeenMilestone') || '0', 10);
-
-    if (currentMilestoneIdx > lastSeen && currentMilestoneIdx > 0) {
-      // User missed a milestone — show celebration for the latest one
-      const achievedMilestone = MILESTONES[currentMilestoneIdx - 1]; // -1 because getMilestoneIndex returns count
-      if (achievedMilestone) {
-        setShowMilestoneCelebration(achievedMilestone);
-      }
-    }
+    localStorage.setItem('rowcrew_lastSeenMilestone', currentMilestoneIdx.toString());
   }, [isLoading, authLoading, getTotalMeters]);
 
   // Apply theme to document (with holiday override)
@@ -4009,23 +3994,7 @@ function App() {
 
       <Header />
 
-      {/* Tabs */}
-      <nav className="tabs">
-        {currentUser && userProfile && (
-          <button className={`tab ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
-            <Icon name="ui_rowing" size={14} /> Home
-          </button>
-        )}
-        <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
-          <Icon name="ui_feed" size={14} /> Feed
-        </button>
-        <button className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
-          <Icon name="ui_trophy" size={14} /> Board
-        </button>
-        <button className={`tab ${activeTab === 'more' ? 'active' : ''}`} onClick={() => setActiveTab('more')}>
-          <Icon name="ui_chart" size={14} /> Stats
-        </button>
-      </nav>
+      <AppNavigation />
 
       {/* Group Selector — hidden for now */}
       {false && currentUser && userProfile && (
@@ -4241,18 +4210,11 @@ function App() {
       <WelcomeModal />
       <ChangelogModal />
 
-      {/* Floating Action Button — Log a Row */}
-      {currentUser && userProfile && !showLogModal && !showConfirmModal && (
-        <button className="fab" onClick={() => setShowLogModal(true)} title="Log a Row">
-          <Icon name="ui_plus" size={24} color="#fff" />
-        </button>
-      )}
-
       {/* Log Modal (replaces old Log tab) */}
       <EntryForm />
 
       <footer className="footer" onClick={handleFooterTap}>
-        <p><Icon name="ui_globe" size={14} /> Goal: Row {formatMeters(WORLD_CIRCUMFERENCE)}m around the world!</p>
+        <p><Icon name="ui_globe" size={14} /> One crew. {(WORLD_CIRCUMFERENCE / 1000).toLocaleString()} km around the world.</p>
       </footer>
     </div>
     </AppContext.Provider>

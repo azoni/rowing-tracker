@@ -1,0 +1,43 @@
+.world-progress .world-progress-link {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.world-progress .world-progress-link:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 5px;
+}
+
+.world-progress .world-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.world-progress .world-around {
+  border-top: 1px solid var(--border-color);
+  border-radius: 0;
+  padding-top: 10px;
+}
+
+.world-progress .progress-bar-container,
+.world-progress .progress-bar,
+.world-progress .world-bar-container,
+.world-progress .world-bar,
+.world-progress .world-around-detail {
+  display: block;
+}
+
+.world-progress .milestone-current,
+.world-progress .milestone-next {
+  flex-wrap: wrap;
+}

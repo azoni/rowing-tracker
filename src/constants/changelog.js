@@ -1,6 +1,16 @@
 // Changelog entries
 export const CHANGELOG = [
   {
+    version: '4.7.0',
+    date: '2026-10-15',
+    changes: [
+      'The crew map is now a full expedition: drag, pinch, zoom, and follow the boat on a real world map.',
+      'Explore every destination in the passport, see the next landfall, and track smaller milestones along the way.',
+      'See every rower’s contribution and your own share of the journey, then add a row from the map.',
+      'All journey links now open the same mobile-friendly map, with existing progress preserved.',
+    ],
+  },
+  {
     version: '4.6.0',
     date: '2026-10-15',
     changes: [

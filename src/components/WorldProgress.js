@@ -2,66 +2,67 @@ import React from 'react';
 import Icon from './Icon';
 import { useApp } from '../context/AppContext';
 import { formatMeters } from '../utils';
-import { MILESTONES, getMilestoneIndex } from '../constants';
+import { MILESTONES, WORLD_CIRCUMFERENCE, getMilestoneIndex } from '../constants';
+import './WorldProgress.css';
 
 function WorldProgress() {
-  const { totalMeters, milestoneProgress, worldProgress, setShowJourneyModal, setShowCrewMap } = useApp();
+  const { totalMeters, milestoneProgress, worldProgress, setShowCrewMap } = useApp();
+  const openMap = () => setShowCrewMap(true);
+  const remaining = Math.max(0, WORLD_CIRCUMFERENCE - totalMeters);
+  const percent = Math.min(100, Math.max(0, worldProgress));
 
   return (
     <section className="world-progress">
-      {/* Main stats row — tap to open milestones */}
-      <div className="world-stats clickable" onClick={() => setShowJourneyModal(true)}>
-        <div className="world-total">
+      <button type="button" className="world-stats world-progress-link" onClick={openMap} aria-label="Open crew map and milestone passport">
+        <span className="world-total">
           <span className="world-number">{formatMeters(totalMeters)}</span>
           <span className="world-label">meters rowed</span>
-        </div>
-        <div className="milestone-count">
+        </span>
+        <span className="milestone-count">
           <span className="milestone-count-number">{getMilestoneIndex(totalMeters)}/{MILESTONES.length}</span>
           <span className="milestone-count-label">milestones</span>
-        </div>
-      </div>
+        </span>
+      </button>
 
-      {/* Milestone progress — tap to open milestones */}
-      <div className="clickable" onClick={() => setShowJourneyModal(true)}>
+      <button type="button" className="world-milestone-link world-progress-link" onClick={openMap} aria-label="Explore crew journey milestones">
       {milestoneProgress.next ? (() => {
         const prevMeters = milestoneProgress.current?.meters || 0;
         const segmentProgress = ((totalMeters - prevMeters) / (milestoneProgress.next.meters - prevMeters)) * 100;
         return (
           <>
             {milestoneProgress.current && (
-              <div className="milestone-current">
+              <span className="milestone-current">
                 <Icon name="ui_check" size={14} /> <Icon name={milestoneProgress.current.emoji} size={14} /> {milestoneProgress.current.label} — {milestoneProgress.current.comparison}
-              </div>
+              </span>
             )}
-            <div className="progress-bar-container">
-              <div className="progress-bar" style={{ width: `${Math.min(segmentProgress, 100)}%` }} />
-            </div>
-            <div className="milestone-next">
+            <span className="progress-bar-container">
+              <span className="progress-bar" style={{ width: `${Math.min(segmentProgress, 100)}%` }} />
+            </span>
+            <span className="milestone-next">
               <Icon name={milestoneProgress.next.emoji} size={14} /> Next: {milestoneProgress.next.label} — {formatMeters(milestoneProgress.next.meters - totalMeters)} to go
-            </div>
+            </span>
           </>
         );
       })() : (
-        <div className="progress-bar-container">
-          <div className="progress-bar" style={{ width: '100%' }} />
-        </div>
+        <span className="progress-bar-container">
+          <span className="progress-bar" style={{ width: '100%' }} />
+        </span>
       )}
 
-      </div>
+      </button>
 
-      {/* Around the World — tap to open map */}
-      <div className="world-around clickable" onClick={() => setShowCrewMap(true)}>
-        <div className="world-around-header">
+      <button type="button" className="world-around world-progress-link" onClick={openMap} aria-label="Explore the crew expedition map">
+        <span className="world-around-header">
           <span className="world-around-title"><Icon name="ui_globe" size={16} /> Row Around The World</span>
-          <span className="world-around-pct">{worldProgress.toFixed(1)}%</span>
-        </div>
-        <div className="world-bar-container">
-          <div className="world-bar" style={{ width: `${Math.min(worldProgress, 100)}%` }} />
-        </div>
-        <div className="world-around-detail">
-          {formatMeters(totalMeters)} of {formatMeters(40075000)} — {formatMeters(40075000 - totalMeters)} to go
-        </div>
-      </div>
+          <span className="world-around-pct">{percent.toFixed(1)}%</span>
+        </span>
+        <span className="world-bar-container">
+          <span className="world-bar" style={{ width: `${percent}%` }} />
+        </span>
+        <span className="world-around-detail">
+          {formatMeters(totalMeters)} of {formatMeters(WORLD_CIRCUMFERENCE)} — {remaining ? `${formatMeters(remaining)} to go` : 'Journey complete!'}
+        </span>
+      </button>
     </section>
   );
 }

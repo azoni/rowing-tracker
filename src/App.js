@@ -81,7 +81,7 @@ import ChallengeDetailModal from './components/ChallengeDetailModal';
 import WrappedModal from './components/WrappedModal';
 import MonthlyRecapModal from './components/MonthlyRecapModal';
 import { CreateGroupModal, JoinGroupModal, InviteUserModal, ManageMembersModal, CreateChallengeModal } from './components/GroupModals';
-import { PRModal, BustedModal, JourneyModal, AchievementModal, PhotoModal, InstallPrompt, WelcomeModal, ChangelogModal } from './components/SmallModals';
+import { PRModal, BustedModal, AchievementModal, PhotoModal, InstallPrompt, WelcomeModal, ChangelogModal } from './components/SmallModals';
 import MilestoneCelebration from './components/MilestoneCelebration';
 import Icon from './components/Icon';
 
@@ -145,7 +145,6 @@ function App() {
   const [feedSearchQuery, setFeedSearchQuery] = useState('');
   const [feedTypeFilter, setFeedTypeFilter] = useState('row');
   const [showAchievementModal, setShowAchievementModal] = useState(null);
-  const [showJourneyModal, setShowJourneyModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -3832,7 +3831,6 @@ function App() {
     showBustedModal, setShowBustedModal,
     showPRModal, setShowPRModal,
     showAchievementModal, setShowAchievementModal,
-    showJourneyModal, setShowJourneyModal,
     showSettingsModal, setShowSettingsModal,
     showAvatarBuilder, setShowAvatarBuilder, saveAvatar,
     showCrewMap, setShowCrewMap,
@@ -4136,7 +4134,6 @@ function App() {
       <PRModal />
       <BustedModal />
       <SettingsModal />
-      <JourneyModal />
       <AchievementModal />
       <PhotoModal />
       <AdminPanel />

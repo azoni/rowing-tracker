@@ -4,6 +4,7 @@ import { formatMeters, formatTime, formatTimeDisplay, formatTimeAgo } from '../u
 import { getUserRank, getRankTier, TIER_COLORS } from '../constants';
 import Icon from './Icon';
 import AvatarOrPhoto from './Avatar';
+import CrewPulse from './CrewPulse';
 import './ProgressAndCrew.css';
 
 function ActivityFeed() {
@@ -39,6 +40,8 @@ function ActivityFeed() {
         <h2>{selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Feed` : 'Crew activity'}</h2>
         <p>Fresh rows, personal wins, and a little encouragement.</p>
       </div>
+
+      <CrewPulse />
 
       {/* Group Info & Challenges (when group selected) */}
       {selectedGroupId && getSelectedGroup() && (
@@ -363,7 +366,9 @@ function ActivityFeed() {
                               e.stopPropagation();
                               setExpandedComments(prev => ({ ...prev, [item.id]: !prev[item.id] }));
                             }}
-                          ><Icon name="ui_comment" size={14} /> {getItemComments(item.id).length || 'Reply'}</button>
+                          ><Icon name="ui_comment" size={14} /> {getItemComments(item.id).length
+                            ? `${getItemComments(item.id).length} ${getItemComments(item.id).length === 1 ? 'comment' : 'comments'}`
+                            : 'Comment'}</button>
                         </div>
 
                         {expandedComments[item.id] && (

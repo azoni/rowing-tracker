@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-globals */
 // Update this version number to trigger update
-const CACHE_VERSION = '4.5.0';
+const CACHE_VERSION = '4.6.0';
 const CACHE_NAME = `row-crew-v${CACHE_VERSION}`;
 
 const urlsToCache = [

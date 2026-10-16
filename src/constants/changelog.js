@@ -1,6 +1,17 @@
 // Changelog entries
 export const CHANGELOG = [
   {
+    version: '4.6.0',
+    date: '2026-10-15',
+    changes: [
+      'Pull together toward a shared weekly crew goal and give teammates kudos from the spotlight.',
+      'Explore 4- and 12-week trends, weekly distance charts, and pace changes on matching workouts.',
+      'Monthly missions now have Starter, Build and Stretch levels, with every level recognized.',
+      'Five new badges reward benchmark tours and lasting rowing habits.',
+      'Stronger challenges begin in November with a timed 1K, 2K and 5K tour. Preview next month from Home.',
+    ],
+  },
+  {
     version: '4.5.0',
     date: '2026-10-15',
     changes: [

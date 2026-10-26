@@ -1,227 +1,149 @@
 import React from 'react';
 import Icon from './Icon';
 import { useApp } from '../context/AppContext';
-import { formatMeters, formatTimeDisplay } from '../utils';
-import { ACHIEVEMENTS, STANDARD_DISTANCES, getUserRank, TIER_COLORS } from '../constants';
+import { formatMeters } from '../utils';
+import { ACHIEVEMENTS, STANDARD_DISTANCES } from '../constants';
+import { formatRecordTime } from '../utils/leaderboardStats';
 import AvatarOrPhoto from './Avatar';
+import './Leaderboard.css';
+
+const TABS = [
+  ['alltime', 'All time', 'ui_trophy'], ['weekly', 'This week', 'ui_calendar'],
+  ['streak', 'Streaks', 'ui_fire'], ['achievements', 'Awards', 'ui_medal'], ['records', 'Records', 'ui_records'],
+];
+const dateLabel = value => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const plural = (value, word) => value + ' ' + word + (value === 1 ? '' : 's');
 
 function Leaderboard() {
   const {
     currentUser, selectedGroupId, getSelectedGroup,
-    leaderboardTab, setLeaderboardTab,
-    getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard, getAchievementsLeaderboard, getDistanceRecords,
+    leaderboardTab, setLeaderboardTab, leaderboardStats,
+    getLeaderboard = [], getWeeklyLeaderboard = [], getStreakLeaderboard = [],
+    getAchievementsLeaderboard = [], getDistanceRecords = {},
     setShowUserProfileModal, setShowCrewMap,
   } = useApp();
-
   const [selectedDistance, setSelectedDistance] = React.useState(2000);
+  const [selectedSetup, setSelectedSetup] = React.useState('');
+  const [search, setSearch] = React.useState('');
+  const recordGroups = getDistanceRecords[selectedDistance] || [];
+  const setup = recordGroups.find(group => group.key === selectedSetup) || recordGroups[0];
+  const isRecords = leaderboardTab === 'records';
+  const boards = { alltime: getLeaderboard, weekly: getWeeklyLeaderboard, streak: getStreakLeaderboard, achievements: getAchievementsLeaderboard };
+  const rows = isRecords ? setup?.rows || [] : boards[leaderboardTab] || [];
+  const query = search.trim().toLocaleLowerCase();
+  const visibleRows = rows.map((row, index) => ({ row, place: index + 1 }))
+    .filter(({ row }) => ((isRecords ? row.user : row)?.name || 'Crew member').toLocaleLowerCase().includes(query));
+  const week = leaderboardStats?.week;
+  const lastWeekDay = week ? new Date(week.end) : null;
+  if (lastWeekDay) lastWeekDay.setDate(lastWeekDay.getDate() - 1);
+  const titles = { alltime: 'Lifetime distance', weekly: 'A fresh week, together', streak: 'One day at a time', achievements: 'Earned along the way', records: 'Photo-verified times' };
+  const descriptions = {
+    alltime: 'Every eligible logged row adds to your distance.',
+    weekly: week ? dateLabel(week.start) + '–' + dateLabel(lastWeekDay) + ' · Monday–Sunday, in your local time.' : 'Monday–Sunday, in your local time.',
+    streak: 'A current streak includes today or yesterday. Your best stays with you.',
+    achievements: 'Earned badges stay counted. New progress uses eligible rows.',
+    records: 'Your best time for the same recorded distance, machine and workout type.',
+  };
+  const empty = {
+    alltime: ['The crew is just getting started.', 'Logged rows will appear here.'],
+    weekly: ['A fresh start for the crew.', 'The first eligible row this week will appear here.'],
+    streak: ['Every rhythm starts with one row.', 'Your current and longest streaks will appear here.'],
+    achievements: ['Room for the first badge.', 'Keep logging rows to build your collection.'],
+    records: ['No comparable times at this distance yet.', 'Photo-verified, single-piece rows need an exact distance, a time and a known setup.'],
+  }[leaderboardTab] || ['', ''];
 
   return (
-    <section className="leaderboard-section">
-      <div className="leaderboard-header-row">
-        <h2>{selectedGroupId ? `${getSelectedGroup()?.name || 'Group'} Leaderboard` : 'Leaderboard'}</h2>
-        <button className="crew-map-btn" onClick={() => setShowCrewMap(true)}>
-          <Icon name="ui_globe" size={16} /> Map
+    <section className="crew-board" aria-labelledby="crew-board-heading">
+      <header className="crew-board-header">
+        <div>
+          <h2 id="crew-board-heading">{selectedGroupId ? getSelectedGroup()?.name || 'Your crew' : 'The crew board'}</h2>
+          <p>A little friendly competition, at your own pace.</p>
+        </div>
+        <button type="button" className="crew-board-map" onClick={() => setShowCrewMap(true)} aria-label="Open crew map">
+          <Icon name="ui_globe" size={16} /> <span>Map</span>
         </button>
+      </header>
+
+      <div className="crew-board-tabs" role="group" aria-label="Leaderboard view">
+        {TABS.map(([id, label, icon]) => (
+          <button type="button" key={id} aria-pressed={leaderboardTab === id} onClick={() => setLeaderboardTab(id)}>
+            <Icon name={icon} size={15} /><span>{label}</span>
+          </button>
+        ))}
       </div>
 
-      <div className="leaderboard-tabs">
-        <button className={`lb-tab ${leaderboardTab === 'alltime' ? 'active' : ''}`} onClick={() => setLeaderboardTab('alltime')}><Icon name="ui_trophy" size={14} /> All</button>
-        <button className={`lb-tab ${leaderboardTab === 'weekly' ? 'active' : ''}`} onClick={() => setLeaderboardTab('weekly')}><Icon name="ui_calendar" size={14} /> Week</button>
-        <button className={`lb-tab ${leaderboardTab === 'streak' ? 'active' : ''}`} onClick={() => setLeaderboardTab('streak')}><Icon name="ui_fire" size={14} /> Streak</button>
-        <button className={`lb-tab ${leaderboardTab === 'achievements' ? 'active' : ''}`} onClick={() => setLeaderboardTab('achievements')}><Icon name="ui_medal" size={14} /> Awards</button>
-        <button className={`lb-tab ${leaderboardTab === 'records' ? 'active' : ''}`} onClick={() => setLeaderboardTab('records')}><Icon name="ui_records" size={14} /> Records</button>
+      <div className="crew-board-body">
+        <div className="crew-board-intro">
+          <h3>{titles[leaderboardTab]}</h3>
+          <p>{descriptions[leaderboardTab]}</p>
+        </div>
+        {isRecords && (
+          <div className="crew-board-record-filters">
+            <div className="crew-board-distances" role="group" aria-label="Record distance">
+              {STANDARD_DISTANCES.map(distance => (
+                <button type="button" key={distance.meters} aria-pressed={selectedDistance === distance.meters}
+                  onClick={() => setSelectedDistance(distance.meters)}>{distance.label}</button>
+              ))}
+            </div>
+            {recordGroups.length > 0 && (
+              <label className="crew-board-setup">Recorded setup
+                <select value={setup.key} onChange={event => setSelectedSetup(event.target.value)}>
+                  {recordGroups.map(group => <option key={group.key} value={group.key}>{group.label}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
+        <div className="crew-board-tools">
+          <label className="crew-board-search">
+            <span className="crew-board-search-label">Find a rower</span>
+            <Icon name="ui_search" size={16} />
+            <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Find a rower" />
+          </label>
+          <span className="crew-board-count" role="status">{query ? visibleRows.length + ' of ' : ''}{plural(rows.length, 'rower')}</span>
+        </div>
+        {rows.length === 0 ? (
+          <div className="crew-board-empty"><h4>{empty[0]}</h4><p>{empty[1]}</p></div>
+        ) : visibleRows.length === 0 ? (
+          <div className="crew-board-empty"><h4>No rowers match that name.</h4>
+            <button type="button" className="crew-board-clear" onClick={() => setSearch('')}>Clear search</button>
+          </div>
+        ) : (
+          <ol className="crew-board-list" aria-label={titles[leaderboardTab]}>
+            {visibleRows.map(({ row, place }) => {
+              const user = isRecords ? row.user : row.profile || row;
+              const isYou = user.id === currentUser?.uid;
+              let metric, unit, detail, exact;
+              if (isRecords) {
+                metric = formatRecordTime(row.time); unit = formatRecordTime(row.pace) + ' /500m'; detail = dateLabel(row.date);
+              } else if (leaderboardTab === 'streak') {
+                metric = row.streak; unit = row.streak === 1 ? 'day now' : 'days now'; detail = 'Best: ' + plural(row.longestStreak, 'day');
+              } else if (leaderboardTab === 'achievements') {
+                metric = row.achievementCount; unit = 'of ' + ACHIEVEMENTS.length + ' badges'; detail = row.rank?.title || 'Crew member';
+              } else {
+                const meters = leaderboardTab === 'weekly' ? row.weeklyMeters : row.totalMeters;
+                metric = formatMeters(meters); unit = 'meters'; exact = meters.toLocaleString() + ' meters';
+                detail = plural(leaderboardTab === 'weekly' ? row.weeklySessions || 0 : row.uploadCount || 0, 'row') + ' logged';
+              }
+              return (
+                <li key={row.id} value={place}>
+                  <button type="button" className={'crew-board-row' + (isYou ? ' is-you' : '')}
+                    onClick={() => setShowUserProfileModal(user)} aria-label={'View ' + (user.name || 'crew member') + ' profile, place ' + place + ', ' + metric + ' ' + unit + ', ' + detail}>
+                    <span className="crew-board-place" aria-hidden="true">{place.toString().padStart(2, '0')}</span>
+                    <AvatarOrPhoto user={user} size={36} className="crew-board-avatar" />
+                    <span className="crew-board-person"><span className="crew-board-name">{user.name || 'Crew member'}{isYou && <span className="crew-board-you">You</span>}</span>
+                      <span className="crew-board-detail">{detail}</span></span>
+                    <span className="crew-board-metric" title={exact}><strong>{metric}</strong><span>{unit}</span></span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        <p className="crew-board-note">{isRecords
+          ? 'Verified by Row Crew from a photo, not an official race ranking. Settings and effort can differ; intervals and unknown setups are not compared.'
+          : 'Based on eligible logged rows. Pending, rejected, test and future rows do not count.'}</p>
       </div>
-
-      {/* All Time Leaderboard */}
-      {leaderboardTab === 'alltime' && (
-        <>
-          {getLeaderboard.length === 0 ? (
-            <div className="empty-state"><p>No rowers yet!</p><p>Be the first to log a row.</p></div>
-          ) : (
-            <div className="leaderboard">
-              {getLeaderboard.map((user, index) => (
-                <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`} style={{ borderLeftColor: TIER_COLORS[getUserRank(user.totalMeters)?.tier] || '#00d4aa' }} onClick={() => setShowUserProfileModal(user)}>
-                  <div className="rank">{index === 0 ? <Icon name="ui_gold" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}</div>
-                  <div className="user-avatar-wrapper">
-                    <AvatarOrPhoto user={user} size={36} className="leaderboard-avatar" />
-                  </div>
-                  <div className="user-info">
-                    <span className="user-name">{user.name}{user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</span>
-                    <span className="user-rank-label"><Icon name={user.rank?.emoji} size={14} /> {user.rank?.title}</span>
-                    <span className="user-streak">{user.streak > 0 && <><Icon name="ui_fire" size={14} /> {user.streak} day streak</>}</span>
-                  </div>
-                  <div className="user-meters">
-                    <span className="meters-value">{formatMeters(user.totalMeters)}</span>
-                    <span className="meters-label">meters</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Weekly Leaderboard */}
-      {leaderboardTab === 'weekly' && (
-        <>
-          <div className="weekly-reset-info">
-            <Icon name="ui_timer" size={14} />
-            <span>Resets {(() => {
-              const now = new Date();
-              const nextSunday = new Date(now);
-              nextSunday.setDate(now.getDate() + (7 - now.getDay()));
-              nextSunday.setHours(0, 0, 0, 0);
-              const diff = nextSunday - now;
-              const days = Math.floor(diff / 86400000);
-              const hours = Math.floor((diff % 86400000) / 3600000);
-              if (days > 1) return `in ${days} days`;
-              if (days === 1) return `tomorrow`;
-              if (hours > 0) return `in ${hours}h`;
-              return 'soon';
-            })()}</span>
-            <span className="weekly-reset-day">
-              Sunday {new Date((() => { const d = new Date(); d.setDate(d.getDate() + (7 - d.getDay())); return d; })()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
-          </div>
-          {getWeeklyLeaderboard.length === 0 ? (
-            <div className="empty-state"><p>No rows this week yet!</p><p>Be the first to get on the board.</p></div>
-          ) : (
-            <div className="leaderboard">
-              {getWeeklyLeaderboard.map((user, index) => (
-                <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`} style={{ borderLeftColor: TIER_COLORS[getUserRank(user.totalMeters)?.tier] || '#00d4aa' }} onClick={() => setShowUserProfileModal(user)}>
-                  <div className="rank">{index === 0 ? <Icon name="ui_gold" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}</div>
-                  <div className="user-avatar-wrapper">
-                    <AvatarOrPhoto user={user} size={36} className="leaderboard-avatar" />
-                    {index === 0 && <span className="weekly-crown"><Icon name="ui_crown" size={16} /></span>}
-                  </div>
-                  <div className="user-info">
-                    <span className="user-name">{user.name}{user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</span>
-                    <span className="user-rank-label"><Icon name={user.rank?.emoji} size={14} /> {user.rank?.title}</span>
-                  </div>
-                  <div className="user-meters">
-                    <span className="meters-value">{formatMeters(user.weeklyMeters)}</span>
-                    <span className="meters-label">this week</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Streak Leaderboard */}
-      {leaderboardTab === 'streak' && (
-        <>
-          {getStreakLeaderboard.length === 0 ? (
-            <div className="empty-state"><p>No active streaks!</p><p>Row consistently to build yours.</p></div>
-          ) : (
-            <div className="leaderboard">
-              {getStreakLeaderboard.map((user, index) => (
-                <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`} style={{ borderLeftColor: TIER_COLORS[getUserRank(user.totalMeters)?.tier] || '#00d4aa' }} onClick={() => setShowUserProfileModal(user)}>
-                  <div className="rank">{index === 0 ? <Icon name="ui_fire" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}</div>
-                  <div className="user-avatar-wrapper">
-                    <AvatarOrPhoto user={user} size={36} className="leaderboard-avatar" />
-                  </div>
-                  <div className="user-info">
-                    <span className="user-name">{user.name}{user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</span>
-                    <span className="user-rank-label">Best: {user.longestStreak} days</span>
-                  </div>
-                  <div className="user-meters streak-display">
-                    <span className="meters-value">{user.streak}</span>
-                    <span className="meters-label">day streak</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Achievements Leaderboard */}
-      {leaderboardTab === 'achievements' && (
-        <>
-          {getAchievementsLeaderboard.length === 0 ? (
-            <div className="empty-state"><p>No achievements unlocked yet!</p><p>Start rowing to earn badges.</p></div>
-          ) : (
-            <div className="leaderboard">
-              {getAchievementsLeaderboard.map((user, index) => (
-                <div key={user.id} className={`leaderboard-item rank-${index + 1} ${user.id === currentUser?.uid ? 'is-you' : ''}`} style={{ borderLeftColor: TIER_COLORS[getUserRank(user.totalMeters)?.tier] || '#00d4aa' }} onClick={() => setShowUserProfileModal(user)}>
-                  <div className="rank">{index === 0 ? <Icon name="ui_medal" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}</div>
-                  <div className="user-avatar-wrapper">
-                    <AvatarOrPhoto user={user} size={36} className="leaderboard-avatar" />
-                  </div>
-                  <div className="user-info">
-                    <span className="user-name">{user.name}{user.id === currentUser?.uid && <span className="you-badge">YOU</span>}</span>
-                    <span className="user-rank-label"><Icon name={user.rank?.emoji} size={14} /> {user.rank?.title}</span>
-                  </div>
-                  <div className="user-meters">
-                    <span className="meters-value">{user.achievementCount}/{ACHIEVEMENTS.length}</span>
-                    <span className="meters-label">badges</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Distance Records */}
-      {leaderboardTab === 'records' && (
-        <>
-          {/* Distance sub-tabs */}
-          <div className="distance-tabs">
-            {STANDARD_DISTANCES.map(dist => (
-              <button
-                key={dist.meters}
-                className={`distance-tab ${selectedDistance === dist.meters ? 'active' : ''}`}
-                onClick={() => setSelectedDistance(dist.meters)}
-              >
-                {dist.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Records list */}
-          {(!getDistanceRecords[selectedDistance] || getDistanceRecords[selectedDistance].length === 0) ? (
-            <div className="empty-state">
-              <p>No timed records for {STANDARD_DISTANCES.find(d => d.meters === selectedDistance)?.label} yet!</p>
-              <p>Log a verified row at this distance with a time to set a record.</p>
-            </div>
-          ) : (
-            <div className="leaderboard">
-              {getDistanceRecords[selectedDistance].map((entry, index) => (
-                <div
-                  key={entry.id}
-                  className={`leaderboard-item rank-${index + 1} ${entry.userId === currentUser?.uid ? 'is-you' : ''}`}
-                  onClick={() => setShowUserProfileModal(entry.user)}
-                >
-                  <div className="rank">
-                    {index === 0 ? <Icon name="ui_gold" size={20} /> : index === 1 ? <Icon name="ui_silver" size={20} /> : index === 2 ? <Icon name="ui_bronze" size={20} /> : index + 1}
-                  </div>
-                  <div className="user-avatar-wrapper">
-                    <AvatarOrPhoto user={entry.user} size={36} className="leaderboard-avatar" />
-                  </div>
-                  <div className="user-info">
-                    <span className="user-name">
-                      {entry.user?.name}
-                      {entry.userId === currentUser?.uid && <span className="you-badge">YOU</span>}
-                    </span>
-                    <span className="user-rank-label">
-                      {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                  </div>
-                  <div className="user-meters">
-                    <span className="meters-value">{formatTimeDisplay(entry.time)}</span>
-                    <span className="meters-label">
-                      {entry.pace ? `${Math.floor(entry.pace / 60)}:${(entry.pace % 60).toFixed(1).padStart(4, '0')}/500m` : ''}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
     </section>
   );
 }

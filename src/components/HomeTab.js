@@ -9,10 +9,20 @@ import { getUserRank, getNextRank, getMonthlyProgram, ACHIEVEMENTS } from '../co
 import { getWeeklyStats } from '../utils/weeklyStats';
 import { getDistanceStamps, getMonthlySummary } from '../utils/rowingGoals';
 import { getAnalyticsDate, getAnalyticsEntries, summarizeRows } from '../utils/rowingAnalytics';
+import { getCrewColor } from '../utils/crewColor';
 import './HomeTab.css';
 
+const greeting = hour => hour < 5 ? 'Up early' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+// Who moved the boat: the same eligible lifetime distance the crew map shows, largest first.
+const crewShares = profiles => Object.entries(profiles || {})
+  .map(([id, user]) => ({ id, name: user?.name, meters: Number(user?.totalMeters) > 0 ? Number(user.totalMeters) : 0 }))
+  .filter(member => member.meters > 0)
+  .sort((a, b) => b.meters - a.meters || a.id.localeCompare(b.id))
+  .map(member => ({ ...member, color: getCrewColor(member) }));
+
 function HomeTab() {
-  const { currentUser, userProfile, entries, users, getUserAchievements, getAchievementProgress,
+  const { currentUser, userProfile, entries, users, metricUsers, getUserAchievements, getAchievementProgress,
     setShowRankProgressModal, setShowAchievementModal, setShowLogModal, setShowSessionHistory,
     setActiveTab, setShowCrewMap, totalMeters } = useApp();
   if (!currentUser || !userProfile) return null;
@@ -49,11 +59,12 @@ function HomeTab() {
   return (
     <section className="home-section dashboard">
       <div className="dashboard-heading">
-        <div><h2>Welcome aboard, {userProfile.name?.split(' ')[0] || 'rower'}.</h2></div>
+        <div><h2>{greeting(now.getHours())}, {userProfile.name?.split(' ')[0] || 'rower'}.</h2></div>
         <time className="dashboard-date" dateTime={now.toLocaleDateString('en-CA')}>{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</time>
       </div>
 
-      <WorldJourneyHero totalMeters={totalMeters} onOpen={() => setShowCrewMap(true)} />
+      <WorldJourneyHero totalMeters={totalMeters} onOpen={() => setShowCrewMap(true)}
+        crew={crewShares(metricUsers === undefined ? users : metricUsers)} />
 
       <section className="weekly-card" aria-labelledby="weekly-title">
         <div className="weekly-content">
@@ -81,7 +92,7 @@ function HomeTab() {
 
       <details className="dashboard-month">
         <summary><span className="dashboard-month-icon"><Icon name="ui_trophy" size={22} /></span>
-          <span><strong>{monthName} crew challenges</strong><small>{monthly.challenge.label} · {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left</small></span><span className="details-chevron">⌄</span></summary>
+          <span><strong>{monthName} crew challenges</strong><small><span>{monthly.challenge.label}</span>{' '}<span>{daysLeft} {daysLeft === 1 ? 'day' : 'days'} left</span></small></span><span className="details-chevron">⌄</span></summary>
         <div className="dashboard-month-content">
           <p className="dashboard-eyebrow">Personal throwdown</p>
           <h3>{monthly.throwdown.label}</h3>
@@ -126,9 +137,9 @@ function HomeTab() {
         <div className="dashboard-section-heading"><h3>Fresh from your logbook</h3><button onClick={() => setShowSessionHistory(true)}>View all <span>→</span></button></div>
         {recent.length ? recent.map((row, index) => <div key={row.id || index} className="dashboard-row">
           <span className="dashboard-row-date">{getAnalyticsDate(row.date).toLocaleDateString('en-US', { month: 'short' })}<strong>{getAnalyticsDate(row.date).getDate()}</strong></span>
-          <span><strong>{Number(row.meters).toLocaleString()} <small>m</small></strong><small>{Number(row.time) > 0 ? `${formatTimeDisplay(row.time)} · ` : ''}{row.verificationStatus === 'verified' ? 'Photo verified' : ['pending_review', 'pending'].includes(row.verificationStatus) ? 'In review · not counted yet' : row.verificationStatus === 'rejected' ? 'Not approved · not counted' : 'Manual entry'}</small></span>
+          <span><strong>{Number(row.meters).toLocaleString()} <small>m</small></strong><small>{Number(row.time) > 0 && <><span>{formatTimeDisplay(row.time)}</span>{' '}</>}<span>{row.verificationStatus === 'verified' ? 'Photo verified' : ['pending_review', 'pending'].includes(row.verificationStatus) ? 'In review, not counted yet' : row.verificationStatus === 'rejected' ? 'Not approved, not counted' : 'Manual entry'}</span></small></span>
           <Icon name={row.verificationStatus === 'verified' ? 'ui_check' : 'ui_rowing'} size={19} />
-        </div>) : <div className="dashboard-empty"><Icon name="ui_rowing" size={30} /><p>Nothing in your logbook yet.<br />A photo of your monitor is all you need.</p><button onClick={showLog}>Log your first row →</button></div>}
+        </div>) : <div className="dashboard-empty"><Icon name="ui_rowing" size={30} /><p>Nothing in your logbook yet.<br />A photo of your monitor is all you need.</p><button onClick={showLog}>Log your first row</button></div>}
       </section>
 
       <MonthlyMissions missions={monthly.missions} onLog={showLog} />

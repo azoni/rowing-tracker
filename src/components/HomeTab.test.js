@@ -21,12 +21,12 @@ afterEach(() => {
   jest.useRealTimers();
 });
 const row = (id, extra = {}) => ({ id, userId: 'me', meters: 2000, date: new Date(2026, 9, 14, 9).toISOString(), ...extra });
-const render = entries => {
+const render = (entries, extra = {}) => {
   const profile = { id: 'me', name: 'Alex', totalMeters: 900000, totalTime: 90000 };
   const context = { currentUser: { uid: 'me' }, userProfile: profile, users: { me: profile }, entries,
     totalMeters: 1000000, getUserAchievements: () => [], getAchievementProgress: () => ({ current: 0, target: 1 }),
     setShowRankProgressModal: jest.fn(), setShowAchievementModal: jest.fn(), setShowLogModal: jest.fn(),
-    setShowSessionHistory: jest.fn(), setActiveTab: jest.fn(), setShowCrewMap: jest.fn() };
+    setShowSessionHistory: jest.fn(), setActiveTab: jest.fn(), setShowCrewMap: jest.fn(), ...extra };
   useApp.mockReturnValue(context);
   act(() => root.render(<HomeTab />));
   return context;
@@ -88,8 +88,29 @@ test('recent history explains uncounted states and omits malformed, future and t
   const recent = container.querySelector('.dashboard-recent');
   expect(recent.querySelectorAll('.dashboard-row')).toHaveLength(3);
   expect(recent.textContent).toContain('Manual entry');
-  expect(recent.textContent).toContain('In review · not counted yet');
-  expect(recent.textContent).toContain('Not approved · not counted');
+  expect(recent.textContent).toContain('In review, not counted yet');
+  expect(recent.textContent).toContain('Not approved, not counted');
   expect(recent.textContent).not.toMatch(/NaN|Invalid Date/);
   expect(container.querySelector('.weekly-distance').textContent).toBe('2km rowed');
+});
+
+test('the greeting follows the time of day', () => {
+  render([]);
+  expect(container.querySelector('.dashboard-heading h2').textContent).toBe('Good afternoon, Alex.');
+  jest.setSystemTime(new Date(2026, 9, 15, 6));
+  render([]);
+  expect(container.querySelector('.dashboard-heading h2').textContent).toBe('Good morning, Alex.');
+});
+
+test('the journey hero credits rowers by eligible lifetime distance, largest share first', () => {
+  render([], { metricUsers: {
+    me: { name: 'Alex Morgan', totalMeters: 12000 },
+    sam: { name: 'Sam Rivera', totalMeters: 30000 },
+    idle: { name: 'Idle Rower', totalMeters: 0 },
+  } });
+  const names = () => [...container.querySelectorAll('.world-journey-crew-name')].map(node => node.textContent);
+  expect(names()).toEqual(['Sam', 'Alex']);
+  expect(container.querySelector('.world-journey-crew-km').textContent).toBe('30 km');
+  render([]);
+  expect(names()).toEqual(['Alex']);
 });

@@ -82,14 +82,15 @@ const errors = [], blocked = [], passed = [], geometry = [];
     await bell.click(); await page.keyboard.press('Escape');
     assert.equal(await bell.getAttribute('aria-expanded'), 'false');
     assert(await bell.evaluate(node => node === document.activeElement));
-    assert(await page.locator('.world-journey-art img').evaluate(img => img.complete && img.naturalWidth > 0 && getComputedStyle(img).animationName === 'none'));
+    assert.equal(await page.locator('.world-journey-art').getAttribute('aria-hidden'), 'true');
+    assert(await page.locator('.world-journey-boat').evaluate(boat => getComputedStyle(boat).animationName === 'none'));
     await page.locator('.weekly-history').click();
     assert.match(await page.locator('#qa-action').textContent(), /History opened/);
     await page.locator('.world-journey-explore').click();
     await page.getByRole('dialog', { name: 'A world to row.' }).waitFor();
     await page.keyboard.press('Escape');
     assert(await page.locator('.world-journey-explore').evaluate(node => node === document.activeElement));
-    passed.push('skip link, notifications Escape/focus, reduced motion, image, logbook callback, map focus return');
+    passed.push('skip link, notifications Escape/focus, reduced motion, journey lane, logbook callback, map focus return');
 
     await tab('Crew');
     const search = page.getByRole('searchbox', { name: 'Find a rower, group, or challenge' });
@@ -250,7 +251,7 @@ const errors = [], blocked = [], passed = [], geometry = [];
 
     await page.emulateMedia({ reducedMotion: 'no-preference' }); await open('');
     await page.waitForTimeout(2100);
-    assert.equal(await page.locator('.world-journey-art img').evaluate(img => img.getAnimations().some(animation => animation.playState === 'running')), false);
+    assert.equal(await page.locator('.world-journey-boat').evaluate(boat => boat.getAnimations().some(animation => animation.playState === 'running')), false);
     const perpetualAnimations = await page.evaluate(() => document.getAnimations().filter(animation =>
       animation.playState === 'running' && animation.effect?.getTiming().iterations === Infinity).map(animation => ({
       name: animation.animationName || 'unnamed', target: animation.effect.target?.className || 'unknown',

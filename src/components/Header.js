@@ -36,7 +36,7 @@ function Header() {
     <header className="header crew-header">
       <a className="crew-skip-link" href="#crew-main">Skip to content</a>
       <div className="header-top">
-        <div className="crew-wordmark"><CrewMark /><div><h1>ROW CREW</h1><p className="crew-wordmark-caption">Every stroke, together.</p></div></div>
+        <div className="crew-wordmark"><CrewMark /><div><h1>Row Crew</h1><p className="crew-wordmark-caption">Every stroke, together.</p></div></div>
         <div className="user-menu">
           {currentUser && userProfile ? (
             <>
@@ -120,7 +120,7 @@ function Header() {
           ) : (
             <>
               <button className="info-btn" onClick={() => setShowWelcomeModal(true)} title="About Row Crew" aria-label="About Row Crew"><Icon name="ui_info" size={18} /></button>
-              <button className="signin-header-btn" onClick={handleSignIn}>Sign In</button>
+              <button className="signin-header-btn" onClick={handleSignIn}>Sign in</button>
             </>
           )}
         </div>

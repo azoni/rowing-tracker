@@ -4,6 +4,7 @@ import {
   EYE_STYLES, MOUTH_STYLES, ACCESSORIES, OUTFIT_STYLES,
   PANTS_STYLES, HELD_ITEMS, PET_STYLES, DEFAULT_AVATAR, ARMS,
 } from '../constants/avatarParts';
+import { getCrewColor } from '../utils/crewColor';
 
 function Avatar({ config, size = 40, showBody = false, className = '' }) {
   const c = { ...DEFAULT_AVATAR, ...config };
@@ -78,14 +79,16 @@ function AvatarOrPhoto({ user, size = 40, showBody = false, className = '' }) {
     return <img src={user.photoURL} alt="" className={className} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />;
   }
 
+  // No avatar or photo: the member's initial on their blade colour.
   return (
     <div
       className={className}
+      data-crew-initial=""
       style={{
         width: size, height: size, borderRadius: '50%',
-        background: 'linear-gradient(135deg, var(--accent-primary), #00b894)',
+        background: getCrewColor(user),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontWeight: 700, color: 'var(--bg-dark)', fontSize: size * 0.4,
+        fontWeight: 700, color: 'var(--crew-ink, #0A1C22)', fontSize: size * 0.4,
       }}
     >
       {user?.name?.charAt(0)?.toUpperCase() || '?'}

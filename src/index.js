@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+// The design layer loads after every component stylesheet.
+import './styles/rowcrew-design.css';
 
 // Portfolio traffic beacon — one visit per session to the shared leaderboard sink.
 if (typeof window !== 'undefined' && !sessionStorage.getItem('_av_lb')) {

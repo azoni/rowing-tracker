@@ -105,19 +105,19 @@ function UserProfileModal() {
               <div className="profile-stats-grid">
                 <div className="profile-stat-box">
                   <span className="profile-stat-value">{formatMeters(user.totalMeters)}</span>
-                  <span className="profile-stat-label">Total Meters</span>
+                  <span className="profile-stat-label">Total meters</span>
                 </div>
                 <div className="profile-stat-box">
                   <span className="profile-stat-value">{user.uploadCount || 0}</span>
-                  <span className="profile-stat-label">Sessions</span>
+                  <span className="profile-stat-label">Rows</span>
                 </div>
                 <div className="profile-stat-box highlight">
                   <span className="profile-stat-value">{formatMeters(personalRecord)}</span>
-                  <span className="profile-stat-label"><Icon name="ui_trophy" size={14} /> Best Row</span>
+                  <span className="profile-stat-label"><Icon name="ui_trophy" size={14} /> Best row</span>
                 </div>
                 <div className="profile-stat-box highlight">
                   <span className="profile-stat-value">{longestStreak}</span>
-                  <span className="profile-stat-label"><Icon name="ui_fire" size={14} /> Best Streak</span>
+                  <span className="profile-stat-label"><Icon name="ui_fire" size={14} /> Best streak</span>
                 </div>
               </div>
 
@@ -128,7 +128,7 @@ function UserProfileModal() {
                     <div className="profile-extra-stat">
                       <span className="profile-extra-icon"><Icon name="ui_timer" size={14} /></span>
                       <span className="profile-extra-value">{formatTimeDisplay(user.totalTime)}</span>
-                      <span className="profile-extra-label">Total Time</span>
+                      <span className="profile-extra-label">Total time</span>
                     </div>
                   )}
                   {user.totalCalories > 0 && (
@@ -144,15 +144,15 @@ function UserProfileModal() {
               {/* Secondary Stats */}
               <div className="profile-secondary-stats">
                 <div className="profile-stat-row">
-                  <span>Avg/Session</span>
+                  <span>Average row</span>
                   <span>{formatMeters(avgPerUpload)}m</span>
                 </div>
                 <div className="profile-stat-row">
-                  <span>Sessions/Week</span>
+                  <span>Rows per week</span>
                   <span>{weeklyAvg}x</span>
                 </div>
                 <div className="profile-stat-row">
-                  <span>Days Rowed</span>
+                  <span>Days rowed</span>
                   <span>{totalDays}</span>
                 </div>
                 {firstRow && (

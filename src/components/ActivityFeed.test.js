@@ -97,7 +97,7 @@ test('describes only eligible rows in view and groups real sessions by local dat
   expect(container.querySelector('.crew-log-summary').getAttribute('aria-label')).toBe('2 counted rows in view, 3,000 meters');
   expect([...container.querySelectorAll('.crew-log-day')].map(element => element.textContent)).toEqual(['Today', 'Fri, Oct 16', 'Today', 'Yesterday']);
   expect(container.querySelector('.crew-log-summary-note')).not.toBeNull();
-  act(() => Simulate.click(button('Load More (22 remaining)')));
+  act(() => Simulate.click(button('Load more (22 remaining)')));
   expect(context.feedPage).toBe(2);
 });
 
@@ -110,6 +110,9 @@ test('shows accessible session metrics and explicit verification without inventi
   expect(articles[0].textContent).toContain('2:00.0');
   expect(articles[0].textContent).toContain('Photo verified');
   expect(articles[0].textContent).toContain('Boathouse erg');
+  expect(articles[0].querySelector('.crew-log-what').textContent).toBe('Distance row on Boathouse erg');
+  expect(articles[0].querySelector('.crew-log-row-details').compareDocumentPosition(articles[0].querySelector('dl')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(articles[1].querySelector('.crew-log-what')).toBeNull();
   expect(articles[1].querySelectorAll('dt')).toHaveLength(1);
   expect(articles[1].textContent).toContain('Manual entry');
   expect(articles[2].textContent).toContain('Awaiting review');

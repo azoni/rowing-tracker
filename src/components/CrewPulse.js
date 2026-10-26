@@ -93,7 +93,7 @@ export default function CrewPulse({ compact = false }) {
           <div className="crew-pulse-spotlight-row">
             <button className="crew-pulse-spotlight-person" aria-label={`View ${spotlightUser.name || 'rower'} profile`} onClick={() => setShowUserProfileModal(spotlightUser)}>
               <AvatarOrPhoto user={spotlightUser} size={36} />
-              <span><strong>{spotlightUser.name || 'Crew member'}</strong><small>{distance(Number(spotlight.meters))} · {formatTimeAgo(spotlight.date?.toDate ? spotlight.date.toDate() : new Date(spotlight.date))}</small></span>
+              <span><strong>{spotlightUser.name || 'Crew member'}</strong><small>{distance(Number(spotlight.meters))}, {formatTimeAgo(spotlight.date?.toDate ? spotlight.date.toDate() : new Date(spotlight.date))}</small></span>
             </button>
             <button className={`crew-pulse-cheer ${cheered ? 'active' : ''}`} aria-pressed={cheered}
               aria-label={`${cheered ? 'Remove kudos from' : 'Give kudos to'} ${spotlightUser.name || 'this rower'}’s row`}

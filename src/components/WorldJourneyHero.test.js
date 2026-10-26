@@ -1,6 +1,5 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Simulate } from 'react-dom/test-utils';
 import { WORLD_METERS } from '../constants/crewJourney';
 import { getCrewJourney } from '../utils/crewJourney';
 import WorldJourneyHero from './WorldJourneyHero';
@@ -82,15 +81,40 @@ test('live destination crossings update immediately and map opens only on the na
   expect(open).toHaveBeenCalledTimes(1);
 });
 
-test('the globe is decorative and unavailable artwork does not obscure real progress or the action', () => {
+test('the lane is decorative: the shell sits at leg progress between the two ports, outside the accessibility tree', () => {
   const open = jest.fn();
   render(29000, open);
-  const image = container.querySelector('img');
-  expect(image.alt).toBe('');
-  expect(image.parentElement.getAttribute('aria-hidden')).toBe('true');
-  act(() => Simulate.error(image));
+  const art = container.querySelector('.world-journey-art');
+  expect(art.getAttribute('aria-hidden')).toBe('true');
   expect(container.querySelector('img')).toBeNull();
+  expect(parseFloat(art.style.getPropertyValue('--leg'))).toBeCloseTo(getCrewJourney(29000).legProgress * 100);
+  expect(container.querySelector('.world-journey-port.is-from').textContent).toBe('Seattle');
+  expect(container.querySelector('.world-journey-port.is-to').textContent).toBe('Portland');
   expect(progress().getAttribute('aria-valuetext')).toContain('29 kilometers rowed together');
   act(() => container.querySelector('button').click());
   expect(open).toHaveBeenCalledTimes(1);
+  render(-500, open);
+  expect(container.querySelector('.world-journey-art').style.getPropertyValue('--leg')).toBe('0%');
+});
+
+test('who moved the boat gives five rowers their blade colour and sums the rest of the crew', () => {
+  const crew = ['Alex Morgan', 'Sam Rivera', 'Jordan Lee', 'Priya Shah', 'Kim Ode', 'Lee Park', 'Ana Ruiz']
+    .map((name, index) => ({ id: 'rower-' + index, name, meters: 7000 - index * 1000, color: '#59D2A4' }));
+  act(() => root.render(<WorldJourneyHero totalMeters={28000} onOpen={jest.fn()} crew={crew} />));
+  const strip = [...container.querySelectorAll('.world-journey-strip > span')];
+  expect(strip.map(part => part.style.flexGrow)).toEqual(['7000', '6000', '5000', '4000', '3000', '3000']);
+  expect(strip[5].className).toBe('is-rest');
+  expect(container.querySelector('.world-journey-strip').getAttribute('aria-hidden')).toBe('true');
+  const names = [...container.querySelectorAll('.world-journey-crew-name')].map(node => node.textContent);
+  expect(names).toEqual(['Alex', 'Sam', 'Jordan', 'Priya', 'Kim', '2 more']);
+  expect(container.querySelector('.world-journey-crew-list li').textContent).toBe('Alex7 km');
+  expect(container.querySelector('.world-journey-crew-list li').style.getPropertyValue('--blade')).toBe('#59D2A4');
+  expect(container.querySelector('.world-journey-crew-list .is-rest').textContent).toBe('2 more3 km');
+});
+
+test('the crew strip stays hidden until someone has eligible distance', () => {
+  render(0);
+  expect(container.querySelector('.world-journey-crew')).toBeNull();
+  act(() => root.render(<WorldJourneyHero totalMeters={0} onOpen={jest.fn()} crew={[{ id: 'a', name: 'Alex', meters: 0, color: '#59D2A4' }]} />));
+  expect(container.querySelector('.world-journey-crew')).toBeNull();
 });

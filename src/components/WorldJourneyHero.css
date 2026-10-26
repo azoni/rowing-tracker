@@ -1,196 +1,224 @@
+/* The crew's boat on its lane to the next port. Colour comes from the theme; crew members bring their blades. */
 .world-journey {
-  --journey-navy: #101f30;
-  --journey-sea: #235660;
-  --journey-brass: #d6bc7d;
-  --journey-ivory: #f5f1e8;
-  --journey-mist: #a8b8c8;
+  --world-journey-water: var(--bg-dark);
   position: relative;
-  padding: 20px;
-  overflow: hidden;
   isolation: isolate;
-  color: var(--journey-ivory);
-  background: var(--journey-navy);
-  border: 1px solid rgb(214 188 125 / .38);
-  border-radius: 20px 20px 8px 8px;
-  box-shadow: 0 10px 32px rgb(0 0 0 / .1);
+  margin-inline: -16px;
+  padding: 26px 20px 22px;
+  color: var(--text-primary);
+  background:
+    radial-gradient(120% 90% at 85% -10%, color-mix(in srgb, var(--text-primary) 7%, transparent), transparent 62%),
+    linear-gradient(180deg, var(--bg-card) 0%, var(--bg-dark) 100%);
+  border-block: 1px solid var(--border-color);
 }
-.world-journey-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 110px;
-  gap: 12px;
-  align-items: center;
-}
-.world-journey-copy {
-  position: relative;
-  z-index: 1;
-  min-width: 0;
-}
+.world-journey-main { display: block; }
 .world-journey-copy h2 {
   margin: 0;
-  color: var(--journey-ivory);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.375rem;
-  font-weight: 400;
-  line-height: 1.2;
-  letter-spacing: -.025em;
-  text-wrap: balance;
+  color: var(--text-secondary);
+  font: 500 .9375rem/1.3 var(--font-body);
+  letter-spacing: 0;
 }
-.world-journey-distance {
-  margin: 12px 0 0;
-}
+.world-journey-distance { margin: 6px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .world-journey-distance strong {
-  display: block;
-  color: var(--journey-brass);
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 4rem;
-  font-weight: 400;
-  line-height: .95;
-  letter-spacing: -.02em;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-stretch: 66%;
+  font-weight: 800;
+  font-size: clamp(4.5rem, 23vw, 7.25rem);
+  line-height: .86;
+  letter-spacing: -.015em;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.world-journey-distance.is-long strong {
-  font-size: 2.5rem;
-}
+.world-journey-distance.is-long strong { font-size: clamp(3.25rem, 15vw, 5.5rem); }
 .world-journey-distance > span {
-  display: block;
-  margin-top: 4px;
-  color: var(--journey-mist);
-  font-size: .8125rem;
-  line-height: 1.4;
+  color: var(--text-secondary);
+  font-size: .9375rem;
+  line-height: 1.3;
 }
+
+/* The lane: ports at each end, buoys along the rope, the wake behind the boat. */
 .world-journey-art {
-  position: relative;
-  width: 110px;
-  height: 110px;
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-}
-.world-journey-art img {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-  border-radius: 50%;
-}
-.world-journey-progress {
-  margin-top: 18px;
-}
-.world-journey-progress-label {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 6px 8px;
-  align-items: baseline;
+  gap: 12px;
+  margin-top: 24px;
   font-size: .8125rem;
-  line-height: 1.4;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
-.world-journey-progress-label strong {
-  color: var(--journey-brass);
-  font-weight: 500;
+.world-journey-port { color: var(--text-secondary); white-space: nowrap; }
+.world-journey-port.is-to { color: var(--text-primary); font-weight: 600; }
+.world-journey-lane { position: relative; height: 28px; }
+.world-journey-lane::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 1px;
+  background: color-mix(in srgb, var(--text-primary) 22%, transparent);
 }
-.world-journey-progress-label > span {
-  color: var(--journey-mist);
-  margin-left: auto;
-  white-space: nowrap;
+.world-journey-buoy {
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-primary) 40%, var(--bg-dark));
 }
-.world-journey-track {
-  height: 4px;
-  overflow: hidden;
-  margin-top: 8px;
-  border-radius: 4px;
-  background: var(--journey-sea);
+.world-journey-buoy:is(.is-start, .is-finish) { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; }
+.world-journey-buoy.is-finish { background: var(--text-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--text-primary) 14%, transparent); }
+.world-journey-wake {
+  position: absolute;
+  top: calc(50% - 1px);
+  left: 0;
+  width: var(--leg, 0%);
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--text-primary) 15%, transparent), var(--text-primary));
 }
-.world-journey-track > span {
-  display: block;
-  height: 100%;
-  background: var(--journey-brass);
+.world-journey-boat {
+  position: absolute;
+  top: 50%;
+  /* Clamped so the whole shell stays on the lane at the start and finish ports. */
+  left: clamp(23px, var(--leg, 0%), calc(100% - 23px));
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 18px;
+  margin: -9px 0 0 -23px;
+  color: var(--text-primary);
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / .35));
 }
+.world-journey-shell { display: block; }
+
 .world-journey-next {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 16px;
+  margin-top: 18px;
 }
-.world-journey-destination {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-.world-journey-destination > span {
-  color: var(--journey-mist);
-  font-size: .8125rem;
-  line-height: 1.4;
-}
+.world-journey-destination { display: grid; gap: 2px; min-width: 0; }
 .world-journey-destination strong {
-  color: var(--journey-ivory);
-  font-size: .9375rem;
-  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
-.world-journey-destination strong > span {
-  color: var(--journey-mist);
-  font-size: .8125rem;
-  font-weight: 400;
+.world-journey-destination strong > span { color: var(--text-secondary); font-weight: 400; }
+.world-journey-destination > span {
+  color: var(--text-secondary);
+  font-size: .875rem;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
 }
 .world-journey-explore {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   flex-shrink: 0;
   min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--journey-brass);
-  border-radius: 6px;
-  background: var(--journey-brass);
-  color: var(--journey-navy);
-  font-family: inherit;
-  font-size: .8125rem;
-  font-weight: 600;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 38%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-primary);
+  font: 600 .875rem/1 var(--font-body);
   cursor: pointer;
 }
-.world-journey-explore:focus-visible {
-  outline: 2px solid var(--journey-ivory);
-  outline-offset: 4px;
+.world-journey-explore:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
+
+/* The whole world, kept quiet under the leg that matters today. */
+.world-journey-progress { margin-top: 20px; }
+.world-journey-progress-label {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 10px;
+  color: var(--text-secondary);
+  font-size: .8125rem;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
 }
+.world-journey-progress-label strong { color: var(--text-primary); font-weight: 500; }
+.world-journey-progress-label > span { margin-left: auto; white-space: nowrap; }
+.world-journey-track {
+  height: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+.world-journey-track > span { display: block; min-width: 3px; height: 100%; border-radius: 3px; background: var(--text-primary); }
+
+/* Who moved the boat: each member's share in their blade colour. */
+.world-journey-crew { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border-color); }
+.world-journey-crew-title { margin: 0 0 10px; color: var(--text-secondary); font-size: .8125rem; }
+.world-journey-strip { display: flex; gap: 3px; height: 6px; }
+.world-journey-strip > span { min-width: 4px; border-radius: 3px; }
+.world-journey-strip > .is-rest { background: color-mix(in srgb, var(--text-primary) 25%, transparent); }
+.world-journey-crew-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: .875rem;
+  line-height: 1.3;
+}
+.world-journey-crew-list li { display: inline-flex; align-items: center; gap: 7px; }
+.world-journey-blade {
+  width: 16px;
+  height: 7px;
+  border-radius: 2px 7px 7px 2px;
+  background: var(--blade);
+  transform: skewX(-18deg);
+}
+.world-journey-crew-name { color: var(--text-primary); font-weight: 600; }
+.world-journey-crew-km { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.world-journey-crew-list .is-rest .world-journey-crew-name { color: var(--text-secondary); font-weight: 500; }
+
 @media (min-width: 600px) {
-  .world-journey { padding: 24px 28px; }
-  .world-journey-main { grid-template-columns: minmax(0, 1fr) 130px; gap: 24px; }
-  .world-journey-copy h2 { font-size: 1.625rem; }
-  .world-journey-distance strong { font-size: 4.5rem; }
-  .world-journey-distance.is-long strong { font-size: 3.75rem; }
-  .world-journey-distance > span { font-size: .875rem; }
-  .world-journey-art { width: 130px; height: 130px; }
-  .world-journey-destination strong { font-size: 1rem; }
-  .world-journey-explore { min-height: 46px; padding-inline: 20px; font-size: .875rem; }
+  .world-journey { margin-inline: 0; padding: 32px 32px 26px; border: 1px solid var(--border-color); border-radius: 22px; }
+}
+@media (min-width: 1024px) {
+  .world-journey {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-areas: 'main art' 'main next' 'progress progress' 'crew crew';
+    column-gap: 56px;
+    padding: 40px 44px 32px;
+  }
+  .world-journey-main { grid-area: main; align-self: center; }
+  .world-journey-art { grid-area: art; align-self: end; margin-top: 0; font-size: .875rem; }
+  .world-journey-next { grid-area: next; align-self: start; margin-top: 16px; }
+  .world-journey-progress { grid-area: progress; margin-top: 30px; }
+  .world-journey-crew { grid-area: crew; }
+  .world-journey-distance strong { font-size: 8.5rem; }
+  .world-journey-distance.is-long strong { font-size: 6rem; }
 }
 @media (max-width: 359px) {
-  .world-journey { padding: 18px 16px 16px; }
-  .world-journey-main { grid-template-columns: minmax(0, 1fr) 100px; gap: 8px; }
-  .world-journey-art { width: 100px; height: 100px; }
-  .world-journey-copy h2 { font-size: 1.1875rem; }
-  .world-journey-distance strong { font-size: 3.5rem; }
-  .world-journey-distance.is-long strong { font-size: 1.875rem; }
-  .world-journey-distance > span { font-size: .75rem; }
-  .world-journey-progress-label { font-size: .75rem; gap: 5px 6px; }
-  .world-journey-next { gap: 8px; }
-  .world-journey-explore { padding-inline: 9px; font-size: .75rem; gap: 5px; }
-  .world-journey-destination > span, .world-journey-destination strong > span { font-size: .75rem; }
+  .world-journey { padding: 22px 16px 18px; }
+  .world-journey-art { gap: 8px; font-size: .75rem; }
+  .world-journey-next { gap: 10px; }
+  .world-journey-explore { padding-inline: 12px; font-size: .8125rem; }
 }
 @media (hover: hover) {
-  .world-journey-explore:hover { background: var(--journey-ivory); border-color: var(--journey-ivory); }
+  .world-journey-explore:hover { background: var(--text-primary); border-color: var(--text-primary); color: var(--bg-dark); }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .world-journey-explore { transition: background-color 150ms ease, border-color 150ms ease; }
+  .world-journey-explore { transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease; }
+  .world-journey-boat { animation: world-journey-row 900ms cubic-bezier(.2, .7, .2, 1) both; }
+  .world-journey-wake { animation: world-journey-wake 900ms cubic-bezier(.2, .7, .2, 1) both; }
+  @keyframes world-journey-row { from { left: 23px; } }
+  @keyframes world-journey-wake { from { width: 0; } }
 }
 @media (forced-colors: active) {
   .world-journey { border: 1px solid CanvasText; }
   .world-journey-track { background: Canvas; border: 1px solid CanvasText; }
-  .world-journey-track > span { background: Highlight; }
+  .world-journey-track > span, .world-journey-wake { background: Highlight; }
+  .world-journey-strip > span { forced-color-adjust: none; }
 }

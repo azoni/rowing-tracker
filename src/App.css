@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap');
 
 /* Icon component styles */
 .icon {
@@ -22,26 +22,29 @@
 }
 
 :root {
-  --bg-dark: #101f30;
-  --bg-card: #192d40;
-  --bg-card-hover: #223c50;
-  --accent-primary: #d6bc7d;
-  --accent-secondary: #235660;
-  --accent-gold: #d6bc7d;
-  --text-primary: #f5f1e8;
-  --text-secondary: #a8b8c8;
-  --text-muted: #6b7a94;
-  --border-color: #34495b;
-  --success: #5d8a4d;
-  --error: #ef4444;
-  --warning: #ffc107;
-  --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 40px rgba(201, 162, 39, 0.15);
-  --gradient-start: #101f30;
-  --gradient-end: #0c1724;
-  --header-glow: rgba(201, 162, 39, 0.1);
-  --progress-gradient: linear-gradient(90deg, #ad9157 0%, #d6bc7d 100%);
-  --progress-glow: 0 0 20px rgba(201, 162, 39, 0.5);
+  /* Night water. Mirrors THEMES['boathouse-classic'], which App.js applies at run time. */
+  --bg-dark: #0A1C22;
+  --bg-card: #0F272E;
+  --bg-card-hover: #15333B;
+  --accent-primary: #EEF3F0;
+  --accent-secondary: #1E3940;
+  --accent-gold: #F7C548;
+  --text-primary: #EEF3F0;
+  --text-secondary: #9CB2B4;
+  --text-muted: #6F8A8E;
+  --border-color: #1E3940;
+  --success: #5FD3A5;
+  --error: #FF6B6B;
+  --warning: #F7C548;
+  --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 24px 48px -28px rgba(0, 0, 0, 0.7);
+  --gradient-start: #0A1C22;
+  --gradient-end: #071419;
+  --header-glow: rgba(127, 200, 248, 0.06);
+  --progress-gradient: linear-gradient(90deg, #EEF3F0 0%, #EEF3F0 100%);
+  --progress-glow: none;
+  --font-body: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Archivo', 'Arial Narrow', system-ui, sans-serif;
 }
 
 html {
@@ -49,7 +52,7 @@ html {
 }
 
 body {
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-body);
   background: var(--bg-dark);
   color: var(--text-primary);
   line-height: 1.6;
@@ -86,7 +89,7 @@ body {
 }
 
 .header h1 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2.25rem, 10vw, 3.5rem);
   letter-spacing: 0.15em;
   background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-gold) 50%, var(--accent-primary) 100%);
@@ -140,7 +143,7 @@ body {
 }
 
 .world-number {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 2.5rem;
   color: var(--accent-primary);
   line-height: 1;
@@ -160,7 +163,7 @@ body {
 }
 
 .milestone-count-number {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.75rem;
   color: var(--text-primary);
   line-height: 1;
@@ -272,7 +275,7 @@ body {
 }
 
 .world-around-pct {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.1rem;
   color: var(--accent-primary);
 }
@@ -360,7 +363,7 @@ body {
 
 .upload-card h2,
 .manual-entry-card h3 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.5rem;
   letter-spacing: 0.05em;
   margin-bottom: 0.25rem;
@@ -587,7 +590,7 @@ body {
 /* Leaderboard */
 .leaderboard-section h2,
 .stats-section h2 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.75rem;
   letter-spacing: 0.05em;
   margin-bottom: 1rem;
@@ -646,7 +649,7 @@ body {
   font-size: 1.5rem;
   min-width: 2.5rem;
   text-align: center;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
 }
 
 .user-info {
@@ -676,7 +679,7 @@ body {
 }
 
 .meters-value {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.5rem;
   color: var(--accent-primary);
   line-height: 1;
@@ -703,7 +706,7 @@ body {
 }
 
 .stats-card h3 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.35rem;
   letter-spacing: 0.03em;
   margin: 0;
@@ -785,7 +788,7 @@ body {
 }
 
 .modal h2 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.75rem;
   letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
@@ -814,7 +817,7 @@ body {
 }
 
 .detected-value {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.5rem;
   color: var(--accent-primary);
 }
@@ -922,7 +925,7 @@ body {
 }
 
 .milestone-content h2 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 2rem;
   letter-spacing: 0.1em;
   color: var(--accent-gold);
@@ -930,7 +933,7 @@ body {
 }
 
 .milestone-label {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 3rem;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
@@ -1085,7 +1088,7 @@ body {
 
 .home-stat-value {
   display: block;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.2rem;
   color: var(--text-primary);
 }
@@ -1399,7 +1402,7 @@ input[type="number"] {
 }
 
 .auth-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 4rem;
   letter-spacing: 0.15em;
   background: linear-gradient(135deg, var(--accent-primary) 0%, #00ffcc 50%, var(--accent-primary) 100%);
@@ -1620,7 +1623,7 @@ input[type="number"] {
 
 .stats-card-header h3 {
   margin: 0;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.35rem;
   letter-spacing: 0.03em;
 }
@@ -1766,7 +1769,7 @@ input[type="number"] {
   border-radius: 12px;
   color: var(--accent-primary);
   font-size: 2rem;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   text-align: center;
   letter-spacing: 0.05em;
 }
@@ -1833,7 +1836,7 @@ input[type="number"] {
 
 /* Updates/Changelog Section */
 .updates-section h2 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.75rem;
   letter-spacing: 0.05em;
   margin-bottom: 1rem;
@@ -1866,7 +1869,7 @@ input[type="number"] {
 }
 
 .changelog-version {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   color: var(--accent-primary);
   letter-spacing: 0.05em;
@@ -1973,7 +1976,7 @@ input[type="number"] {
 }
 
 .share-brand-text {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.95rem;
   letter-spacing: 0.1em;
   background: linear-gradient(135deg, var(--accent-primary), #00ffcc);
@@ -2059,7 +2062,7 @@ input[type="number"] {
 
 .share-session-meters {
   display: block;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 2.25rem;
   color: var(--accent-primary);
   letter-spacing: 0.02em;
@@ -2087,7 +2090,7 @@ input[type="number"] {
 }
 
 .share-stat-value {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   color: var(--text-primary);
   letter-spacing: 0.02em;
@@ -2236,7 +2239,7 @@ input[type="number"] {
 }
 
 .busted-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 3rem;
   color: #ff4444;
   letter-spacing: 0.15em;
@@ -2344,7 +2347,7 @@ input[type="number"] {
 }
 
 .rank-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.1rem;
   color: var(--accent-primary);
   letter-spacing: 0.05em;
@@ -2367,13 +2370,13 @@ input[type="number"] {
 }
 
 .weekly-stat-value {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   color: var(--text-primary);
 }
 
 .weekly-stat-change {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.1rem;
 }
 
@@ -2408,7 +2411,7 @@ input[type="number"] {
 }
 
 .compact-stat-value {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   color: var(--text-primary);
 }
@@ -2438,14 +2441,14 @@ input[type="number"] {
 }
 
 .pr-value {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   color: #ffd700;
 }
 
 /* Activity Feed */
 .feed-section h2 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.75rem;
   letter-spacing: 0.05em;
   margin-bottom: 1rem;
@@ -2568,7 +2571,7 @@ input[type="number"] {
 }
 
 .achievements-section h3 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   letter-spacing: 0.05em;
   margin: 0 0 1rem 0;
@@ -2770,7 +2773,7 @@ input[type="number"] {
 }
 
 .pr-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 2.5rem;
   color: #ffd700;
   letter-spacing: 0.1em;
@@ -2779,7 +2782,7 @@ input[type="number"] {
 }
 
 .pr-meters {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 3rem;
   color: #fff;
   margin: 0.5rem 0;
@@ -2980,7 +2983,7 @@ input[type="number"] {
 
 .stat-box-value {
   display: block;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.5rem;
   color: var(--text-primary);
   letter-spacing: 0.02em;
@@ -3325,14 +3328,14 @@ input[type="number"] {
 
 /* More Tab Section */
 .more-section h2 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.75rem;
   letter-spacing: 0.05em;
   margin-bottom: 1.5rem;
 }
 
 .more-section h3 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   letter-spacing: 0.05em;
   margin: 0 0 1rem 0;
@@ -4455,7 +4458,7 @@ input[type="number"] {
 
 .admin-stat-value {
   display: block;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.75rem;
 }
 
@@ -4624,7 +4627,7 @@ input[type="number"] {
 }
 
 .admin-review-meters {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   color: var(--accent-primary);
 }
@@ -4781,7 +4784,7 @@ input[type="number"] {
 }
 
 .error-screen h2 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 2rem;
   margin-bottom: 1rem;
   color: var(--accent-secondary);
@@ -5833,7 +5836,7 @@ input[type="number"] {
 }
 
 .fun-stats-section h3 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   letter-spacing: 0.03em;
   margin-bottom: 1rem;
@@ -6247,7 +6250,7 @@ input[type="number"] {
 .wrapped-year {
   font-size: 5rem;
   font-weight: 900;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   letter-spacing: 0.1em;
   line-height: 1;
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -6291,7 +6294,7 @@ input[type="number"] {
 .wrapped-big-number {
   font-size: 4.5rem;
   font-weight: 900;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   line-height: 1;
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   animation: countUp 0.5s ease;
@@ -6311,7 +6314,7 @@ input[type="number"] {
 .wrapped-big-text {
   font-size: 3rem;
   font-weight: 900;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   line-height: 1;
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
@@ -6552,7 +6555,7 @@ input[type="number"] {
 .recap-month-label {
   font-size: 3.5rem;
   font-weight: 900;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   letter-spacing: 0.1em;
   line-height: 1;
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -6596,7 +6599,7 @@ input[type="number"] {
 .recap-big-text {
   font-size: 3rem;
   font-weight: 900;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   line-height: 1;
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   animation: countUp 0.5s ease;
@@ -6679,7 +6682,7 @@ input[type="number"] {
 
 .recap-leader-score {
   font-weight: 700;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.1rem;
 }
 
@@ -6713,7 +6716,7 @@ input[type="number"] {
 .recap-stat-value {
   font-size: 1.5rem;
   font-weight: 900;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   line-height: 1;
   animation: countUp 0.5s ease;
 }
@@ -6752,7 +6755,7 @@ input[type="number"] {
 .recap-comparison-delta {
   font-size: 1.25rem;
   font-weight: 700;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
 }
 
 .recap-comparison-delta.up {
@@ -6834,7 +6837,7 @@ input[type="number"] {
 .recap-next-label {
   font-size: 1.25rem;
   font-weight: 700;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
 }
 
 .recap-next-target {
@@ -7549,7 +7552,7 @@ input[type="number"] {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--accent-primary);
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
 }
 
 .collective-target {
@@ -8820,7 +8823,7 @@ input[type="number"] {
 .challenge-leader-score {
   font-weight: 700;
   color: var(--accent-primary);
-  font-family: 'DM Sans', monospace;
+  font-family: var(--font-body);
   margin-left: auto;
 }
 
@@ -9587,7 +9590,7 @@ button:focus-visible {
 }
 
 .milestone-celebration-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 2rem;
   color: var(--text-primary);
   margin-bottom: 0.25rem;
@@ -10147,7 +10150,7 @@ button:focus-visible {
 }
 
 .rc-meters-value {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-display);
   font-size: 4rem;
   letter-spacing: 0.05em;
   color: var(--text-primary);

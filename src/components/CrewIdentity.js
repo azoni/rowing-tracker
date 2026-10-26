@@ -1,14 +1,15 @@
 import React from 'react';
 
-// An original overhead shell mark: a narrow hull, four seats, and paired oars.
+// Crossed hatchet blades, the oldest sign of a rowing club, drawn as one mark.
 export function CrewMark() {
-  return <svg className="crew-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false">
-    <path d="M24 3c-4 8-4 34 0 42 4-8 4-34 0-42Z" stroke="currentColor" strokeWidth="1.5" />
-    {[15, 22, 29, 36].map(y => <g key={y} stroke="currentColor" strokeLinecap="round">
-      <path d={`M22 ${y} 9 ${y - 8}m17 8 13-8`} strokeWidth="1.4" />
-      <path d={`m9 ${y - 8}-3-2m33 2 3-2`} strokeWidth="3" />
-      <path d={`M23 ${y}h2`} strokeWidth="2" />
-    </g>)}
+  const oar = <>
+    <path d="M16 30.5V11" strokeWidth="1.7" strokeLinecap="round" />
+    <path d="M14.6 12.2V3.4c0-1.1.8-1.9 1.9-1.8l3.2.5c.9.1 1.5.9 1.4 1.8l-.7 7.5c-.1.8-.8 1.4-1.6 1.4h-2.6c-.9 0-1.6-.3-1.6-.6Z"
+      fill="currentColor" stroke="none" />
+  </>;
+  return <svg className="crew-mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" aria-hidden="true" focusable="false">
+    <g transform="rotate(-30 16 16)">{oar}</g>
+    <g transform="rotate(30 16 16) translate(32 0) scale(-1 1)">{oar}</g>
   </svg>;
 }
 

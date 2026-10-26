@@ -97,7 +97,7 @@ test('describes only eligible rows in view and groups real sessions by local dat
   expect(container.querySelector('.crew-log-summary').getAttribute('aria-label')).toBe('2 counted rows in view, 3,000 meters');
   expect([...container.querySelectorAll('.crew-log-day')].map(element => element.textContent)).toEqual(['Today', 'Fri, Oct 16', 'Today', 'Yesterday']);
   expect(container.querySelector('.crew-log-summary-note')).not.toBeNull();
-  act(() => Simulate.click(button('Load More (22 remaining)')));
+  act(() => Simulate.click(button('Load more (22 remaining)')));
   expect(context.feedPage).toBe(2);
 });
 

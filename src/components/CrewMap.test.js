@@ -233,7 +233,7 @@ test.each([0, -100, Infinity, 'bad'])('an empty crew safely starts in Seattle wi
 test.each([WORLD_METERS, WORLD_METERS + 100000])('a completed expedition keeps extra meters without negative remaining distance (%s)', totalMeters => {
   context.totalMeters = totalMeters;
   render();
-  expect(container.querySelector('.exp-map-toolbar').textContent).toContain('EXPEDITION COMPLETE');
+  expect(container.querySelector('.exp-map-toolbar').textContent).toContain('Expedition complete');
   expect(container.querySelector('.exp-summary').textContent).toContain('100.0%');
   expect(container.querySelector('.exp-destination h3').textContent).toContain('Seattle');
   expect(button('Next stop').disabled).toBe(true);

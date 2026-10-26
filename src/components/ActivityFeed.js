@@ -433,7 +433,7 @@ function ActivityFeed() {
             </div>
             {feedData.hasMore && (
               <button className="load-more-btn" onClick={() => setFeedPage(prev => prev + 1)}>
-                Load More ({feedData.total - feedData.items.length} remaining)
+                Load more ({feedData.total - feedData.items.length} remaining)
               </button>
             )}
           </>

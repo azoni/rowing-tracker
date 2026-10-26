@@ -93,7 +93,7 @@ export function AchievementModal() {
 
   return (
     <div className="modal-overlay achievement-showcase-overlay" onClick={() => setShowAchievementModal(null)}>
-      <div className="modal achievement-modal achievement-showcase" ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="achievement-title" aria-describedby="achievement-description" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal achievement-modal achievement-showcase${earned ? ' is-earned' : ''}`} ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="achievement-title" aria-describedby="achievement-description" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" aria-label="Close achievement details" onClick={() => setShowAchievementModal(null)}>✕</button>
 
         <div className="achievement-modal-content">
@@ -271,7 +271,7 @@ export function WelcomeModal() {
         <div className="welcome-cta">
           {!currentUser ? (
             <button className="welcome-signin-btn" onClick={() => { setShowWelcomeModal(false); handleSignIn(); }}>
-              Sign In to Start Rowing
+              Sign in to start rowing
             </button>
           ) : (
             <button className="welcome-close-btn" onClick={() => setShowWelcomeModal(false)}>

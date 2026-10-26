@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
+import BadgeArtwork from './BadgeArtwork';
 import './MonthlyMissions.css';
 
 function MissionCard({ mission }) {
@@ -13,7 +14,9 @@ function MissionCard({ mission }) {
   return (
     <article className={`mission-card mission-tier-card${mission.complete ? ' is-complete' : ''}`}>
       <div className="mission-card-heading">
-        <span className="mission-icon"><Icon name={mission.complete ? 'ui_check' : mission.icon} size={23} /></span>
+        <BadgeArtwork size={52} achievement={{ category: {
+          'three-good-days': 'habits', 'distance-passport': 'distance', 'pace-notes': 'pace',
+        }[mission.id] || 'milestones' }} />
         <div><h3>{mission.label}</h3><span className="mission-earned-label">{mission.complete ? 'Every level earned' : mission.baseComplete ? 'Starter earned. Keep building.' : 'One goal, three levels.'}</span></div>
       </div>
       <div className="mission-levels" role="group" aria-label={`${mission.label} difficulty`}>

@@ -11,7 +11,7 @@ const distance = meters => meters >= 1000
   : `${meters.toLocaleString()} m`;
 const APPLAUSE = '👏';
 
-export default function CrewPulse() {
+export default function CrewPulse({ compact = false }) {
   const { entries, users, currentUser, selectedGroupId, getSelectedGroup,
     getReactionCounts, hasUserReacted, toggleReaction, setShowUserProfileModal } = useApp();
   const [spotlightId, setSpotlightId] = useState(null);
@@ -38,7 +38,7 @@ export default function CrewPulse() {
     }
   };
 
-  return (
+  const content = (
     <section className={`crew-pulse ${pulse.complete ? 'crew-pulse-complete' : ''}`} aria-labelledby="crew-pulse-title">
       <div className="crew-pulse-heading">
         <div><span className="crew-eyebrow">This week, together</span><h3 id="crew-pulse-title">Pull together</h3></div>
@@ -101,11 +101,24 @@ export default function CrewPulse() {
               <span aria-hidden="true">{APPLAUSE}</span> {pendingId === spotlight.id ? 'Saving…' : cheered ? 'Cheered · Undo' : 'Give kudos'}
             </button>
           </div>
-          <p className="crew-pulse-support-note">{!currentUser ? 'Sign in below to cheer on the crew.'
+          <p className="crew-pulse-support-note">{!currentUser ? 'Sign in to cheer on the crew.'
             : spotlight.reactionCount === 0 ? 'Be the first to cheer this row.'
               : `${spotlight.reactionCount} ${spotlight.reactionCount === 1 ? 'reaction' : 'reactions'} on this row`}</p>
         </div>
       )}
     </section>
+  );
+
+  if (!compact) return content;
+
+  return (
+    <details className="crew-pulse-panel">
+      <summary className="crew-pulse-panel-summary">
+        <span><strong>This week together</strong><small>{pulse.sessions} {pulse.sessions === 1 ? 'row' : 'rows'} from {pulse.contributors.length} {pulse.contributors.length === 1 ? 'rower' : 'rowers'}</small></span>
+        <span className="crew-pulse-panel-distance"><strong>{distance(pulse.meters)}</strong><small>{pulse.complete ? 'Goal reached' : 'Crew goal & kudos'}</small></span>
+        <span className="crew-pulse-panel-chevron" aria-hidden="true">+</span>
+      </summary>
+      <div className="crew-pulse-panel-body">{content}</div>
+    </details>
   );
 }

@@ -7,7 +7,7 @@ function ShareCardModal() {
   const {
     showShareModal, handleCloseShare,
     shareCardRef, userProfile, shareImageUrl,
-    lastSessionMeters, calculateStreak,
+    lastSessionMeters, lastSessionTotalMeters, calculateStreak,
     currentUser, linkCopied, isCopying, handleCopyLink,
   } = useApp();
 
@@ -66,7 +66,7 @@ function ShareCardModal() {
             <div className="share-stat-divider"></div>
             <div className="share-stat">
               <span className="share-stat-icon"><Icon name="ui_chart" size={16} /></span>
-              <span className="share-stat-value">{formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)}</span>
+              <span className="share-stat-value">{formatMeters(lastSessionTotalMeters || 0)}</span>
               <span className="share-stat-label">total meters</span>
             </div>
           </div>

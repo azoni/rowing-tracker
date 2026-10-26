@@ -167,6 +167,40 @@ test('crew recognition uses map IDs, valid lifetime distances, and a consistent 
   expect(container.textContent).not.toMatch(/NaN|Infinity|Invalid Rower|Negative Rower/);
 });
 
+test('map contributors, ranks and shares use global derived totals instead of stale stored counters', () => {
+  context.users = { alex: { name: 'Cached Alex', totalMeters: 999999 }, sam: { name: 'Cached Sam', totalMeters: 1 } };
+  context.metricUsers = {
+    alex: { id: 'wrong-stored-id', name: 'Alex Rower', totalMeters: 5000 },
+    sam: { name: 'Sam Rower', totalMeters: 15000 },
+    empty: { name: 'No rows yet', totalMeters: 0 },
+  };
+  context.totalMeters = 20000;
+  context.selectedGroupId = 'only-alex';
+  render();
+  expect(container.querySelector('.exp-summary strong').textContent).toBe('20 km');
+  click(button('The crew'));
+  const members = [...container.querySelectorAll('.exp-member')];
+  expect(members).toHaveLength(2);
+  expect(members[0].textContent).toContain('Sam Rower');
+  expect(members[0].querySelector('.exp-member-info small').textContent).toBe('Oar Dipper');
+  expect(members[1].querySelector('.exp-member-info small').textContent).toBe('Deckhand');
+  expect(members[1].querySelector('.exp-member-distance').textContent).toBe('5 km25.0%');
+  expect(container.querySelector('.exp-own-share').textContent).toContain('25.0% of the crew');
+  expect(container.querySelector('.exp-own-share strong').textContent).toBe('5 km');
+  expect(container.textContent).not.toMatch(/Cached Alex|Cached Sam|999,999|1,000 km|No rows yet/);
+  expect(context.users.alex.totalMeters).toBe(999999);
+});
+
+test.each([{}, null])('an empty derived map never falls back to stale raw users (%s)', metricUsers => {
+  context.metricUsers = metricUsers;
+  context.totalMeters = 0;
+  render();
+  click(button('The crew'));
+  expect(container.querySelectorAll('.exp-member')).toHaveLength(0);
+  expect(container.querySelector('.exp-own-share')).toBeNull();
+  expect(container.querySelector('.exp-empty')).not.toBeNull();
+});
+
 test('guests join through sign-in and existing members open the existing row logger', () => {
   context.currentUser = null;
   render();

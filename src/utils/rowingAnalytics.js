@@ -1,7 +1,8 @@
 import { ROWING_MACHINES } from '../constants/machines';
 
 const DAY = 86400000;
-const WORKOUT_TYPES = new Set(['free_row', 'timed', 'distance', 'interval']);
+// Interval totals do not preserve the work/rest structure needed to compare a piece.
+const WORKOUT_TYPES = new Set(['free_row', 'timed', 'distance']);
 const KNOWN_MACHINES = new Set(ROWING_MACHINES.map(machine => machine.id));
 
 const positiveNumber = value => (
@@ -10,7 +11,7 @@ const positiveNumber = value => (
 );
 
 export const getAnalyticsDate = value => {
-  if (value === null || value === undefined || value === '') return new Date(NaN);
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return new Date(NaN);
   return value?.toDate ? value.toDate() : new Date(value);
 };
 
@@ -70,6 +71,25 @@ export const getComparableBenchmarks = rows => {
     }).sort((a, b) => b.points.length - a.points.length || b.latest.date - a.latest.date || a.key.localeCompare(b.key));
 };
 
+export const getBenchmarkTrend = benchmark => {
+  const paces = benchmark.points.map(point => point.pace);
+  const fastest = Math.min(...paces);
+  const slowest = Math.max(...paces);
+  // Keep equal or near-equal paces level instead of magnifying sub-second noise.
+  const padding = Math.max(1, (slowest - fastest) * 0.15);
+  const minimumPace = Math.max(0, fastest - padding);
+  const maximumPace = slowest + padding;
+  const start = benchmark.first.date.getTime();
+  const elapsed = benchmark.latest.date.getTime() - start;
+  return {
+    minimumPace, maximumPace,
+    points: benchmark.points.map(point => ({ ...point,
+      x: elapsed > 0 ? (point.date.getTime() - start) / elapsed : 0.5,
+      y: (maximumPace - point.pace) / (maximumPace - minimumPace),
+    })),
+  };
+};
+
 export const getRowingAnalytics = (entries, userId, weeks = 4, now = new Date()) => {
   const weekCount = weeks === 12 ? 12 : 4;
   const days = weekCount * 7;
@@ -95,6 +115,7 @@ export const getRowingAnalytics = (entries, userId, weeks = 4, now = new Date())
   });
   return {
     weeks: weekCount, days, start, end: new Date(now), previousStart, previousEnd, current, previous, weekly,
+    timeComparisonComplete: current.timedSessions === current.sessions && previous.timedSessions === previous.sessions,
     comparison: Object.fromEntries(['meters', 'seconds', 'sessions', 'activeDays'].map(key => [key, compare(current[key], previous[key])])),
     benchmarks: getComparableBenchmarks(rows),
   };

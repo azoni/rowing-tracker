@@ -2,7 +2,7 @@
 .missions-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
 .missions-eyebrow { color: var(--text-muted); font-size: .6rem; letter-spacing: .12em; font-weight: 700; }
 .missions-heading h2 { margin: .3rem 0 0; color: var(--text-primary); font-size: 1.1rem; line-height: 1.35; }
-.missions-count { background: rgba(0, 212, 170, .1); border: 1px solid rgba(0, 212, 170, .2); color: var(--accent-primary, #00d4aa); border-radius: 12px; padding: .45rem .65rem; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.missions-count { background: color-mix(in srgb, var(--accent-primary) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent-primary) 25%, transparent); color: var(--accent-primary); border-radius: 12px; padding: .45rem .65rem; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
 .missions-intro { color: var(--text-secondary); font-size: .78rem; line-height: 1.5; margin: .65rem 0 1rem; }
 .missions-list { display: grid; gap: .7rem; }
 .mission-card { display: flex; gap: .75rem; border: 1px solid var(--border-color, #283544); border-radius: 14px; padding: .85rem; background: var(--bg-dark, #101722); }
@@ -14,11 +14,11 @@
 .mission-body p { margin: .3rem 0 .65rem; font-size: .73rem; line-height: 1.5; color: var(--text-secondary); }
 .mission-progress { height: 4px; border-radius: 8px; overflow: hidden; background: rgba(128, 145, 166, .16); }
 .mission-progress > span { display: block; height: 100%; background: var(--accent-primary, #00d4aa); border-radius: inherit; transition: width .3s ease; }
-.mission-card.is-complete { border-color: rgba(0, 212, 170, .25); }
+.mission-card.is-complete { border-color: color-mix(in srgb, var(--accent-primary) 35%, var(--border-color)); }
 .mission-card.is-complete .mission-title-row > span { color: var(--accent-primary, #00d4aa); }
 .mission-stamps { display: flex; gap: .4rem; margin-bottom: .7rem; flex-wrap: wrap; }
 .mission-stamps > span { display: inline-flex; gap: .2rem; align-items: center; font-size: .65rem; border: 1px dashed var(--text-muted); color: var(--text-secondary); border-radius: 7px; padding: .2rem .4rem; }
-.mission-stamps > .collected { border-style: solid; border-color: rgba(0, 212, 170, .35); background: rgba(0, 212, 170, .08); color: var(--accent-primary, #00d4aa); }
+.mission-stamps > .collected { border-style: solid; border-color: color-mix(in srgb, var(--accent-primary) 35%, transparent); background: color-mix(in srgb, var(--accent-primary) 8%, transparent); color: var(--accent-primary); }
 .missions-footer { display: flex; align-items: center; justify-content: space-between; gap: .8rem; margin-top: .85rem; }
 .missions-footer > span { color: var(--text-muted); font-size: .65rem; line-height: 1.5; }
 .missions-footer button { color: var(--accent-primary, #00d4aa); border: 0; background: transparent; font-size: .75rem; font-weight: 700; min-height: 44px; white-space: nowrap; padding: 0 .2rem; cursor: pointer; }

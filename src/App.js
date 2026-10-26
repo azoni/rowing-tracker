@@ -44,8 +44,6 @@ import {
   getMilestoneIndex,
   THEMES,
   DEFAULT_THEME,
-  STANDARD_DISTANCES,
-  getDistanceCategory,
   getActiveHoliday,
   getMonthlyProgram,
   MONTH_NAMES,
@@ -64,6 +62,9 @@ import { AppContext } from './context/AppContext';
 import Header from './components/Header';
 import AppNavigation from './components/AppNavigation';
 import { getMonthlySummary, getMonthEntries, getThrowdownProgress, getBestRowStreak } from './utils/rowingGoals';
+import { buildLeaderboardStats, getDerivedAchievements, getDerivedAchievementProgress, getMetricProfiles } from './utils/leaderboardStats';
+import { getRowMilestones } from './utils/rowMilestones';
+import { buildActivityItem } from './utils/activityItems';
 import EntryForm from './components/EntryForm';
 import HomeTab from './components/HomeTab';
 import ActivityFeed from './components/ActivityFeed';
@@ -133,6 +134,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [lastSessionMeters, setLastSessionMeters] = useState(0);
+  const [lastSessionTotalMeters, setLastSessionTotalMeters] = useState(0);
   const [, setLastSessionTime] = useState(null); // For future share card enhancement
   const [, setLastSessionCalories] = useState(null); // For future share card enhancement
   const [shareImageUrl, setShareImageUrl] = useState(null);
@@ -660,10 +662,33 @@ function App() {
     autoGenerateUsername();
   }, [currentUser, userProfile]);
 
-  // Calculate total meters
+  // One read-only ledger powers the journey, profiles, board and achievements.
+  const [leaderboardNow, setLeaderboardNow] = useState(() => new Date());
+  useEffect(() => {
+    const refresh = () => setLeaderboardNow(new Date());
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, []);
+  const leaderboardMemberIds = useMemo(() => selectedGroupId
+    ? groups.find(group => group.id === selectedGroupId)?.memberIds || []
+    : null, [groups, selectedGroupId]);
+  const filteredUsers = useMemo(() => leaderboardMemberIds === null ? users
+    : Object.fromEntries(leaderboardMemberIds.filter(id => users[id]).map(id => [id, users[id]])),
+  [users, leaderboardMemberIds]);
+  const filteredEntries = useMemo(() => entries.filter(entry =>
+    Object.prototype.hasOwnProperty.call(filteredUsers, entry.userId)), [entries, filteredUsers]);
+  const leaderboardStats = useMemo(() => buildLeaderboardStats({
+    users, entries, memberIds: leaderboardMemberIds, now: new Date(Math.max(leaderboardNow.getTime(), Date.now())),
+  }), [users, entries, leaderboardMemberIds, leaderboardNow]);
+  const metricUsers = useMemo(() => getMetricProfiles(leaderboardStats), [leaderboardStats]);
+  const rowStateRef = useRef({ users, entries });
+  rowStateRef.current = { users, entries };
+
+  // Global journey totals do not change when a group is selected.
   const getTotalMeters = useCallback(() => {
-    return Object.values(users).reduce((sum, user) => sum + (user.totalMeters || 0), 0);
-  }, [users]);
+    return leaderboardStats.globalSummary.meters;
+  }, [leaderboardStats]);
 
   // Check for milestones
   useEffect(() => {
@@ -1680,29 +1705,6 @@ function App() {
     return parseFloat(timeStr) || null;
   };
 
-  // Get filtered users/entries for selected group
-  const getGroupFilteredUsers = () => {
-    if (!selectedGroupId) return users;
-    const group = groups.find(g => g.id === selectedGroupId);
-    if (!group) return users;
-
-    const filtered = {};
-    group.memberIds?.forEach(id => {
-      if (users[id]) {
-        filtered[id] = users[id];
-      }
-    });
-    return filtered;
-  };
-
-  const getGroupFilteredEntries = () => {
-    if (!selectedGroupId) return entries;
-    const group = groups.find(g => g.id === selectedGroupId);
-    if (!group) return entries;
-
-    return entries.filter(e => group.memberIds?.includes(e.userId));
-  };
-
   // Upload profile picture
   const handleProfilePicUpload = async (event) => {
     const file = event.target.files[0];
@@ -2198,7 +2200,7 @@ function App() {
         }
       }
 
-      await setDoc(entryRef, {
+      const savedEntryData = {
         userId: currentUser.uid,
         meters: meters,
         time: timeSeconds || null,
@@ -2218,7 +2220,8 @@ function App() {
         sessionType: sessionType || 'free_row',
         machineType: machineInfo?.type || null,
         machineCustomName: machineInfo?.customName || null,
-      });
+      };
+      await setDoc(entryRef, savedEntryData);
 
       const userRef = doc(db, 'users', currentUser.uid);
       const finalMeters = meters;
@@ -2250,11 +2253,19 @@ function App() {
       
       await setDoc(userRef, userUpdate, { merge: true });
 
-      // Check for Personal Record before adding to entries list
-      const isPR = checkForPR(currentUser.uid, finalMeters);
+      // Use the latest subscription plus this exact saved row. A delayed closure
+      // cannot see new state, and the subscription may already contain this ID.
+      const latestRows = rowStateRef.current;
+      const milestones = getRowMilestones({
+        users: { ...latestRows.users, [currentUser.uid]: latestRows.users[currentUser.uid] || userProfile },
+        entries: latestRows.entries, userId: currentUser.uid,
+        savedEntry: { ...savedEntryData, id: entryId }, now: new Date(),
+      });
+      const isPR = milestones.isDistancePR;
       
       // Store for share card
       setLastSessionMeters(finalMeters);
+      setLastSessionTotalMeters(milestones.afterUser?.totalMeters || 0);
       setLastSessionTime(timeSeconds);
       setLastSessionCalories(calories);
       
@@ -2314,35 +2325,12 @@ function App() {
         }).catch(() => {});
       }
 
-      // Check for new distance record (500m, 1K, 2K, 5K, 10K, 15K)
-      if (timeSeconds && timeSeconds > 0 && verification.status !== 'unverified') {
-        const distCat = getDistanceCategory(finalMeters);
-        if (distCat) {
-          // Check if this is the user's best time for this distance
-          const previousBest = entries
-            .filter(e => e.userId === currentUser.uid && e.time && e.time > 0
-              && getDistanceCategory(e.meters)?.meters === distCat.meters
-              && ['verified', 'pending_review'].includes(e.verificationStatus))
-            .reduce((best, e) => (!best || e.time < best) ? e.time : best, null);
-
-          if (!previousBest || timeSeconds < previousBest) {
-            logActivity('distance_record', {
-              meters: finalMeters,
-              time: timeSeconds,
-              distanceLabel: distCat.label,
-              distanceMeters: distCat.meters,
-              previousBest: previousBest || null,
-              isFirstRecord: !previousBest,
-            });
-          }
-        }
+      // Feed records use the same verified exact-distance setup as the board.
+      if (milestones.newDistanceRecord) {
+        logActivity('distance_record', { meters: finalMeters, ...milestones.newDistanceRecord });
       }
 
-      // Check for new achievements and rank promotion (after a delay to let state update)
-      setTimeout(async () => {
-        await checkAndSaveNewAchievements(currentUser.uid);
-        await checkAndSaveRankPromotion(currentUser.uid, newTotalMeters);
-      }, 1000);
+      await persistRowMilestones(currentUser.uid, milestones);
 
       return true;
     } catch (error) {
@@ -2518,6 +2506,7 @@ function App() {
       setValidationError('');
       setShowLogModal(false);
       setLastSessionMeters(meters);
+      setLastSessionTotalMeters(leaderboardStats.byUser[currentUser.uid]?.totalMeters || 0);
       setShowRowCelebration(true);
       setTestMode(false);
       return;
@@ -2559,6 +2548,7 @@ function App() {
       setValidationError('');
       setShowLogModal(false);
       setLastSessionMeters(meters);
+      setLastSessionTotalMeters(leaderboardStats.byUser[currentUser.uid]?.totalMeters || 0);
       setShowRowCelebration(true);
       setTestMode(false);
       return;
@@ -2741,6 +2731,7 @@ function App() {
     setShareImageUrl(null);
     setCapturedImage(null);
     setLastSessionMeters(0);
+    setLastSessionTotalMeters(0);
     setActiveTab('leaderboard');
   };
 
@@ -2829,7 +2820,7 @@ function App() {
 
   // Fallback text share
   const fallbackTextShare = async () => {
-    const shareText = `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m on Row Crew!\n🔥 ${calculateStreak(currentUser?.uid)} day streak\n📊 ${formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)} total\n\nJoin us! rowcrew.netlify.app`;
+    const shareText = `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m on Row Crew!\n🔥 ${calculateStreak(currentUser?.uid)} day streak\n📊 ${formatMeters(lastSessionTotalMeters)} total meters\n\nJoin us! rowcrew.netlify.app`;
     
     if (navigator.share) {
       await navigator.share({ text: shareText });
@@ -2850,54 +2841,14 @@ function App() {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
-  // Memoized streak cache - computes all user streaks in one pass
-  const streakCache = useMemo(() => {
-    const toKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    const cache = {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = toKey(today);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = toKey(yesterday);
-
-    Object.keys(users).forEach(userId => {
-      const dates = new Set(
-        entries.filter(e => e.userId === userId).map(e => toKey(new Date(e.date)))
-      );
-      if (dates.size === 0 || (!dates.has(todayStr) && !dates.has(yesterdayStr))) {
-        cache[userId] = 0;
-        return;
-      }
-      let streak = 0;
-      let checkDate = new Date(dates.has(todayStr) ? today : yesterday);
-      while (dates.has(toKey(checkDate))) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      }
-      cache[userId] = streak;
-    });
-    return cache;
-  }, [entries, users]);
-
-  const calculateStreak = useCallback((userId) => streakCache[userId] || 0, [streakCache]);
-
-  // Calculate weekly average
-  const calculateWeeklyAverage = (userId) => {
-    const userEntries = entries.filter((e) => e.userId === userId);
-    if (userEntries.length === 0) return 0;
-
-    const dates = userEntries.map((e) => new Date(e.date));
-    const firstDate = new Date(Math.min(...dates));
-    const now = new Date();
-    const weeks = Math.max(1, (now - firstDate) / (7 * 24 * 60 * 60 * 1000));
-
-    const uniqueDays = new Set(
-      userEntries.map((e) => new Date(e.date).toDateString())
-    ).size;
-
-    return (uniqueDays / weeks).toFixed(1);
-  };
+  const calculateStreak = useCallback(userId => leaderboardStats.byUser[userId]?.streak || 0, [leaderboardStats]);
+  const calculateLongestStreak = useCallback(userId => leaderboardStats.byUser[userId]?.longestStreak || 0, [leaderboardStats]);
+  const calculateWeeklyAverage = useCallback(userId => leaderboardStats.byUser[userId]?.weeklyAvg || 0, [leaderboardStats]);
+  const getLeaderboard = leaderboardStats.allTime;
+  const getWeeklyLeaderboard = leaderboardStats.weekly;
+  const getStreakLeaderboard = leaderboardStats.streaks;
+  const getAchievementsLeaderboard = leaderboardStats.achievements;
+  const getDistanceRecords = leaderboardStats.records;
 
   // Get milestone progress
   const getCurrentMilestone = () => {
@@ -2907,183 +2858,6 @@ function App() {
     return { current: prevMilestone, next: nextMilestone, total };
   };
 
-  // Memoized achievement counts
-  const achievementCountCache = useMemo(() => {
-    const cache = {};
-    Object.keys(users).forEach(userId => {
-      const user = users[userId];
-      if (!user) { cache[userId] = 0; return; }
-      const userEntries = entries.filter(e => e.userId === userId);
-      const streak = streakCache[userId] || 0;
-      cache[userId] = ACHIEVEMENTS.filter(a => user.unlockedAchievements?.[a.id] || a.check(user, userEntries, streak)).length;
-    });
-    return cache;
-  }, [users, entries, streakCache]);
-
-  // Memoized group-filtered data
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const filteredUsers = useMemo(() => getGroupFilteredUsers(), [users, selectedGroupId, groups]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const filteredEntries = useMemo(() => getGroupFilteredEntries(), [entries, selectedGroupId, groups]);
-
-  // Memoized longest streak cache
-  const longestStreakCache = useMemo(() => {
-    const toKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    const cache = {};
-    Object.keys(users).forEach(userId => {
-      const userEntries = entries
-        .filter(e => e.userId === userId)
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
-      if (userEntries.length === 0) { cache[userId] = 0; return; }
-
-      const uniqueDays = [];
-      const seen = new Set();
-      for (const entry of userEntries) {
-        const d = new Date(entry.date);
-        const key = toKey(d);
-        if (!seen.has(key)) { seen.add(key); uniqueDays.push(d); }
-      }
-      if (uniqueDays.length === 0) { cache[userId] = 0; return; }
-
-      let longest = 1, current = 1;
-      for (let i = 1; i < uniqueDays.length; i++) {
-        const prev = new Date(uniqueDays[i - 1]);
-        prev.setHours(0, 0, 0, 0);
-        const nextDay = new Date(prev);
-        nextDay.setDate(nextDay.getDate() + 1);
-        const curr = new Date(uniqueDays[i]);
-        curr.setHours(0, 0, 0, 0);
-        if (curr.getTime() === nextDay.getTime()) {
-          current++;
-          longest = Math.max(longest, current);
-        } else if (curr.getTime() > nextDay.getTime()) {
-          current = 1;
-        }
-      }
-      cache[userId] = longest;
-    });
-    return cache;
-  }, [entries, users]);
-
-  const calculateLongestStreak = useCallback((userId) => longestStreakCache[userId] || 0, [longestStreakCache]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const getLeaderboard = useMemo(() => {
-    return Object.values(filteredUsers)
-      .map((user) => ({
-        ...user,
-        streak: streakCache[user.id] || 0,
-        weeklyAvg: calculateWeeklyAverage(user.id),
-        avgPerUpload: user.uploadCount > 0 ? Math.round(user.totalMeters / user.uploadCount) : 0,
-        rank: getUserRank(user.totalMeters),
-        achievementCount: achievementCountCache[user.id] || 0,
-      }))
-      .sort((a, b) => {
-        if (b.totalMeters !== a.totalMeters) return b.totalMeters - a.totalMeters;
-        // Tiebreaker: whoever reached this total first (earlier last entry date)
-        const aLatest = entries.filter(e => e.userId === a.id).reduce((max, e) => { const d = new Date(e.date); return d > max ? d : max; }, new Date(0));
-        const bLatest = entries.filter(e => e.userId === b.id).reduce((max, e) => { const d = new Date(e.date); return d > max ? d : max; }, new Date(0));
-        return aLatest - bLatest;
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredUsers, streakCache, achievementCountCache, entries]);
-
-  const getWeeklyLeaderboard = useMemo(() => {
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const weeklyTotals = {};
-    filteredEntries.forEach(entry => {
-      if (new Date(entry.date) >= startOfWeek) {
-        weeklyTotals[entry.userId] = (weeklyTotals[entry.userId] || 0) + entry.meters;
-      }
-    });
-
-    return Object.values(filteredUsers)
-      .map((user) => ({
-        ...user,
-        weeklyMeters: weeklyTotals[user.id] || 0,
-        rank: getUserRank(user.totalMeters),
-      }))
-      .filter(u => u.weeklyMeters > 0)
-      .sort((a, b) => {
-        if (b.weeklyMeters !== a.weeklyMeters) return b.weeklyMeters - a.weeklyMeters;
-        const aLatest = filteredEntries.filter(e => e.userId === a.id).reduce((max, e) => { const d = new Date(e.date); return d > max ? d : max; }, new Date(0));
-        const bLatest = filteredEntries.filter(e => e.userId === b.id).reduce((max, e) => { const d = new Date(e.date); return d > max ? d : max; }, new Date(0));
-        return aLatest - bLatest;
-      });
-  }, [filteredUsers, filteredEntries]);
-
-
-  const getStreakLeaderboard = useMemo(() => {
-    return Object.values(filteredUsers)
-      .map((user) => ({
-        ...user,
-        streak: streakCache[user.id] || 0,
-        longestStreak: longestStreakCache[user.id] || 0,
-        rank: getUserRank(user.totalMeters),
-      }))
-      .filter(u => u.streak > 0 || u.longestStreak > 0)
-      .sort((a, b) => {
-        if (b.streak !== a.streak) return b.streak - a.streak;
-        if (b.longestStreak !== a.longestStreak) return b.longestStreak - a.longestStreak;
-        // Tiebreaker: earlier account
-        const aCreated = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-        const bCreated = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
-        return aCreated - bCreated;
-      });
-  }, [filteredUsers, streakCache, longestStreakCache]);
-
-  const getAchievementsLeaderboard = useMemo(() => {
-    return Object.values(filteredUsers)
-      .map((user) => ({
-        ...user,
-        achievementCount: achievementCountCache[user.id] || 0,
-        rank: getUserRank(user.totalMeters),
-      }))
-      .filter(u => u.achievementCount > 0)
-      .sort((a, b) => b.achievementCount - a.achievementCount);
-  }, [filteredUsers, achievementCountCache]);
-
-  const getDistanceRecords = useMemo(() => {
-    const records = {};
-    STANDARD_DISTANCES.forEach(dist => { records[dist.meters] = []; });
-
-    const qualifyingEntries = filteredEntries.filter(entry =>
-      entry.time && entry.time > 0 &&
-      ['verified', 'pending_review'].includes(entry.verificationStatus) &&
-      getDistanceCategory(entry.meters)
-    );
-
-    qualifyingEntries.forEach(entry => {
-      const category = getDistanceCategory(entry.meters);
-      if (category) {
-        records[category.meters].push({
-          ...entry,
-          user: filteredUsers[entry.userId],
-          pace: entry.time && entry.meters ? (entry.time / entry.meters) * 500 : null,
-        });
-      }
-    });
-
-    // Keep only best time per user per distance, sort fastest first
-    Object.keys(records).forEach(dist => {
-      const bestByUser = {};
-      records[dist].forEach(entry => {
-        if (!bestByUser[entry.userId] || entry.time < bestByUser[entry.userId].time) {
-          bestByUser[entry.userId] = entry;
-        }
-      });
-      records[dist] = Object.values(bestByUser)
-        .filter(e => e.user)
-        .sort((a, b) => a.time - b.time || new Date(a.date) - new Date(b.date));
-    });
-
-    return records;
-  }, [filteredEntries, filteredUsers]);
-
   // Get user's session history
   const getUserSessionHistory = (userId) => {
     return entries
@@ -3092,127 +2866,42 @@ function App() {
   };
 
   // Get user's achievements with progress
-  const getUserAchievements = (userId) => {
-    const user = users[userId];
-    if (!user) return [];
-    
-    const userEntries = entries.filter(e => e.userId === userId);
-    const streak = calculateStreak(userId);
-    
-    return ACHIEVEMENTS.filter(a => user.unlockedAchievements?.[a.id] || a.check(user, userEntries, streak)).map(a => ({
-      ...a,
-      progress: getAchievementProgress(userId, a),
-      unlockedDate: user.unlockedAchievements?.[a.id] || null,
-    }));
-  };
+  const getUserAchievements = userId => getDerivedAchievements(leaderboardStats.byUser[userId]);
 
   // Get achievement progress for a user (including locked ones)
-  const getAchievementProgress = (userId, achievement) => {
-    const user = users[userId];
-    if (!user) return { current: 0, target: 1 };
-    
-    const userEntries = entries.filter(e => e.userId === userId);
-    const streak = calculateStreak(userId);
-    
-    const progress = achievement.getProgress(user, userEntries, streak);
-    if (progress.target === 1) {
-      return { ...progress, current: user.unlockedAchievements?.[achievement.id] || achievement.check(user, userEntries, streak) ? 1 : 0 };
-    }
-    return user.unlockedAchievements?.[achievement.id]
-      ? { ...progress, current: Math.max(progress.current, progress.target) }
-      : progress;
-  };
+  const getAchievementProgress = (userId, achievement) =>
+    getDerivedAchievementProgress(leaderboardStats.byUser[userId], achievement);
 
-  // Check and save new achievements
-  const checkAndSaveNewAchievements = async (userId) => {
-    const user = users[userId];
-    if (!user) return [];
-    
-    const userEntries = entries.filter(e => e.userId === userId);
-    const streak = calculateStreak(userId);
-    const existingAchievements = user.unlockedAchievements || {};
-    
-    const newlyUnlocked = [];
-    const updatedAchievements = { ...existingAchievements };
-    
-    for (const achievement of ACHIEVEMENTS) {
-      if (!existingAchievements[achievement.id] && achievement.check(user, userEntries, streak)) {
-        updatedAchievements[achievement.id] = new Date().toISOString();
-        newlyUnlocked.push(achievement);
-      }
+  // Persist only newly earned fields. Merge preserves historical unlock dates;
+  // arrayUnion does not overwrite another save's rank history.
+  const persistRowMilestones = async (userId, milestones) => {
+    const update = {};
+    const date = new Date().toISOString();
+    if (milestones.newlyUnlocked.length) {
+      update.unlockedAchievements = Object.fromEntries(milestones.newlyUnlocked.map(achievement => [achievement.id, date]));
     }
-    
-    if (newlyUnlocked.length > 0) {
-      try {
-        const userRef = doc(db, 'users', userId);
-        await setDoc(userRef, { unlockedAchievements: updatedAchievements }, { merge: true });
-      } catch (error) {
-        console.error('Error saving achievements:', error);
-      }
+    if (milestones.promotion) {
+      const rank = milestones.promotion;
+      update.currentRank = rank.title;
+      update.rankHistory = arrayUnion({ rank: rank.title, emoji: rank.emoji, tier: rank.tier || 'bronze', date });
     }
-    
-    return newlyUnlocked;
-  };
-
-  // Check and save rank promotion
-  const checkAndSaveRankPromotion = async (userId, newTotalMeters) => {
-    const user = users[userId];
-    if (!user) return null;
-    
-    const oldRank = getUserRank(user.totalMeters || 0);
-    const newRank = getUserRank(newTotalMeters);
-    
-    if (newRank.title !== oldRank.title && newRank.minMeters > oldRank.minMeters) {
-      try {
-        const userRef = doc(db, 'users', userId);
-        const rankHistory = user.rankHistory || [];
-        rankHistory.push({
-          rank: newRank.title,
-          emoji: newRank.emoji,
-          tier: newRank.tier || 'bronze',
-          date: new Date().toISOString(),
-        });
-        await setDoc(userRef, { 
-          currentRank: newRank.title,
-          rankHistory 
-        }, { merge: true });
-        return newRank;
-      } catch (error) {
-        console.error('Error saving rank promotion:', error);
-      }
+    if (!Object.keys(update).length) return;
+    try {
+      await setDoc(doc(db, 'users', userId), update, { merge: true });
+    } catch (error) {
+      console.error('Error saving rowing milestones:', error);
+      showToast('Your row is saved. Some award details could not sync yet.', 'info');
     }
-    return null;
   };
 
   // Get user's personal record
-  const getPersonalRecord = (userId) => {
-    const userEntries = entries.filter(e => e.userId === userId);
-    if (userEntries.length === 0) return 0;
-    return Math.max(...userEntries.map(e => e.meters));
-  };
+  const getPersonalRecord = userId => leaderboardStats.byUser[userId]?.longestRow || 0;
 
   // Get total unique days rowed
-  const getTotalDaysRowed = (userId) => {
-    const userEntries = entries.filter(e => e.userId === userId);
-    const uniqueDays = new Set(userEntries.map(e => new Date(e.date).toDateString()));
-    return uniqueDays.size;
-  };
+  const getTotalDaysRowed = userId => leaderboardStats.byUser[userId]?.activeDays || 0;
 
   // Get first row date
-  const getFirstRowDate = (userId) => {
-    const userEntries = entries
-      .filter(e => e.userId === userId)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-    
-    if (userEntries.length === 0) return null;
-    return new Date(userEntries[0].date);
-  };
-
-  // Check if this session is a PR
-  const checkForPR = (userId, newMeters) => {
-    const currentPR = getPersonalRecord(userId);
-    return newMeters > currentPR && currentPR > 0;
-  };
+  const getFirstRowDate = userId => leaderboardStats.byUser[userId]?.firstRowDate || null;
 
   // Memoized feed base - builds and sorts all feed items once
   const activityFeedBase = useMemo(() => {
@@ -3291,20 +2980,8 @@ function App() {
       const activityUser = users[activity.userId];
       if (!activityUser) return;
       if (selectedGroupId && activity.groupId && activity.groupId !== selectedGroupId) return;
-      const activityDate = activity.createdAt?.toDate ? activity.createdAt.toDate() : new Date(activity.createdAt);
-      feedItems.push({
-        id: activity.id,
-        type: activity.type,
-        userId: activity.userId,
-        user: activityUser,
-        groupId: activity.groupId,
-        groupName: activity.groupName,
-        challengeId: activity.challengeId,
-        challengeName: activity.challengeName,
-        challengeType: activity.challengeType,
-        date: activityDate.toISOString(),
-        sortDate: activityDate,
-      });
+      const item = buildActivityItem(activity, activityUser);
+      if (item) feedItems.push(item);
     });
 
     // Detect monthly throwdown completions
@@ -3797,7 +3474,7 @@ function App() {
     generateUsernameFromName,
 
     // Core data
-    users, entries, isLoading,
+    users, metricUsers, entries, isLoading,
 
     // Processing
     isProcessing, setIsProcessing, processingStatus, setProcessingStatus,
@@ -3859,7 +3536,7 @@ function App() {
     showManageMembersModal, setShowManageMembersModal,
 
     // Share
-    shareCardRef, shareImageUrl, lastSessionMeters,
+    shareCardRef, shareImageUrl, lastSessionMeters, lastSessionTotalMeters,
     linkCopied, isCopying, handleCopyLink, handleCloseShare,
 
     // Notifications
@@ -3902,7 +3579,7 @@ function App() {
     getChallengeStatus, getChallengeProgress, getChallengeLeaderboard,
 
     // Leaderboards & Stats
-    leaderboardTab, setLeaderboardTab,
+    leaderboardTab, setLeaderboardTab, leaderboardStats,
     getLeaderboard, getWeeklyLeaderboard, getStreakLeaderboard, getAchievementsLeaderboard, getDistanceRecords,
     calculateStreak, calculateLongestStreak, calculateWeeklyAverage,
     getPersonalRecord, getTotalDaysRowed, getFirstRowDate,
@@ -4060,7 +3737,7 @@ function App() {
       )}
 
       {/* Main Content */}
-      <main className="main-content">
+      <main className="main-content" id="crew-main" tabIndex={-1}>
         {activeTab === 'home' && <HomeTab />}
         {activeTab === 'feed' && <ActivityFeed />}
         {activeTab === 'leaderboard' && <Leaderboard />}
@@ -4141,11 +3818,12 @@ function App() {
 
       {/* Rank Progress Modal */}
       {showRankProgressModal && currentUser && userProfile && (() => {
-        const currentRank = getUserRank(userProfile.totalMeters);
-        const nextRank = getNextRank(userProfile.totalMeters);
-        const metersToNext = nextRank ? nextRank.minMeters - userProfile.totalMeters : 0;
+        const lifetimeMeters = leaderboardStats.byUser[currentUser.uid]?.totalMeters || 0;
+        const currentRank = getUserRank(lifetimeMeters);
+        const nextRank = getNextRank(lifetimeMeters);
+        const metersToNext = nextRank ? nextRank.minMeters - lifetimeMeters : 0;
         const progressPercent = nextRank
-          ? ((userProfile.totalMeters - currentRank.minMeters) / (nextRank.minMeters - currentRank.minMeters)) * 100
+          ? ((lifetimeMeters - currentRank.minMeters) / (nextRank.minMeters - currentRank.minMeters)) * 100
           : 100;
         return (
           <div className="modal-overlay" onClick={() => setShowRankProgressModal(false)}>
@@ -4156,7 +3834,7 @@ function App() {
                 <span className="current-rank-emoji"><Icon name={currentRank.emoji} /></span>
                 <div className="current-rank-info">
                   <span className="current-rank-title">{currentRank.title}</span>
-                  <span className="current-rank-meters">{formatMeters(userProfile.totalMeters)}m total</span>
+                  <span className="current-rank-meters">{formatMeters(lifetimeMeters)}m total</span>
                 </div>
               </div>
               {nextRank && (
@@ -4175,7 +3853,7 @@ function App() {
                 <div className="ranks-list">
                   {RANKS.map((rank) => {
                     const isCurrentRank = currentRank.title === rank.title;
-                    const isUnlocked = userProfile.totalMeters >= rank.minMeters;
+                    const isUnlocked = lifetimeMeters >= rank.minMeters;
                     return (
                       <div key={rank.title} className={`rank-item ${isCurrentRank ? 'current' : ''} ${isUnlocked ? 'unlocked' : 'locked'}`}>
                         <span className="rank-item-emoji"><Icon name={rank.emoji} /></span>

@@ -71,7 +71,7 @@ test('guests can read the goal and profiles, but cannot send reactions', () => {
   expect(button('Give kudos').disabled).toBe(true);
   act(() => Simulate.click(button('Give kudos')));
   expect(context.toggleReaction).not.toHaveBeenCalled();
-  expect(container.textContent).toContain('Sign in below to cheer on the crew.');
+  expect(container.textContent).toContain('Sign in to cheer on the crew.');
   act(() => Simulate.click(container.querySelector('.crew-pulse-spotlight-person')));
   expect(context.setShowUserProfileModal).toHaveBeenCalledWith({ id: 'a', name: 'Amir' });
 });
@@ -95,4 +95,26 @@ test('unknown selected group never displays global crew members or their rows', 
   expect(container.querySelector('.crew-pulse-spotlight')).toBeNull();
   expect(container.querySelectorAll('.crew-pulse-contributor')).toHaveLength(0);
   expect(container.textContent).not.toContain('Amir');
+});
+
+test('compact presentation starts closed, summarizes real rows, and preserves kudos after opening', async () => {
+  act(() => root.render(<CrewPulse compact />));
+  const disclosure = container.querySelector('.crew-pulse-panel');
+  const summary = disclosure.querySelector('summary');
+  expect(disclosure.open).toBe(false);
+  expect(summary.textContent).toContain('3 rows from 3 rowers');
+  expect(summary.textContent).toContain('6 km');
+  expect(summary.textContent).toContain('Goal reached');
+  expect(context.toggleReaction).not.toHaveBeenCalled();
+  disclosure.open = true;
+  await act(async () => Simulate.click(button('Give kudos')));
+  expect(context.toggleReaction).toHaveBeenCalledWith('actual-row-a', '👏');
+  expect(disclosure.open).toBe(true);
+  disclosure.open = false;
+  context.entries = [];
+  act(() => root.render(<CrewPulse compact />));
+  expect(disclosure.open).toBe(false);
+  expect(summary.textContent).toContain('0 rows from 0 rowers');
+  expect(summary.textContent).toContain('0 m');
+  expect(container.querySelector('.crew-pulse-spotlight')).toBeNull();
 });

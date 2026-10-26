@@ -66,7 +66,7 @@ export const ACHIEVEMENTS = [
     getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 10000), target: 10000 })
   },
   {
-    id: 'marathon', name: 'Marathon Rower', desc: 'Row a marathon (42,195m)', emoji: 'achievement_marathon', category: 'distance',
+    id: 'marathon', name: 'Marathon Rower', desc: 'Accumulate 42,195m across your rows', emoji: 'achievement_marathon', category: 'distance',
     check: (u) => u.totalMeters >= 42195,
     getProgress: (u) => ({ current: Math.min(u.totalMeters || 0, 42195), target: 42195 })
   },
@@ -321,32 +321,32 @@ export const ACHIEVEMENTS = [
 
   // Calorie achievements
   {
-    id: 'first_1k_cal', name: 'Calorie Crusher', desc: 'Burn 1,000 calories total', emoji: 'achievement_calorie_crusher', category: 'calories',
+    id: 'first_1k_cal', name: 'Calorie Crusher', desc: 'Log 1,000 recorded calories total', emoji: 'achievement_calorie_crusher', category: 'calories',
     check: (u) => (u.totalCalories || 0) >= 1000,
     getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 1000), target: 1000 })
   },
   {
-    id: 'pizza_burner', name: 'Pizza Burner', desc: 'Burn 5,000 calories (≈ 2.5 pizzas!)', emoji: 'achievement_pizza_burner', category: 'calories',
+    id: 'pizza_burner', name: 'Pizza Burner', desc: 'Log 5,000 recorded calories total', emoji: 'achievement_pizza_burner', category: 'calories',
     check: (u) => (u.totalCalories || 0) >= 5000,
     getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 5000), target: 5000 })
   },
   {
-    id: 'ten_k_cal', name: 'Furnace', desc: 'Burn 10,000 calories total', emoji: 'achievement_furnace', category: 'calories',
+    id: 'ten_k_cal', name: 'Furnace', desc: 'Log 10,000 recorded calories total', emoji: 'achievement_furnace', category: 'calories',
     check: (u) => (u.totalCalories || 0) >= 10000,
     getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 10000), target: 10000 })
   },
   {
-    id: 'fifty_k_cal', name: 'Inferno', desc: 'Burn 50,000 calories total', emoji: 'achievement_inferno', category: 'calories',
+    id: 'fifty_k_cal', name: 'Inferno', desc: 'Log 50,000 recorded calories total', emoji: 'achievement_inferno', category: 'calories',
     check: (u) => (u.totalCalories || 0) >= 50000,
     getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 50000), target: 50000 })
   },
   {
-    id: 'hundred_k_cal', name: 'Calorie Destroyer', desc: 'Burn 100,000 calories total', emoji: 'achievement_calorie_destroyer', category: 'calories',
+    id: 'hundred_k_cal', name: 'Calorie Destroyer', desc: 'Log 100,000 recorded calories total', emoji: 'achievement_calorie_destroyer', category: 'calories',
     check: (u) => (u.totalCalories || 0) >= 100000,
     getProgress: (u) => ({ current: Math.min(u.totalCalories || 0, 100000), target: 100000 })
   },
   {
-    id: 'big_burn', name: 'Big Burn', desc: 'Burn 500+ calories in one session', emoji: 'achievement_big_burn', category: 'calories',
+    id: 'big_burn', name: 'Big Burn', desc: 'Record 500+ calories in one session', emoji: 'achievement_big_burn', category: 'calories',
     check: (u, e) => e.some(x => (x.calories || 0) >= 500),
     getProgress: (u, e) => {
       const best = e.length > 0 ? Math.max(...e.map(x => x.calories || 0)) : 0;
@@ -865,14 +865,14 @@ export const ACHIEVEMENTS = [
   },
 
   // --- Calorie Single Session ---
-  { id: 'quarter_burn', name: 'Warm Up', emoji: 'achievement_warm_up', desc: 'Burn 250+ calories in one session', category: 'calories',
+  { id: 'quarter_burn', name: 'Warm Up', emoji: 'achievement_warm_up', desc: 'Record 250+ calories in one session', category: 'calories',
     check: (u, e) => e.some(x => (x.calories || 0) >= 250),
     getProgress: (u, e) => {
       const best = e.length > 0 ? Math.max(...e.map(x => x.calories || 0)) : 0;
       return { current: Math.min(best, 250), target: 250 };
     }
   },
-  { id: 'kiloburn', name: 'Kiloburn', emoji: 'achievement_kiloburn', desc: 'Burn 1,000+ calories in one session', category: 'calories',
+  { id: 'kiloburn', name: 'Kiloburn', emoji: 'achievement_kiloburn', desc: 'Record 1,000+ calories in one session', category: 'calories',
     check: (u, e) => e.some(x => (x.calories || 0) >= 1000),
     getProgress: (u, e) => {
       const best = e.length > 0 ? Math.max(...e.map(x => x.calories || 0)) : 0;

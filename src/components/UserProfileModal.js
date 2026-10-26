@@ -3,8 +3,10 @@ import { useApp } from '../context/AppContext';
 import { ACHIEVEMENTS, getUserRank, getMachineName } from '../constants';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import Icon from './Icon';
+import BadgeArtwork from './BadgeArtwork';
 import AvatarOrPhoto from './Avatar';
 import { getMonthlyRewards } from '../utils/rowingGoals';
+import './UserProfileArtwork.css';
 
 function UserProfileModal() {
   const {
@@ -12,19 +14,66 @@ function UserProfileModal() {
     getUserAchievements, calculateLongestStreak,
     getPersonalRecord, getTotalDaysRowed,
     getFirstRowDate, calculateStreak,
-    calculateWeeklyAverage, entries, users,
+    calculateWeeklyAverage, entries, users, metricUsers,
   } = useApp();
+  const dialogRef = React.useRef(null);
+  const closeRef = React.useRef(null);
+  const isOpen = !!showUserProfileModal;
+
+  React.useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousFocus = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+    const keydown = event => {
+      if (event.key === 'Escape') { event.preventDefault(); setShowUserProfileModal(null); }
+      if (event.key !== 'Tab') return;
+      const dialog = dialogRef.current;
+      const nodes = [...dialog.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]')].filter(node => {
+        const closed = node.closest('details:not([open])');
+        return !closed || (node.tagName === 'SUMMARY' && node.parentElement === closed);
+      });
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if (!dialog.contains(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first)?.focus(); }
+      else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', keydown);
+    return () => {
+      document.removeEventListener('keydown', keydown);
+      document.body.style.overflow = overflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [isOpen, setShowUserProfileModal]);
 
   if (!showUserProfileModal) return null;
 
+  const selectedId = showUserProfileModal.id;
+  const profile = metricUsers === undefined ? showUserProfileModal
+    : Object.prototype.hasOwnProperty.call(metricUsers || {}, selectedId) ? metricUsers[selectedId] : null;
+  const user = profile ? { ...profile, id: selectedId } : null;
+
   return (
     <div className="modal-overlay" onClick={() => setShowUserProfileModal(null)}>
-      <div className="modal user-profile-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={() => setShowUserProfileModal(null)}>✕</button>
+      <div className="modal user-profile-modal" role="dialog" aria-modal="true" aria-labelledby="user-profile-title" ref={dialogRef} onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" ref={closeRef} aria-label="Close rower profile" onClick={() => setShowUserProfileModal(null)}>✕</button>
 
         {(() => {
-          const user = showUserProfileModal;
+          if (!user) return <div className="profile-unavailable"><h2 id="user-profile-title">Profile unavailable</h2><p>This rower’s profile is not available right now.</p></div>;
           const userAchievements = getUserAchievements(user.id);
+          const earnedIds = new Set(userAchievements.map(achievement => achievement.id));
+          const earnedAchievements = ACHIEVEMENTS.filter(achievement => earnedIds.has(achievement.id));
+          const remainingAchievements = ACHIEVEMENTS.filter(achievement => !earnedIds.has(achievement.id));
+          const renderAchievement = achievement => {
+            const unlocked = earnedIds.has(achievement.id);
+            return <li key={achievement.id} className={`profile-badge ${unlocked ? 'unlocked' : 'locked'}`} title={`${achievement.name}: ${achievement.desc}`}>
+              <BadgeArtwork achievement={achievement} size={48} />
+              <span className="profile-badge-name">{achievement.name}</span>
+              <span className="profile-badge-state">{unlocked ? 'Earned' : 'Not yet earned'}</span>
+              <span className="profile-artwork-sr-only">{achievement.desc}</span>
+            </li>;
+          };
           const longestStreak = calculateLongestStreak(user.id);
           const personalRecord = getPersonalRecord(user.id);
           const totalDays = getTotalDaysRowed(user.id);
@@ -40,7 +89,7 @@ function UserProfileModal() {
               <div className="profile-modal-header">
                 <AvatarOrPhoto user={user} size={64} className="profile-modal-avatar" />
                 <div className="profile-modal-info">
-                  <h2>{user.name}</h2>
+                  <h2 id="user-profile-title">{user.name || 'Crew member'}</h2>
                   {user.username && <span className="profile-modal-username">@{user.username}</span>}
                   <span className="profile-modal-rank"><Icon name={rank?.emoji} size={16} /> {rank?.title}</span>
                   {streak > 0 && <span className="profile-modal-streak"><Icon name="ui_fire" size={14} /> {streak} day streak</span>}
@@ -108,7 +157,7 @@ function UserProfileModal() {
                 </div>
                 {firstRow && (
                   <div className="profile-stat-row">
-                    <span>Member Since</span>
+                    <span>Rowing since</span>
                     <span>{firstRow.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                   </div>
                 )}
@@ -132,8 +181,8 @@ function UserProfileModal() {
                           className={`profile-reward-badge ${r.type === 'challenge' ? 'challenge' : ''}`}
                           title={`${r.monthName} ${r.year} — ${r.label}`}
                         >
-                          <Icon name={r.type === 'challenge' ? r.icon : 'ui_fire'} size={16} />
-                          <span className="profile-reward-month">{r.monthName}</span>
+                          <BadgeArtwork achievement={{ category: r.type === 'challenge' ? 'milestones' : 'calories' }} size={48} />
+                          <span className="profile-reward-copy"><span className="profile-reward-label">{r.label}</span><span className="profile-reward-month">{r.monthName} {r.year}</span></span>
                         </div>
                       ))}
                     </div>
@@ -147,20 +196,8 @@ function UserProfileModal() {
                   <span>Achievements</span>
                   <span>{userAchievements.length}/{ACHIEVEMENTS.length}</span>
                 </div>
-                <div className="profile-badges">
-                  {ACHIEVEMENTS.map((achievement) => {
-                    const unlocked = userAchievements.some(a => a.id === achievement.id);
-                    return (
-                      <div
-                        key={achievement.id}
-                        className={`profile-badge ${unlocked ? 'unlocked' : 'locked'}`}
-                        title={`${achievement.name}: ${achievement.desc}`}
-                      >
-                        <Icon name={achievement.emoji} size={16} />
-                      </div>
-                    );
-                  })}
-                </div>
+                {earnedAchievements.length > 0 ? <ul className="profile-badges" aria-label="Earned achievements">{earnedAchievements.map(renderAchievement)}</ul> : <p className="profile-achievements-empty">No badges earned yet.</p>}
+                {remainingAchievements.length > 0 && <details className="profile-badges-remaining"><summary>Not yet earned <span>{remainingAchievements.length}</span></summary><ul className="profile-badges" aria-label="Achievements not yet earned">{remainingAchievements.map(renderAchievement)}</ul></details>}
               </div>
             </>
           );

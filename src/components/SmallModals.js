@@ -2,7 +2,9 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { APP_VERSION, CHANGELOG } from '../constants';
 import Icon from './Icon';
+import BadgeArtwork from './BadgeArtwork';
 import { formatAchievementProgress } from '../utils/achievementDisplay';
+import './AchievementModal.css';
 
 export function PRModal() {
   const { showPRModal, setShowPRModal } = useApp();
@@ -82,69 +84,32 @@ export function AchievementModal() {
 
   if (!showAchievementModal) return null;
 
+  const earned = currentUser ? getUserAchievements(currentUser.uid).find(achievement => achievement.id === showAchievementModal.id) : null;
+  const progress = currentUser ? showAchievementModal.progress || getAchievementProgress(currentUser.uid, showAchievementModal) : null;
+  const progressPercent = progress ? Math.min(100, Math.max(0, progress.target > 0 ? progress.current / progress.target * 100 : 0)) : 0;
+  const savedDate = earned?.unlockedDate || showAchievementModal.unlockedDate;
+  const date = savedDate ? (savedDate.toDate ? savedDate.toDate() : new Date(savedDate)) : null;
+  const earnedDate = date && Number.isFinite(date.getTime()) ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+
   return (
-    <div className="modal-overlay" onClick={() => setShowAchievementModal(null)}>
-      <div className="modal achievement-modal" ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="achievement-title" aria-describedby="achievement-description" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay achievement-showcase-overlay" onClick={() => setShowAchievementModal(null)}>
+      <div className="modal achievement-modal achievement-showcase" ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="achievement-title" aria-describedby="achievement-description" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" aria-label="Close achievement details" onClick={() => setShowAchievementModal(null)}>✕</button>
 
         <div className="achievement-modal-content">
-          <span className="achievement-modal-emoji"><Icon name={showAchievementModal.emoji} size={48} /></span>
+          <div className="achievement-medal-display"><BadgeArtwork achievement={showAchievementModal} size={156} /></div>
+          <div className="achievement-classification"><span>{showAchievementModal.category}</span>{showAchievementModal.difficulty && <><span aria-hidden="true">·</span><span>{showAchievementModal.difficulty}</span></>}</div>
           <h2 id="achievement-title">{showAchievementModal.name}</h2>
-          {showAchievementModal.difficulty && <span className={`badge-difficulty is-${showAchievementModal.difficulty}`}>{showAchievementModal.difficulty}</span>}
           <p className="achievement-modal-desc" id="achievement-description">{showAchievementModal.desc}</p>
-
-          {currentUser && (() => {
-            const isUnlocked = getUserAchievements(currentUser.uid).some(a => a.id === showAchievementModal.id);
-            const progress = showAchievementModal.progress || getAchievementProgress(currentUser.uid, showAchievementModal);
-            const progressPercent = isUnlocked ? 100 : Math.min(progress.target > 0 ? (progress.current / progress.target) * 100 : 0, 100);
-
-            return (
-              <>
-                {/* Progress Bar */}
-                <div className="achievement-modal-progress">
-                  <div className="achievement-modal-progress-bar">
-                    <div
-                      className={`achievement-modal-progress-fill ${isUnlocked ? 'complete' : ''}`}
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                  <span className="achievement-modal-progress-text">
-                    {formatAchievementProgress(showAchievementModal, isUnlocked ? { current: progress.target, target: progress.target } : progress)}
-                  </span>
-                </div>
-
-                {/* Status */}
-                <div className={`achievement-modal-status ${isUnlocked ? 'unlocked' : 'locked'}`}>
-                  {isUnlocked ? (
-                    <>
-                      <span className="status-icon"><Icon name="ui_check" size={16} /></span>
-                      <span>Unlocked!</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="status-icon">🔒</span>
-                      <span>Keep rowing to unlock!</span>
-                    </>
-                  )}
-                </div>
-
-                {/* Date Completed */}
-                {isUnlocked && showAchievementModal.unlockedDate && (
-                  <p className="achievement-modal-date">
-                    Completed on {new Date(showAchievementModal.unlockedDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </p>
-                )}
-              </>
-            );
-          })()}
+          {earned ? <div className="achievement-earned-detail"><span className="achievement-earned-label"><Icon name="ui_check" size={16} /> In your collection</span>{earnedDate && <p className="achievement-modal-date">Earned {earnedDate}</p>}</div> : progress ? <div className="achievement-modal-progress">
+            <div className="achievement-progress-heading"><span>Your progress</span><strong>{Math.floor(progressPercent)}%</strong></div>
+            <div className="achievement-modal-progress-bar" aria-hidden="true"><div className="achievement-modal-progress-fill" style={{ width: `${progressPercent}%` }} /></div>
+            <span className="achievement-modal-progress-text">{formatAchievementProgress(showAchievementModal, progress)}</span>
+          </div> : <p className="achievement-guest-note">Sign in to track your progress.</p>}
         </div>
 
         <button className="achievement-modal-close-btn" onClick={() => setShowAchievementModal(null)}>
-          Got it!
+          Back to rowing
         </button>
       </div>
     </div>

@@ -124,7 +124,7 @@ function ExpeditionMap({ journey, selectedIndex, focus, onSelect }) {
 }
 
 function Expedition({ onClose }) {
-  const { users = {}, totalMeters, currentUser, setShowLogModal, handleSignIn } = useApp();
+  const { users = {}, metricUsers, totalMeters, currentUser, setShowLogModal, handleSignIn } = useApp();
   const journey = getCrewJourney(totalMeters);
   const [tab, setTab] = useState('map');
   const [selectedIndex, setSelectedIndex] = useState(journey.nextIndex ?? journey.activeIndex);
@@ -134,7 +134,8 @@ function Expedition({ onClose }) {
   const closeRef = useRef(null);
   const stop = CREW_STOPS[selectedIndex];
   const reached = stop.meters <= journey.distanceMeters;
-  const members = Object.entries(users).map(([id, user]) => ({ ...user, id, meters: positive(user?.totalMeters) })).filter(user => user.meters > 0).sort((a, b) => b.meters - a.meters || a.id.localeCompare(b.id));
+  const memberProfiles = metricUsers === undefined ? users : metricUsers || {};
+  const members = Object.entries(memberProfiles).map(([id, user]) => ({ ...user, id, meters: positive(user?.totalMeters) })).filter(user => user.meters > 0).sort((a, b) => b.meters - a.meters || a.id.localeCompare(b.id));
   const crewTotal = members.reduce((sum, member) => sum + member.meters, 0);
   const own = members.find(member => member.id === currentUser?.uid);
   const nextMilestone = MILESTONES.find(milestone => milestone.meters > journey.distanceMeters);

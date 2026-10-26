@@ -1,6 +1,18 @@
 // Changelog entries
 export const CHANGELOG = [
   {
+    version: '4.8.0',
+    date: '2026-10-25',
+    changes: [
+      'A smaller world journey card keeps your crew’s progress, weekly rowing and Log a row within reach.',
+      'Crew sessions lead the log. Weekly goals, kudos and group details are there when you want them.',
+      'Collect illustrated rowing medals and explore clearer achievement progress and member profiles.',
+      'Follow your pace history on repeat distances with the same machine and workout type. Interval totals stay separate.',
+      'World progress, profiles and standings now agree on counted rows. Time comparisons explain missing session times.',
+      'New badges, personal records and share totals use your saved row accurately, without counting it twice.',
+    ],
+  },
+  {
     version: '4.7.1',
     date: '2026-10-16',
     changes: [

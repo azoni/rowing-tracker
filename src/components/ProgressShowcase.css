@@ -1,0 +1,84 @@
+.progress-showcase { padding-bottom: 32px; }
+.progress-showcase .progress-page-heading { align-items: flex-start; margin-bottom: 26px; }
+.progress-showcase .progress-page-heading h2 { font-family: inherit; font-size: clamp(1.75rem, 4vw, 2.2rem); letter-spacing: -.035em; line-height: 1.2; }
+.progress-showcase .progress-page-heading p, .progress-showcase .progress-section-heading p { color: var(--text-secondary); font-size: .9rem; line-height: 1.6; margin: 8px 0 0; }
+.progress-showcase .progress-history-link { flex-shrink: 0; border-radius: 10px; font-size: .85rem; }
+.progress-showcase .progress-overview { background: transparent; border: 0; border-radius: 0; padding: 6px 0 24px; gap: 24px; border-bottom: 1px solid var(--border-color); }
+.progress-showcase .progress-total { gap: 8px; }
+.progress-showcase .progress-total > span { font-size: .85rem; line-height: 1.5; }
+.progress-showcase .progress-total > strong { font-family: inherit; font-size: clamp(2.35rem, 7vw, 4rem); font-weight: 600; letter-spacing: -.055em; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.progress-showcase .progress-total small { margin-left: 6px; font-size: 1.1rem; letter-spacing: 0; }
+.progress-showcase .progress-overview-secondary { gap: 20px; padding-left: 24px; flex-direction: column; align-items: flex-start; }
+.progress-showcase .progress-overview-secondary strong { font-size: 1.2rem; line-height: 1.3; }
+.progress-showcase .progress-overview-secondary span { font-size: .8rem; }
+.progress-showcase .progress-overview-secondary small { color: var(--text-secondary); font-size: .75rem; margin-top: 5px; line-height: 1.5; }
+.progress-showcase .progress-records { margin: 20px 0 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.progress-showcase .progress-records > div { gap: 6px; padding: 0 8px; }
+.progress-showcase .progress-records .icon { display: none; }
+.progress-showcase .progress-records strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.progress-showcase .progress-records span:not(.icon) { font-size: .8rem; }
+.progress-showcase .progress-achievements { border-top: 1px solid var(--border-color); padding-top: 28px; }
+.progress-showcase .progress-section-heading { align-items: flex-start; margin-bottom: 20px; }
+.progress-showcase .progress-section-heading h3 { font-family: inherit; font-size: 1.4rem; letter-spacing: -.02em; }
+.progress-showcase .progress-earned-count { font-size: .8rem; padding-top: 4px; font-variant-numeric: tabular-nums; }
+.progress-latest-earned { width: 100%; display: flex; align-items: center; gap: 14px; margin-bottom: 22px; padding: 16px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.progress-latest-icon { display: grid; place-items: center; width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%; background: var(--bg-dark); }
+.progress-latest-earned > span:nth-child(2) { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.progress-latest-earned small { font-size: .75rem; color: var(--text-secondary); }
+.progress-latest-earned strong { font-size: .95rem; font-weight: 600; overflow-wrap: anywhere; }
+.progress-latest-detail { margin-left: auto; color: var(--accent-primary); font-size: .8rem; white-space: nowrap; }
+.progress-showcase .progress-status-filters { border-radius: 12px; padding: 4px; gap: 4px; }
+.progress-showcase .progress-status-filters button { min-height: 44px; border-radius: 8px; font-size: .85rem; }
+.progress-showcase .progress-library-tools { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; margin: 20px 0 8px; align-items: end; }
+.progress-showcase .progress-library-tools label { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.progress-showcase .progress-library-tools label > span:first-child { font-size: .8rem; color: var(--text-secondary); }
+.progress-search-field { display: flex; align-items: center; gap: 9px; border: 1px solid var(--border-color); background: var(--bg-card); border-radius: 10px; padding: 0 12px; }
+.progress-search-field > .icon { flex-shrink: 0; }
+.progress-showcase .progress-search input { min-width: 0; width: 100%; min-height: 48px; padding: 8px 0; border: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 1rem; }
+.progress-search input::placeholder { color: var(--text-secondary); opacity: 1; }
+.progress-showcase .progress-library-tools select { width: 100%; min-width: 0; max-width: none; min-height: 50px; padding: 0 10px; font-size: 1rem; border-radius: 10px; }
+.progress-library-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin-bottom: 12px; }
+.progress-library-summary p { margin: 0; font-size: .8rem; color: var(--text-secondary); line-height: 1.6; overflow-wrap: anywhere; }
+.progress-library-summary button { padding: 4px 0 4px 8px; min-height: 44px; flex-shrink: 0; border: 0; background: transparent; color: var(--accent-primary); font: inherit; font-size: .8rem; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.progress-showcase .progress-badge-list { gap: 12px; }
+.progress-showcase .progress-badge-card { padding: 18px; border-radius: 14px; gap: 14px; }
+.progress-showcase .progress-badge-icon { width: 46px; height: 46px; border-radius: 50%; border: 0; }
+.progress-showcase .progress-badge-copy { gap: 7px; }
+.progress-showcase .progress-badge-copy > strong { font-size: 1rem; line-height: 1.3; font-weight: 600; }
+.progress-showcase .progress-badge-description { font-size: .85rem; line-height: 1.6; }
+.progress-showcase .badge-difficulty { font-size: .7rem; font-weight: 500; }
+.progress-showcase .progress-badge-meter { height: 4px; margin-top: 6px; }
+.progress-showcase .progress-badge-numbers { font-size: .75rem; gap: 10px; line-height: 1.5; }
+.progress-showcase .progress-badge-earned { font-size: .75rem; line-height: 1.5; }
+.progress-showcase .progress-badge-arrow { font-size: 1.35rem; }
+.progress-showcase .progress-badge-card.is-earned { border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--border-color)); }
+.progress-showcase .progress-pagination { margin: 22px 0 30px; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.progress-showcase .progress-pagination button { font-size: .85rem; }
+.progress-showcase .progress-account { padding-top: 26px; border-top: 1px solid var(--border-color); }
+.progress-showcase .progress-account h3 { font-family: inherit; font-size: 1rem; letter-spacing: 0; }
+.progress-showcase .progress-signout { font-size: .85rem; }
+.progress-showcase input:focus-visible, .progress-showcase button:focus-visible, .progress-showcase select:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; }
+@media (hover: hover) {
+  .progress-showcase .progress-badge-card:hover, .progress-latest-earned:hover { border-color: var(--accent-primary); background: var(--bg-card-hover); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .progress-latest-earned:active, .progress-showcase .progress-history-link:active { transform: scale(.96); }
+  .progress-latest-earned, .progress-showcase .progress-history-link { transition: transform 150ms ease-out; }
+}
+@media (max-width: 600px) {
+  .progress-showcase .progress-overview { gap: 16px; grid-template-columns: 1.15fr 1fr; }
+  .progress-showcase .progress-overview-secondary { padding-left: 16px; }
+  .progress-showcase .progress-total > strong { font-size: clamp(2rem, 8vw, 3rem); }
+  .progress-showcase .progress-section-heading { flex-direction: column; gap: 8px; }
+  .progress-showcase .progress-section-heading p { margin-top: 6px; }
+  .progress-showcase .progress-library-tools { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .progress-showcase .progress-badge-card { padding: 16px; gap: 12px; }
+}
+@media (max-width: 380px) {
+  .progress-showcase .progress-page-heading { gap: 8px; }
+  .progress-showcase .progress-history-link { padding: 0 9px; font-size: .8rem; }
+  .progress-showcase .progress-records strong { font-size: .9rem; }
+  .progress-showcase .progress-records span:not(.icon) { font-size: .75rem; }
+  .progress-latest-detail { font-size: 0; }
+  .progress-latest-detail > span { font-size: 1.3rem; }
+}

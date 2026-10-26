@@ -1,8 +1,8 @@
 import React from 'react';
 import Icon from './Icon';
-import JourneyPreview from './JourneyPreview';
+import WorldJourneyHero from './WorldJourneyHero';
 import MonthlyMissions from './MonthlyMissions';
-import { CrewArtwork } from './CrewIdentity';
+import BadgeArtwork from './BadgeArtwork';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import { getUserRank, getNextRank, getMonthlyProgram, ACHIEVEMENTS } from '../constants';
@@ -49,15 +49,17 @@ function HomeTab() {
   return (
     <section className="home-section dashboard">
       <div className="dashboard-heading">
-        <div><h2>Hey, {userProfile.name?.split(' ')[0] || 'rower'}.</h2><p className="dashboard-intro">A little further, together.</p></div>
+        <div><h2>Welcome aboard, {userProfile.name?.split(' ')[0] || 'rower'}.</h2></div>
         <time className="dashboard-date" dateTime={now.toLocaleDateString('en-CA')}>{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</time>
       </div>
 
+      <WorldJourneyHero totalMeters={totalMeters} onOpen={() => setShowCrewMap(true)} />
+
       <section className="weekly-card" aria-labelledby="weekly-title">
-        <CrewArtwork />
         <div className="weekly-content">
         <div className="weekly-overview">
-          <div><h3 id="weekly-title">Your week on the water</h3><p className="weekly-period">Monday–Sunday <span>{week.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–{week.days[6].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></p><div className="weekly-distance"><strong>{(week.meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong><span>km rowed</span></div></div>
+          <div><h3 id="weekly-title">Your week</h3><p className="weekly-period">Monday–Sunday <span>{week.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–{week.days[6].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></p></div>
+          <div className="weekly-distance"><strong>{(week.meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong><span>km rowed</span></div>
         </div>
         <dl className="weekly-facts">
           <div><dt>Rows</dt><dd>{week.sessions}</dd></div>
@@ -75,10 +77,7 @@ function HomeTab() {
         <div className="weekly-actions"><button className="dashboard-log" onClick={showLog}><Icon name="ui_plus" size={20} color="currentColor" /> Log a row</button>
           <button className="weekly-history" onClick={() => setShowSessionHistory(true)}><Icon name="ui_history" size={17} color="currentColor" /><span>Logbook</span></button></div>
         </div>
-        <div className="weekly-journey"><JourneyPreview totalMeters={totalMeters} onOpen={() => setShowCrewMap(true)} /></div>
       </section>
-
-      <MonthlyMissions missions={monthly.missions} onLog={showLog} />
 
       <details className="dashboard-month">
         <summary><span className="dashboard-month-icon"><Icon name="ui_trophy" size={22} /></span>
@@ -112,7 +111,7 @@ function HomeTab() {
         <div className="dashboard-section-heading"><h3>Your next wins</h3><button onClick={() => setActiveTab('more')}>All progress <span>→</span></button></div>
         {nextBadges.length ? nextBadges.map(badge => <button className="dashboard-badge" key={badge.id}
           onClick={() => setShowAchievementModal({ ...badge, progress: badge.progress })}>
-          <span className="dashboard-badge-icon"><Icon name={badge.emoji} size={25} /></span>
+          <BadgeArtwork achievement={badge} size={64} className="dashboard-badge-art" />
           <span className="dashboard-badge-copy"><strong>{badge.name}</strong>{badge.difficulty && <span className={`badge-difficulty is-${badge.difficulty}`}>{badge.difficulty}</span>}<small>{badge.desc}</small>
             <progress aria-label={`${badge.name} progress`} value={Math.min(badge.pct, 1)} max="1" /></span>
           <span className="dashboard-badge-percent">{Math.round(Math.min(badge.pct, 1) * 100)}%</span>
@@ -131,6 +130,8 @@ function HomeTab() {
           <Icon name={row.verificationStatus === 'verified' ? 'ui_check' : 'ui_rowing'} size={19} />
         </div>) : <div className="dashboard-empty"><Icon name="ui_rowing" size={30} /><p>Nothing in your logbook yet.<br />A photo of your monitor is all you need.</p><button onClick={showLog}>Log your first row →</button></div>}
       </section>
+
+      <MonthlyMissions missions={monthly.missions} onLog={showLog} />
 
     </section>
   );

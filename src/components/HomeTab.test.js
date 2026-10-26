@@ -23,11 +23,13 @@ afterEach(() => {
 const row = (id, extra = {}) => ({ id, userId: 'me', meters: 2000, date: new Date(2026, 9, 14, 9).toISOString(), ...extra });
 const render = entries => {
   const profile = { id: 'me', name: 'Alex', totalMeters: 900000, totalTime: 90000 };
-  useApp.mockReturnValue({ currentUser: { uid: 'me' }, userProfile: profile, users: { me: profile }, entries,
+  const context = { currentUser: { uid: 'me' }, userProfile: profile, users: { me: profile }, entries,
     totalMeters: 1000000, getUserAchievements: () => [], getAchievementProgress: () => ({ current: 0, target: 1 }),
     setShowRankProgressModal: jest.fn(), setShowAchievementModal: jest.fn(), setShowLogModal: jest.fn(),
-    setShowSessionHistory: jest.fn(), setActiveTab: jest.fn(), setShowCrewMap: jest.fn() });
+    setShowSessionHistory: jest.fn(), setActiveTab: jest.fn(), setShowCrewMap: jest.fn() };
+  useApp.mockReturnValue(context);
   act(() => root.render(<HomeTab />));
+  return context;
 };
 
 test('weekly recorded time describes only timed eligible rows and reports its coverage', () => {
@@ -42,6 +44,20 @@ test('Home rank uses eligible lifetime distance instead of a stale stored counte
   render([row('counted'), row('pending', { meters: 700000, verificationStatus: 'pending_review' })]);
   expect(container.querySelector('.dashboard-rank strong').textContent).toBe(getUserRank(2000).title);
   expect(container.querySelector('.dashboard-rank strong').textContent).not.toBe(getUserRank(900000).title);
+});
+
+test('the world journey leads Home and uses the whole crew total independently of the personal week', () => {
+  const context = render([row('mine', { meters: 2000 })]);
+  const world = container.querySelector('.world-journey');
+  const week = container.querySelector('.weekly-card');
+  expect(world.compareDocumentPosition(week) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(world.querySelector('.world-journey-distance strong').textContent).toBe('1,000');
+  expect(world.textContent).toContain('40,075 km goal');
+  expect(week.querySelector('.weekly-distance').textContent).toBe('2km rowed');
+  expect(container.querySelector('.crew-artwork')).toBeNull();
+  expect(container.querySelector('.journey-preview')).toBeNull();
+  act(() => world.querySelector('button').click());
+  expect(context.setShowCrewMap).toHaveBeenCalledWith(true);
 });
 
 test('recent history explains uncounted states and omits malformed, future and test fixtures', () => {

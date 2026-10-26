@@ -1,0 +1,13 @@
+.badge-artwork {
+  display: inline-block;
+  flex: 0 0 auto;
+  max-width: 100%;
+  vertical-align: middle;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 5px 7px rgb(0 0 0 / .16));
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .badge-artwork { transition: transform 220ms ease; }
+  button:hover > .badge-artwork,
+  button:hover > .progress-badge-icon > .badge-artwork { transform: translateY(-2px) rotate(-3deg); }
+}

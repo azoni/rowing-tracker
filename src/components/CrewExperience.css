@@ -1,6 +1,12 @@
 /* Shared frame. Feature layouts live beside their components. */
 :root { --control-border: color-mix(in srgb, var(--text-secondary) 75%, var(--bg-card)); }
 .app { max-width: 1080px; }
+.app .crew-wordmark-caption { letter-spacing: .035em; }
+.app .header.crew-header .crew-wordmark h1 { background: none; color: var(--text-primary); -webkit-text-fill-color: currentColor; }
+.app .crew-mark { padding: 5px; border: 1px solid color-mix(in srgb, var(--accent-primary) 55%, transparent); border-radius: 50%; width: 46px; height: 46px; }
+.app :is(.crew-board-header h2, .progress-page-heading h2, .crew-log .feed-heading h2) { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; letter-spacing: -.04em; }
+.app .crew-nav { background: color-mix(in srgb, var(--bg-dark) 96%, transparent); }
+.app .crew-nav button.active { color: var(--accent-primary); }
 .app .main-content { padding: 12px 24px 40px; min-width: 0; }
 .app .header.crew-header { padding: 24px; text-align: left; }
 .app .header.crew-header::before { display: none; }
@@ -30,12 +36,15 @@ html { scroll-padding-bottom: 110px; }
   .app .header.crew-header { padding: max(20px, env(safe-area-inset-top, 0px)) 16px 22px; }
   .crew-wordmark { gap: 8px; }
   .crew-mark { width: 30px; height: 40px; }
+  .app .crew-mark { width: 40px; height: 40px; }
   .app .header.crew-header .crew-wordmark h1 { font-size: 1.8rem; }
   .crew-wordmark-caption { font-size: .75rem; }
   .app .crew-nav { border-inline: 0; border-radius: 0; }
 }
 @media (max-width: 359px) {
   .crew-wordmark-caption { max-width: 120px; }
+  .crew-wordmark-caption { display: none; }
+  .app .crew-mark { width: 34px; height: 34px; }
   .crew-wordmark { gap: 5px; }
   .crew-mark { width: 24px; }
   .app .header.crew-header .crew-wordmark h1 { font-size: 1.5rem; }

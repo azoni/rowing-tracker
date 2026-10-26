@@ -60,14 +60,14 @@ function Leaderboard() {
           <p>A little friendly competition, at your own pace.</p>
         </div>
         <button type="button" className="crew-board-map" onClick={() => setShowCrewMap(true)} aria-label="Open crew map">
-          <Icon name="ui_globe" size={16} /> <span>Map</span>
+          <Icon name="ui_globe" size={16} color="currentColor" /> <span>Map</span>
         </button>
       </header>
 
       <div className="crew-board-tabs" role="group" aria-label="Leaderboard view">
         {TABS.map(([id, label, icon]) => (
           <button type="button" key={id} aria-pressed={leaderboardTab === id} onClick={() => setLeaderboardTab(id)}>
-            <Icon name={icon} size={15} /><span>{label}</span>
+            <Icon name={icon} size={15} color="currentColor" /><span>{label}</span>
           </button>
         ))}
       </div>
@@ -97,7 +97,7 @@ function Leaderboard() {
         <div className="crew-board-tools">
           <label className="crew-board-search">
             <span className="crew-board-search-label">Find a rower</span>
-            <Icon name="ui_search" size={16} />
+            <Icon name="ui_search" size={16} color="currentColor" />
             <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Find a rower" />
           </label>
           <span className="crew-board-count" role="status">{query ? visibleRows.length + ' of ' : ''}{plural(rows.length, 'rower')}</span>

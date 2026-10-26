@@ -22,25 +22,25 @@
 }
 
 :root {
-  --bg-dark: #1a2744;
-  --bg-card: #243352;
-  --bg-card-hover: #2d3f63;
-  --accent-primary: #d4af37;
-  --accent-secondary: #8b4513;
-  --accent-gold: #d4af37;
+  --bg-dark: #101f30;
+  --bg-card: #192d40;
+  --bg-card-hover: #223c50;
+  --accent-primary: #d6bc7d;
+  --accent-secondary: #235660;
+  --accent-gold: #d6bc7d;
   --text-primary: #f5f1e8;
-  --text-secondary: #a8b5c9;
+  --text-secondary: #a8b8c8;
   --text-muted: #6b7a94;
-  --border-color: #3d4f6f;
+  --border-color: #34495b;
   --success: #5d8a4d;
   --error: #ef4444;
   --warning: #ffc107;
   --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 40px rgba(201, 162, 39, 0.15);
-  --gradient-start: #1a2744;
-  --gradient-end: #0f1829;
+  --gradient-start: #101f30;
+  --gradient-end: #0c1724;
   --header-glow: rgba(201, 162, 39, 0.1);
-  --progress-gradient: linear-gradient(90deg, #c9a227 0%, #d4af37 100%);
+  --progress-gradient: linear-gradient(90deg, #ad9157 0%, #d6bc7d 100%);
   --progress-glow: 0 0 20px rgba(201, 162, 39, 0.5);
 }
 

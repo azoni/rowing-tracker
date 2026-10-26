@@ -3,8 +3,10 @@ import { useApp } from '../context/AppContext';
 import { ACHIEVEMENTS, getUserRank, getMachineName } from '../constants';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import Icon from './Icon';
+import BadgeArtwork from './BadgeArtwork';
 import AvatarOrPhoto from './Avatar';
 import { getMonthlyRewards } from '../utils/rowingGoals';
+import './UserProfileArtwork.css';
 
 function UserProfileModal() {
   const {
@@ -25,6 +27,18 @@ function UserProfileModal() {
         {(() => {
           const user = showUserProfileModal;
           const userAchievements = getUserAchievements(user.id);
+          const earnedIds = new Set(userAchievements.map(achievement => achievement.id));
+          const earnedAchievements = ACHIEVEMENTS.filter(achievement => earnedIds.has(achievement.id));
+          const remainingAchievements = ACHIEVEMENTS.filter(achievement => !earnedIds.has(achievement.id));
+          const renderAchievement = achievement => {
+            const unlocked = earnedIds.has(achievement.id);
+            return <li key={achievement.id} className={`profile-badge ${unlocked ? 'unlocked' : 'locked'}`} title={`${achievement.name}: ${achievement.desc}`}>
+              <BadgeArtwork achievement={achievement} size={48} />
+              <span className="profile-badge-name">{achievement.name}</span>
+              <span className="profile-badge-state">{unlocked ? 'Earned' : 'Not yet earned'}</span>
+              <span className="profile-artwork-sr-only">{achievement.desc}</span>
+            </li>;
+          };
           const longestStreak = calculateLongestStreak(user.id);
           const personalRecord = getPersonalRecord(user.id);
           const totalDays = getTotalDaysRowed(user.id);
@@ -132,8 +146,8 @@ function UserProfileModal() {
                           className={`profile-reward-badge ${r.type === 'challenge' ? 'challenge' : ''}`}
                           title={`${r.monthName} ${r.year} — ${r.label}`}
                         >
-                          <Icon name={r.type === 'challenge' ? r.icon : 'ui_fire'} size={16} />
-                          <span className="profile-reward-month">{r.monthName}</span>
+                          <BadgeArtwork achievement={{ category: r.type === 'challenge' ? 'milestones' : 'calories' }} size={48} />
+                          <span className="profile-reward-copy"><span className="profile-reward-label">{r.label}</span><span className="profile-reward-month">{r.monthName} {r.year}</span></span>
                         </div>
                       ))}
                     </div>
@@ -147,20 +161,8 @@ function UserProfileModal() {
                   <span>Achievements</span>
                   <span>{userAchievements.length}/{ACHIEVEMENTS.length}</span>
                 </div>
-                <div className="profile-badges">
-                  {ACHIEVEMENTS.map((achievement) => {
-                    const unlocked = userAchievements.some(a => a.id === achievement.id);
-                    return (
-                      <div
-                        key={achievement.id}
-                        className={`profile-badge ${unlocked ? 'unlocked' : 'locked'}`}
-                        title={`${achievement.name}: ${achievement.desc}`}
-                      >
-                        <Icon name={achievement.emoji} size={16} />
-                      </div>
-                    );
-                  })}
-                </div>
+                {earnedAchievements.length > 0 ? <ul className="profile-badges" aria-label="Earned achievements">{earnedAchievements.map(renderAchievement)}</ul> : <p className="profile-achievements-empty">No badges earned yet.</p>}
+                {remainingAchievements.length > 0 && <details className="profile-badges-remaining"><summary>Not yet earned <span>{remainingAchievements.length}</span></summary><ul className="profile-badges" aria-label="Achievements not yet earned">{remainingAchievements.map(renderAchievement)}</ul></details>}
               </div>
             </>
           );

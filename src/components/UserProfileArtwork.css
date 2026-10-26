@@ -1,0 +1,21 @@
+.user-profile-modal .profile-badges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.user-profile-modal .profile-badge { width: auto; height: auto; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; padding: 12px 6px; border: 1px solid var(--border-color); border-radius: 12px; background: transparent; text-align: center; cursor: default; }
+.user-profile-modal .profile-badge.unlocked { background: color-mix(in srgb, var(--accent-primary) 5%, var(--bg-card)); border-color: color-mix(in srgb, var(--accent-primary) 30%, var(--border-color)); }
+.user-profile-modal .profile-badge.locked { opacity: 1; filter: none; background: transparent; }
+.profile-badge-name { color: var(--text-primary); font-size: .8125rem; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+.profile-badge-state { margin-top: auto; color: var(--text-secondary); font-size: .75rem; line-height: 1.4; }
+.profile-badge.unlocked .profile-badge-state { color: var(--accent-primary); }
+.profile-artwork-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.profile-badges-remaining { margin-top: 16px; border-top: 1px solid var(--border-color); }
+.profile-badges-remaining summary { min-height: 48px; padding: 14px 0; color: var(--text-secondary); font-size: .8125rem; line-height: 1.5; cursor: pointer; }
+.profile-badges-remaining summary > span { margin-left: 6px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.profile-badges-remaining summary:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; border-radius: 4px; }
+.profile-achievements-empty { margin: 0; color: var(--text-secondary); font-size: .8125rem; line-height: 1.5; }
+.user-profile-modal .profile-rewards-grid { display: grid; gap: 10px; }
+.user-profile-modal .profile-reward-badge { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px; background: transparent; border: 1px solid var(--border-color); border-radius: 12px; }
+.profile-reward-copy { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.profile-reward-label { color: var(--text-primary); font-size: .8125rem; font-weight: 500; line-height: 1.5; }
+.user-profile-modal .profile-reward-badge .profile-reward-month { color: var(--text-secondary); font-size: .75rem; font-weight: 400; line-height: 1.5; text-transform: none; font-variant-numeric: tabular-nums; }
+@media (max-width: 380px) {
+  .user-profile-modal .profile-badges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

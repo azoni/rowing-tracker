@@ -1,5 +1,6 @@
 import React from 'react';
 import Icon from './Icon';
+import BadgeArtwork from './BadgeArtwork';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import { ACHIEVEMENTS } from '../constants';
@@ -35,6 +36,7 @@ function StatsTab() {
   const earnedById = new Map(earned.map(achievement => [achievement.id, achievement]));
   const query = search.trim().toLocaleLowerCase();
   const latestEarned = [...earned].sort((a, b) => (earnedDate(b.unlockedDate)?.getTime() || 0) - (earnedDate(a.unlockedDate)?.getTime() || 0))[0];
+  const latestAchievement = latestEarned && (ACHIEVEMENTS.find(achievement => achievement.id === latestEarned.id) || latestEarned);
   const achievementItems = ACHIEVEMENTS.map(achievement => ({
     achievement,
     earned: earnedById.get(achievement.id),
@@ -88,11 +90,11 @@ function StatsTab() {
       )}
       {currentUser && <RowingAnalytics entries={entries} userId={currentUser.uid} />}
       <div className="progress-achievements">
-        <div className="progress-section-heading"><div><h3>Achievements</h3><p>A collection built one row at a time.</p></div><span className="progress-earned-count">{currentUser ? `${earned.length} / ${ACHIEVEMENTS.length} earned` : `${ACHIEVEMENTS.length} to discover`}</span></div>
+        <div className="progress-section-heading"><div><span className="progress-collection-label">Achievements</span><h3>Your trophy cabinet</h3><p>Earned badges and your next milestones.</p></div><span className="progress-earned-count">{currentUser ? `${earned.length} / ${ACHIEVEMENTS.length} earned` : `${ACHIEVEMENTS.length} to discover`}</span></div>
         {currentUser && latestEarned && <button className="progress-latest-earned" onClick={() => {
           const achievement = ACHIEVEMENTS.find(item => item.id === latestEarned.id);
           if (achievement) setShowAchievementModal({ ...achievement, progress: getAchievementProgress(currentUser.uid, achievement), unlockedDate: latestEarned.unlockedDate });
-        }}><span className="progress-latest-icon" aria-hidden="true"><Icon name={latestEarned.emoji} size={24} /></span><span><small>{earnedDate(latestEarned.unlockedDate) ? 'Latest in your collection' : 'In your collection'}</small><strong>{latestEarned.name}</strong></span><span className="progress-latest-detail">View badge <span aria-hidden="true">›</span></span></button>}
+        }}><BadgeArtwork achievement={latestAchievement} size={64} className="progress-latest-artwork" /><span className="progress-latest-copy"><small>{earnedDate(latestEarned.unlockedDate) ? 'Latest in your collection' : 'In your collection'}</small><strong>{latestAchievement.name}</strong></span><span className="progress-latest-detail">View badge <span aria-hidden="true">›</span></span></button>}
         {currentUser && <div className="progress-status-filters" role="group" aria-label="Achievement status">
           {[{ key: 'next', label: 'Next up' }, { key: 'earned', label: 'Earned' }, { key: 'all', label: 'All badges' }].map(item => <button key={item.key} aria-pressed={filter === item.key} className={filter === item.key ? 'active' : ''} onClick={() => { setAchievementFilter(item.key); setPage(0); }}>{item.label}</button>)}
         </div>}
@@ -105,10 +107,12 @@ function StatsTab() {
           {pageItems.map(({ achievement, progress, earned: unlocked }) => {
             const percent = Math.min(100, Math.max(0, progress.target > 0 ? progress.current / progress.target * 100 : 0));
             return <button key={achievement.id} className={`progress-badge-card ${unlocked ? 'is-earned' : ''}`} onClick={() => setShowAchievementModal({ ...achievement, progress, unlockedDate: unlocked?.unlockedDate })}>
-              <span className="progress-badge-icon"><Icon name={achievement.emoji} size={27} /></span>
-              <span className="progress-badge-copy"><strong>{achievement.name}</strong>{achievement.difficulty && <span className={`badge-difficulty is-${achievement.difficulty}`}>{achievement.difficulty}</span>}<span className="progress-badge-description">{achievement.desc}</span>
-                {unlocked ? <span className="progress-badge-earned"><Icon name="ui_check" size={12} /> Earned{earnedDate(unlocked.unlockedDate) ? ` · ${earnedDate(unlocked.unlockedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}</span> : currentUser && <><span className="progress-badge-meter" aria-hidden="true"><span style={{ width: `${percent}%` }} /></span><span className="progress-badge-numbers">{formatAchievementProgress(achievement, progress)}<span>{Math.floor(percent)}%</span></span></>}
-              </span><span className="progress-badge-arrow" aria-hidden="true">›</span>
+              <BadgeArtwork achievement={achievement} size={80} className="progress-badge-artwork" />
+              <span className="progress-badge-copy"><span className="progress-badge-classification"><span>{achievement.category}</span>{achievement.difficulty && <><span aria-hidden="true">·</span><span className="badge-difficulty">{achievement.difficulty}</span></>}</span><strong>{achievement.name}</strong><span className="progress-badge-description">{achievement.desc}</span></span>
+              <span className="progress-badge-footer">
+                {unlocked ? <span className="progress-badge-earned"><Icon name="ui_check" size={14} /> Earned{earnedDate(unlocked.unlockedDate) ? ` · ${earnedDate(unlocked.unlockedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}</span> : currentUser ? <span className="progress-badge-progress"><span className="progress-badge-numbers"><span>{formatAchievementProgress(achievement, progress)}</span><span>{Math.floor(percent)}%</span></span><span className="progress-badge-meter" aria-hidden="true"><span style={{ width: `${percent}%` }} /></span></span> : <span className="progress-badge-discover">Discover this badge</span>}
+                <span className="progress-badge-arrow" aria-hidden="true">↗</span>
+              </span>
             </button>;
           })}
         </div>

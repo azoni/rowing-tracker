@@ -7,6 +7,7 @@ import StatsTab from './StatsTab';
 
 jest.mock('../context/AppContext', () => ({ useApp: jest.fn() }));
 jest.mock('./Icon', () => () => <span aria-hidden="true" />);
+jest.mock('./BadgeArtwork', () => ({ achievement, size, className }) => <span className={className} data-medal={achievement.id} data-category={achievement.category} data-size={size} aria-hidden="true" />);
 
 let container;
 let root;
@@ -128,4 +129,21 @@ test('older earned badges without a saved date are not presented as the latest u
   act(() => Simulate.click(button('Earned')));
   expect(cards()[0].querySelector('.progress-badge-earned').textContent.trim()).toBe('Earned');
   expect(container.textContent).not.toContain('Invalid Date');
+});
+
+test('uses the catalog artwork for a compact saved unlock and keeps each card tied to its achievement', () => {
+  context.getUserAchievements.mockReturnValue([{ id: firstRow.id, unlockedDate: '2026-10-01T12:00:00.000Z' }]);
+  render();
+  const latest = container.querySelector('.progress-latest-earned');
+  expect(latest.querySelector('strong').textContent).toBe(firstRow.name);
+  expect(latest.querySelector('[data-medal]').dataset).toEqual(expect.objectContaining({ medal: firstRow.id, category: firstRow.category, size: '64' }));
+  expect(cards()).toHaveLength(6);
+  const next = cards()[0];
+  expect(next.querySelector('[data-medal]').dataset).toEqual(expect.objectContaining({ medal: marathon.id, category: marathon.category, size: '80' }));
+  expect(next.querySelector('.progress-badge-numbers').textContent).toContain('94%');
+  act(() => Simulate.click(button('Earned')));
+  expect(cards()[0].querySelector('[data-medal]').dataset.medal).toBe(firstRow.id);
+  expect(cards()[0].querySelector('.progress-badge-numbers')).toBeNull();
+  act(() => Simulate.click(latest));
+  expect(context.setShowAchievementModal).toHaveBeenCalledWith(expect.objectContaining({ id: firstRow.id, category: firstRow.category }));
 });

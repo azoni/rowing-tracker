@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { calculatePace, formatMeters, formatTime, formatTimeDisplay, formatTimeAgo } from '../utils';
-import { getUserRank, getRankTier, getMachineName, TIER_COLORS } from '../constants';
+import { ACHIEVEMENTS, getUserRank, getRankTier, getMachineName, TIER_COLORS } from '../constants';
 import { getEligibleEntries } from '../utils/rowingGoals';
 import Icon from './Icon';
 import AvatarOrPhoto from './Avatar';
+import BadgeArtwork from './BadgeArtwork';
 import CrewPulse from './CrewPulse';
 import './ProgressAndCrew.css';
 import './ActivityFeed.css';
@@ -36,6 +37,7 @@ const rowStatus = item => {
   return { label: 'Not verified', icon: 'ui_info', kind: 'review' };
 };
 const sessionNames = { free_row: 'Free row', timed: 'Timed row', distance: 'Distance row', interval: 'Intervals' };
+const badgeDefinition = achievement => ACHIEVEMENTS.find(badge => badge.id === achievement?.id) || achievement;
 
 function ActivityFeed() {
   const {
@@ -124,127 +126,10 @@ function ActivityFeed() {
       <div className="feed-heading">
         <div>
           <h2 id="crew-log-title">Crew log</h2>
-          <p>{selectedGroupId ? `${getSelectedGroup()?.name || 'Your group'} on the water.` : 'Every row has a story. Follow your crew’s.'}</p>
+          {selectedGroupId && <p>{getSelectedGroup()?.name || 'Your group'}</p>}
         </div>
         {currentUser && <button className="crew-log-add" onClick={() => setShowLogModal(true)}><Icon name="ui_plus" size={18} color="currentColor" /> Log a row</button>}
       </div>
-
-      <CrewPulse />
-
-      {/* Group Info & Challenges (when group selected) */}
-      {selectedGroupId && getSelectedGroup() && (
-        <div className="group-info-section">
-          <div className="group-header-card">
-            <div className="group-header-top">
-              <div className="group-header-info">
-                <h3>{getSelectedGroup()?.name}</h3>
-                {getSelectedGroup()?.description && (
-                  <p className="group-description">{getSelectedGroup().description}</p>
-                )}
-              </div>
-            </div>
-            <div className="group-header-bottom">
-              <div className="group-meta">
-                <span><Icon name="ui_users" size={14} /> {getSelectedGroup()?.memberIds?.length || 0} members</span>
-                <span className="group-code">Code: {getSelectedGroup()?.inviteCode}</span>
-              </div>
-              <div className="group-header-actions">
-                {isGroupAdmin(selectedGroupId) && (
-                  <>
-                    <button className="group-action-btn" onClick={() => setShowManageMembersModal(true)} title="Manage Members"><Icon name="ui_settings" size={14} /> Manage</button>
-                    <button className="group-action-btn" onClick={() => setShowInviteUserModal(true)} title="Invite User"><Icon name="ui_plus" size={14} /> Invite</button>
-                    <button className="group-action-btn primary" onClick={() => setShowCreateChallengeModal(true)}><Icon name="ui_plus" size={14} /> Challenge</button>
-                  </>
-                )}
-                <button
-                  className="group-action-btn danger"
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to leave this group?')) {
-                      handleLeaveGroup(selectedGroupId);
-                    }
-                  }}
-                >Leave</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Challenges */}
-          {challenges.length > 0 && (
-            <div className="challenges-section">
-              <h4>Challenges</h4>
-              <div className="challenges-list">
-                {challenges.map(challenge => {
-                  const status = getChallengeStatus(challenge);
-                  const progress = getChallengeProgress(challenge);
-                  return (
-                    <button
-                      key={challenge.id}
-                      className={`challenge-card challenge-${status}`}
-                      onClick={() => setShowChallengeDetail(challenge)}
-                    >
-                      <div className="challenge-card-header">
-                        <span className="challenge-type-icon">
-                          {challenge.type === 'collective' && <Icon name="ui_target" size={16} />}
-                          {challenge.type === 'collective_calories' && <Icon name="ui_bolt" size={16} />}
-                          {challenge.type === 'time_trial' && <Icon name="ui_records" size={16} />}
-                          {challenge.type === 'distance_race' && <Icon name="ui_streak" size={16} />}
-                          {challenge.type === 'total_time' && <Icon name="ui_timer" size={16} />}
-                          {challenge.type === 'calories' && <Icon name="ui_fire" size={16} />}
-                          {challenge.type === 'streak' && <Icon name="ui_streak" size={16} />}
-                          {challenge.type === 'sessions' && <Icon name="ui_calendar" size={16} />}
-                        </span>
-                        <span className="challenge-name">{challenge.name}</span>
-                        <span className={`challenge-status-badge ${status}`}>
-                          {status === 'active' && <><Icon name="ui_check" size={12} /> Active</>}
-                          {status === 'upcoming' && <><Icon name="ui_pending" size={12} /> Upcoming</>}
-                          {status === 'completed' && <><Icon name="ui_success" size={12} /> Done</>}
-                        </span>
-                      </div>
-                      {(challenge.type === 'collective' || challenge.type === 'collective_calories') && progress && (
-                        <div className="challenge-progress">
-                          <div className="challenge-progress-bar">
-                            <div className="challenge-progress-fill" style={{ width: `${progress.percentage}%` }} />
-                          </div>
-                          <div className="challenge-progress-text">
-                            {challenge.type === 'collective_calories'
-                              ? `${progress.current.toLocaleString()} / ${progress.target.toLocaleString()} cal`
-                              : `${formatMeters(progress.current)} / ${formatMeters(progress.target)}`
-                            }
-                          </div>
-                        </div>
-                      )}
-                      {challenge.type === 'time_trial' && (
-                        <div className="challenge-time-trial-info">
-                          <span>{challenge.targetDistance}m time trial</span>
-                          {challenge.participants?.[currentUser?.uid] && (
-                            <span className="your-time">Your best: {formatTime(challenge.participants[currentUser.uid].bestTime)}</span>
-                          )}
-                        </div>
-                      )}
-                      {(challenge.type === 'total_time' || challenge.type === 'calories') && (
-                        <div className="challenge-type-info">
-                          {challenge.type === 'total_time' && 'Most total time rowed wins'}
-                          {challenge.type === 'calories' && 'Most calories burned wins'}
-                        </div>
-                      )}
-                      <div className="challenge-dates">
-                        {new Date(challenge.startDate).toLocaleDateString()} - {new Date(challenge.endDate).toLocaleDateString()}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {challenges.length === 0 && isGroupAdmin(selectedGroupId) && (
-            <div className="no-challenges">
-              <p>No challenges yet!</p>
-              <button className="create-first-challenge-btn" onClick={() => setShowCreateChallengeModal(true)}>Create First Challenge</button>
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="crew-log-tools" role="search" aria-label="Find crew activity">
       <label className="crew-log-search-label" htmlFor="crew-log-search">Find a rower, group, or challenge</label>
@@ -267,8 +152,8 @@ function ActivityFeed() {
       <div className="feed-filters" role="group" aria-label="Activity type">
         {[
           { key: 'all', label: 'All activity' },
-          { key: 'row', label: <><Icon name="ui_rowing" size={14} /> Rows</> },
-          { key: 'milestone', label: <><Icon name="ui_trophy" size={14} /> Milestones</> },
+          { key: 'row', label: 'Rows' },
+          { key: 'milestone', label: 'Milestones' },
         ].map(f => (
           <button
             key={f.key}
@@ -284,20 +169,11 @@ function ActivityFeed() {
         <p role="status">{isLoading ? 'Loading crew activity…' : feedData.total > 0
           ? `Showing ${feedData.items.length.toLocaleString()} of ${feedData.total.toLocaleString()} ${feedData.total === 1 ? 'entry' : 'entries'}`
           : query || feedTypeFilter !== 'all' ? 'No matching entries' : 'No entries yet'}</p>
-        {countedRows.length > 0 && <p className="crew-log-summary">
-          <strong>{countedRows.length}</strong> {countedRows.length === 1 ? 'counted row' : 'counted rows'} in view
-          <span aria-hidden="true"> · </span><strong>{shownMeters.toLocaleString()} m</strong>
+        {countedRows.length > 0 && <p className="crew-log-summary" aria-label={`${countedRows.length} counted ${countedRows.length === 1 ? 'row' : 'rows'} in view, ${shownMeters.toLocaleString()} meters`}>
+          <strong>{shownMeters.toLocaleString()} m</strong> in view
         </p>}
         {shownRows.length > countedRows.length && <p className="crew-log-summary-note">Only saved, eligible rows contribute to the distance shown.</p>}
       </div>
-
-      {/* Guest Sign In Prompt */}
-      {!currentUser && (
-        <div className="guest-prompt">
-          <p>Join the conversation, cheer a teammate, and log your next row.</p>
-          <button className="signin-prompt-btn" onClick={handleSignIn}>Sign in with Google</button>
-        </div>
-      )}
 
       {feedData.items.length === 0 ? (
           <div className="crew-log-empty">
@@ -348,7 +224,7 @@ function ActivityFeed() {
                       <div className="feed-header">
                         <button className="feed-name feed-profile-link" disabled={!item.user} onClick={() => item.user && setShowUserProfileModal(item.user)}>
                           <span>{item.user?.name || 'Crew member'}</span>
-                          {itemRank && <span className="feed-rank-badge" title={`Current rank: ${itemRank.title}`}><Icon name={itemRank.emoji} size={14} /></span>}
+                          {item.userId === currentUser?.uid && <span className="crew-log-you">You</span>}
                         </button>
                         <time className="feed-time" dateTime={validDate ? date.toISOString() : undefined} title={validDate ? date.toLocaleString() : undefined}>{validDate ? formatTimeAgo(date) : 'Date unavailable'}</time>
                       </div>
@@ -356,7 +232,7 @@ function ActivityFeed() {
                         {item.type === 'row' && (
                           <>
                             <dl className="crew-log-metrics">
-                              <div><dt>Distance</dt><dd>{validNumber(item.meters) ? Number(item.meters).toLocaleString() : '—'} <small>m</small></dd></div>
+                              <div className="crew-log-distance"><dt>Distance</dt><dd>{validNumber(item.meters) ? Number(item.meters).toLocaleString() : '—'} <small>m</small></dd></div>
                               {validNumber(item.time) && <div><dt>Time</dt><dd>{formatTimeDisplay(Number(item.time))}</dd></div>}
                               {validNumber(item.time) && validNumber(item.meters) && <div><dt>Pace / 500 m</dt><dd>{calculatePace(Number(item.meters), Number(item.time))}</dd></div>}
                             </dl>
@@ -375,13 +251,13 @@ function ActivityFeed() {
                               return (
                                 <>
                                   {shown.map((a, i) => (
-                                    <span key={a.id} className="feed-achievement-name"><Icon name={a.emoji} size={16} /> {a.name}{i < shown.length - 1 ? ', ' : ''}</span>
+                                    <span key={a.id} className="feed-achievement-name"><BadgeArtwork achievement={badgeDefinition(a)} size={48} /> <span>{a.name}{i < shown.length - 1 ? ', ' : ''}</span></span>
                                   ))}
                                   {rest > 0 && <span className="feed-achievement-more"> +{rest} more</span>}
                                 </>
                               );
                             })() : (
-                              <>unlocked <span className="feed-achievement-name"><Icon name={item.achievement.emoji} size={16} /> {item.achievement.name}</span></>
+                              <>unlocked <span className="feed-achievement-name"><BadgeArtwork achievement={badgeDefinition(item.achievement)} size={48} /> <span>{item.achievement.name}</span></span></>
                             )}
                           </span>
                         )}
@@ -562,6 +438,132 @@ function ActivityFeed() {
             )}
           </>
       )}
+      {/* Guest Sign In Prompt */}
+      {!currentUser && (
+        <div className="guest-prompt">
+          <p>Join the conversation, cheer a teammate, and log your next row.</p>
+          <button className="signin-prompt-btn" onClick={handleSignIn}>Sign in with Google</button>
+        </div>
+      )}
+
+      {/* Group Info & Challenges (when group selected) */}
+      {selectedGroupId && getSelectedGroup() && (
+        <details className="group-info-section">
+          <summary className="crew-log-group-summary">Group details & challenges<span>{getSelectedGroup().name}</span></summary>
+          <div className="group-header-card">
+            <div className="group-header-top">
+              <div className="group-header-info">
+                <h3>{getSelectedGroup()?.name}</h3>
+                {getSelectedGroup()?.description && (
+                  <p className="group-description">{getSelectedGroup().description}</p>
+                )}
+              </div>
+            </div>
+            <div className="group-header-bottom">
+              <div className="group-meta">
+                <span><Icon name="ui_users" size={14} /> {getSelectedGroup()?.memberIds?.length || 0} members</span>
+                <span className="group-code">Code: {getSelectedGroup()?.inviteCode}</span>
+              </div>
+              <div className="group-header-actions">
+                {isGroupAdmin(selectedGroupId) && (
+                  <>
+                    <button className="group-action-btn" onClick={() => setShowManageMembersModal(true)} title="Manage Members"><Icon name="ui_settings" size={14} /> Manage</button>
+                    <button className="group-action-btn" onClick={() => setShowInviteUserModal(true)} title="Invite User"><Icon name="ui_plus" size={14} /> Invite</button>
+                    <button className="group-action-btn primary" onClick={() => setShowCreateChallengeModal(true)}><Icon name="ui_plus" size={14} /> Challenge</button>
+                  </>
+                )}
+                <button
+                  className="group-action-btn danger"
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to leave this group?')) {
+                      handleLeaveGroup(selectedGroupId);
+                    }
+                  }}
+                >Leave</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Challenges */}
+          {challenges.length > 0 && (
+            <div className="challenges-section">
+              <h4>Challenges</h4>
+              <div className="challenges-list">
+                {challenges.map(challenge => {
+                  const status = getChallengeStatus(challenge);
+                  const progress = getChallengeProgress(challenge);
+                  return (
+                    <button
+                      key={challenge.id}
+                      className={`challenge-card challenge-${status}`}
+                      onClick={() => setShowChallengeDetail(challenge)}
+                    >
+                      <div className="challenge-card-header">
+                        <span className="challenge-type-icon">
+                          {challenge.type === 'collective' && <Icon name="ui_target" size={16} />}
+                          {challenge.type === 'collective_calories' && <Icon name="ui_bolt" size={16} />}
+                          {challenge.type === 'time_trial' && <Icon name="ui_records" size={16} />}
+                          {challenge.type === 'distance_race' && <Icon name="ui_streak" size={16} />}
+                          {challenge.type === 'total_time' && <Icon name="ui_timer" size={16} />}
+                          {challenge.type === 'calories' && <Icon name="ui_fire" size={16} />}
+                          {challenge.type === 'streak' && <Icon name="ui_streak" size={16} />}
+                          {challenge.type === 'sessions' && <Icon name="ui_calendar" size={16} />}
+                        </span>
+                        <span className="challenge-name">{challenge.name}</span>
+                        <span className={`challenge-status-badge ${status}`}>
+                          {status === 'active' && <><Icon name="ui_check" size={12} /> Active</>}
+                          {status === 'upcoming' && <><Icon name="ui_pending" size={12} /> Upcoming</>}
+                          {status === 'completed' && <><Icon name="ui_success" size={12} /> Done</>}
+                        </span>
+                      </div>
+                      {(challenge.type === 'collective' || challenge.type === 'collective_calories') && progress && (
+                        <div className="challenge-progress">
+                          <div className="challenge-progress-bar">
+                            <div className="challenge-progress-fill" style={{ width: `${progress.percentage}%` }} />
+                          </div>
+                          <div className="challenge-progress-text">
+                            {challenge.type === 'collective_calories'
+                              ? `${progress.current.toLocaleString()} / ${progress.target.toLocaleString()} cal`
+                              : `${formatMeters(progress.current)} / ${formatMeters(progress.target)}`
+                            }
+                          </div>
+                        </div>
+                      )}
+                      {challenge.type === 'time_trial' && (
+                        <div className="challenge-time-trial-info">
+                          <span>{challenge.targetDistance}m time trial</span>
+                          {challenge.participants?.[currentUser?.uid] && (
+                            <span className="your-time">Your best: {formatTime(challenge.participants[currentUser.uid].bestTime)}</span>
+                          )}
+                        </div>
+                      )}
+                      {(challenge.type === 'total_time' || challenge.type === 'calories') && (
+                        <div className="challenge-type-info">
+                          {challenge.type === 'total_time' && 'Most total time rowed wins'}
+                          {challenge.type === 'calories' && 'Most calories burned wins'}
+                        </div>
+                      )}
+                      <div className="challenge-dates">
+                        {new Date(challenge.startDate).toLocaleDateString()} - {new Date(challenge.endDate).toLocaleDateString()}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {challenges.length === 0 && isGroupAdmin(selectedGroupId) && (
+            <div className="no-challenges">
+              <p>No challenges yet!</p>
+              <button className="create-first-challenge-btn" onClick={() => setShowCreateChallengeModal(true)}>Create First Challenge</button>
+            </div>
+          )}
+        </details>
+      )}
+
+      <CrewPulse compact />
+
       {currentUser && !wrappedDismissed && !selectedGroupId && getWrappedStats(currentUser.uid) && (
         <div className="crew-wrapped-archive">
           <button onClick={() => setShowWrapped(true)}><Icon name="ui_gift" size={16} /> Revisit your 2025 Wrapped</button>

@@ -2,11 +2,14 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Simulate } from 'react-dom/test-utils';
 import { useApp } from '../context/AppContext';
+import { ACHIEVEMENTS } from '../constants';
 import ActivityFeed from './ActivityFeed';
 
 jest.mock('../context/AppContext', () => ({ useApp: jest.fn() }));
 jest.mock('./Avatar', () => () => <span aria-hidden="true">avatar</span>);
-jest.mock('./CrewPulse', () => () => <section aria-label="Weekly crew goal" />);
+jest.mock('./CrewPulse', () => ({ compact }) => compact
+  ? <details className="crew-pulse-panel"><summary>This week together</summary><section aria-label="Weekly crew goal" /></details>
+  : <section aria-label="Weekly crew goal" />);
 
 let root;
 let container;
@@ -90,7 +93,8 @@ test('describes only eligible rows in view and groups real sessions by local dat
   context.getActivityFeed.mockImplementation(() => ({ items, total: 30, hasMore: true }));
   render();
   expect(container.querySelector('[role="status"]').textContent).toBe('Showing 8 of 30 entries');
-  expect(container.querySelector('.crew-log-summary').textContent).toBe('2 counted rows in view · 3,000 m');
+  expect(container.querySelector('.crew-log-summary').textContent).toBe('3,000 m in view');
+  expect(container.querySelector('.crew-log-summary').getAttribute('aria-label')).toBe('2 counted rows in view, 3,000 meters');
   expect([...container.querySelectorAll('.crew-log-day')].map(element => element.textContent)).toEqual(['Today', 'Fri, Oct 16', 'Today', 'Yesterday']);
   expect(container.querySelector('.crew-log-summary-note')).not.toBeNull();
   act(() => Simulate.click(button('Load More (22 remaining)')));
@@ -112,6 +116,23 @@ test('shows accessible session metrics and explicit verification without inventi
   expect(articles[0].querySelector('time').dateTime).toBe(items[0].date);
   act(() => Simulate.click(articles[0].querySelector('.feed-profile-link')));
   expect(context.setShowUserProfileModal).toHaveBeenCalledWith(rower);
+});
+
+test('renders earned badge artwork while preserving single and grouped achievement names', () => {
+  const achievements = ACHIEVEMENTS.slice(0, 4).map(({ id, name }) => ({ id, name }));
+  items = [
+    { ...row('earned-one'), type: 'achievement', achievement: achievements[0] },
+    { ...row('earned-many'), type: 'achievement', achievement: achievements[0], achievements },
+  ];
+  render();
+  const articles = container.querySelectorAll('article');
+  expect(articles[0].textContent.replace(/\s+/g, ' ')).toContain(`unlocked ${achievements[0].name}`);
+  expect(articles[0].querySelectorAll('.badge-artwork')).toHaveLength(1);
+  expect(articles[1].querySelectorAll('.badge-artwork')).toHaveLength(3);
+  achievements.slice(0, 3).forEach(achievement => expect(articles[1].textContent).toContain(achievement.name));
+  expect(articles[1].textContent).toContain('+1 more');
+  expect(articles[1].textContent).not.toContain(achievements[3].name);
+  expect([...container.querySelectorAll('.badge-artwork')].every(art => art.getAttribute('aria-hidden') === 'true')).toBe(true);
 });
 
 test('uses a real empty state once loading finishes and lets a member log a first row', () => {
@@ -210,6 +231,10 @@ test('keeps group actions on the existing callbacks and confirms before leaving'
   context.handleLeaveGroup = jest.fn();
   jest.spyOn(window, 'confirm').mockReturnValue(false);
   render();
+  const groupDetails = container.querySelector('.group-info-section');
+  expect(groupDetails.tagName).toBe('DETAILS');
+  expect(groupDetails.open).toBe(false);
+  groupDetails.open = true;
   act(() => Simulate.click(button('Manage')));
   expect(context.setShowManageMembersModal).toHaveBeenCalledWith(true);
   act(() => Simulate.click(button('Leave')));
@@ -217,4 +242,19 @@ test('keeps group actions on the existing callbacks and confirms before leaving'
   window.confirm.mockReturnValue(true);
   act(() => Simulate.click(button('Leave')));
   expect(context.handleLeaveGroup).toHaveBeenCalledWith('actual-group');
+});
+
+test('puts real sessions before optional crew details and the guest prompt in reading order', () => {
+  context.currentUser = null;
+  render();
+  const feed = container.querySelector('.activity-feed');
+  const goal = container.querySelector('.crew-pulse-panel');
+  const guest = container.querySelector('.guest-prompt');
+  expect(goal.open).toBe(false);
+  expect(feed.compareDocumentPosition(goal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(feed.compareDocumentPosition(guest) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(container.querySelector('.crew-log-tools').compareDocumentPosition(feed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(container.querySelectorAll('article')).toHaveLength(1);
+  expect(context.toggleReaction).not.toHaveBeenCalled();
+  expect(context.addComment).not.toHaveBeenCalled();
 });

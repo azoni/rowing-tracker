@@ -1,5 +1,23 @@
 # Premium crew pass: local verification
 
+## Current revision: expedition artwork and content priorities
+
+Verified on 25 October 2026 after the user's visual feedback. Home now leads with the actual around-the-world distance; Crew leads with sessions. See [the revised design plan](premium-crew-design.md) and [artwork provenance and prompts](achievement-artwork.md).
+
+- 18 test suites, 159 tests passed. Focused component lint and whitespace checks passed.
+- CI production build succeeds: main JS 383.61KB gzip; CSS 39.91KB gzip at the artwork integration check. Browser-dataset and Node deprecation notices are existing toolchain notices.
+- The rebuilt isolated browser check passed all nine groups, including map focus return, exact-session kudos/undo through the optional weekly panel, comments/pending/rejected drafts, records/setup filters, charts, badge details, in-memory log save, guest/empty/loading states, reduced motion and 200% zoom. No page errors or unexpected remote requests.
+- At 390×844 the full first crew session ends at 590px and navigation begins at 768px. At 320×740 it ends at 627px and navigation begins at 664px. Both checks start at scrollY=0.
+- At 320×740 the world hero ends at 607px and Explore map at 511px, both before navigation. Supporting hero text is at least 12px; weekly dates/labels were also enlarged after review.
+- 23 screenshots across 320/390/1440px, dark/light themes and empty/guest states: no page errors or horizontal overflow. Separate viewport captures inspect Home, Crew, badge cards and the large badge modal. All nine atlas cells were decoded and their edges checked: no opaque medal pixels are clipped.
+- Profile artwork received offline render checks for canonical saved unlocks, earned/remaining groups, collapsed disclosure, readable criteria and exact monthly reward placement. The main browser fixture still checks the profile callback rather than rendering the full production profile modal.
+
+The new default brass has 6.20:1 contrast on the hover surface; supporting mist copy has 5.66:1; dark text on the brass button has 9.00:1. These ratios apply to the new default theme; this is not a complete WCAG audit. The globe is static, and medal hover movement respects reduced motion. The shared atlas is 481KB and the globe is 210KB, requested as cached WebP assets; no extra JavaScript dependency was added.
+
+No deployment, provider configuration or data writes were performed. The first-pass scope/limitations below continue to apply. Changes are local on `feat/premium-crew-experience`.
+
+## First-pass verification (historical)
+
 Verified on 25 October 2026 on `feat/premium-crew-experience`, based on main `7635e0a`.
 
 ## Automated checks

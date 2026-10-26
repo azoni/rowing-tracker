@@ -547,31 +547,136 @@ button, input, select, textarea { font-family: inherit; }
   font: 600 .8125rem/1.4 var(--font-body);
   letter-spacing: 0;
 }
-.app .crew-log .feed-item { gap: 6px 14px; padding: 16px 0 12px; }
-.app .crew-log .feed-profile-link { font-size: 1rem; font-weight: 650; color: var(--text-primary); }
-.app .crew-log .feed-time { color: var(--text-secondary); }
-.app .crew-log-metrics { gap: 10px 22px; margin: 4px 0 10px; }
-.app .crew-log-metrics .crew-log-distance dd,
-.app .crew-log-distance dd {
-  font-family: var(--font-display);
-  font-stretch: 66%;
-  font-weight: 800;
-  font-size: 2.75rem;
-  line-height: .9;
-  letter-spacing: -.015em;
+/* An entry reads top to bottom: who and when, what and where, the numbers, then the crew's response. */
+.app .crew-log .feed-item { gap: 6px 12px; padding: 18px 0 10px; }
+.app .crew-log .feed-item-row {
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-areas:
+    'avatar header'
+    'avatar what'
+    'stats stats'
+    'social social';
+  align-items: center;
+  gap: 0 12px;
 }
-.app .crew-log-metrics dd { font-weight: 650; letter-spacing: -.01em; }
-.app .crew-log-row-details { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--text-secondary); font-size: .8125rem; }
-.app .crew-log-verification.is-verified { color: var(--success); }
-.app :is(.add-reaction-btn, .comment-link, .reaction-pill) {
-  min-height: 36px;
+.app .crew-log .feed-item-row :is(.feed-content, .feed-action) { display: contents; }
+.app .crew-log .feed-item-row .feed-avatar-button { grid-area: avatar; }
+.app .crew-log .feed-item-row .feed-header { grid-area: header; align-self: end; margin: 0; }
+.app .crew-log .feed-item-row .crew-log-row-details { grid-area: what; align-self: start; }
+.app .crew-log .feed-item-row .crew-log-metrics { grid-area: stats; }
+.app .crew-log .feed-item-row .feed-interactions-compact { grid-area: social; }
+
+.app .crew-log .feed-header { justify-content: flex-start; align-items: baseline; flex-wrap: wrap; gap: 0 10px; }
+.app .crew-log .feed-profile-link { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; color: var(--text-primary); font-size: 1rem; font-weight: 650; }
+.app .crew-log .crew-log-you {
+  padding: 2px 7px;
   border: 1px solid var(--border-color);
+  border-radius: var(--rc-pill);
+  color: var(--text-secondary);
+  font-size: .6875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.app .crew-log .feed-time { color: var(--text-secondary); font-size: .8125rem; }
+.app .crew-log-row-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: .875rem;
+  line-height: 1.45;
+}
+.app .crew-log-what strong { color: var(--text-primary); font-weight: 600; }
+/* The medal carries the colour; a gold name was unreadable on the light theme. */
+.app .crew-log .feed-achievement-name { color: var(--text-primary); }
+.app .crew-log-verification { display: inline-flex; align-items: center; gap: 5px; font-size: .8125rem; }
+.app .crew-log-verification.is-verified { color: var(--success); }
+.app .crew-log-verification.is-manual { color: var(--text-secondary); }
+.app .crew-log-verification.is-review { color: var(--warning); }
+
+/* The numbers: three labelled columns on fixed tracks, so entries line up down the log. */
+.app .crew-log .crew-log-metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 16px;
+  margin: 14px 0 0;
+}
+.app .crew-log .crew-log-metrics > div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.app .crew-log .crew-log-metrics dt,
+.app .crew-log .crew-log-metrics .crew-log-distance dt {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  color: var(--text-secondary);
+  font-size: .75rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.app .crew-log .crew-log-metrics dd,
+.app .crew-log .crew-log-metrics .crew-log-distance dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-stretch: 70%;
+  font-weight: 800;
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+.app .crew-log .crew-log-metrics dd small {
+  margin-left: 1px;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-stretch: 100%;
+  font-size: .8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/* The crew's response: quiet buttons kept together under the row. */
+.app .crew-log .feed-interactions-compact { margin: 8px 0 0; padding: 0; border: 0; }
+.app .crew-log .reactions-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 2px; margin-left: -10px; }
+.app .crew-log :is(.reaction-pill, .add-reaction-btn, .comment-link) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 10px;
+  border: 0;
   border-radius: var(--rc-pill);
   background: transparent;
   color: var(--text-secondary);
   font: 500 .8125rem/1 var(--font-body);
 }
-.app .reaction-pill { color: var(--text-primary); }
+.app .crew-log .reaction-pill { color: var(--text-primary); font-weight: 600; }
+.app .crew-log :is(.reaction-pill.active, .add-reaction-btn[aria-expanded="true"]) { background: var(--rc-quiet); color: var(--text-primary); }
+@media (hover: hover) {
+  .app .crew-log :is(.reaction-pill, .add-reaction-btn, .comment-link):hover { background: var(--rc-hover); color: var(--text-primary); }
+}
+/* Wider logs set the numbers to the right, like a table you can scan down. */
+@media (min-width: 640px) {
+  .app .crew-log .feed-item-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'avatar header stats'
+      'avatar what stats'
+      '. social social';
+    column-gap: 14px;
+  }
+  .app .crew-log .feed-item-row .crew-log-metrics { grid-template-columns: 6.75rem 5.25rem 5.25rem; gap: 0 18px; margin: 0; }
+  /* Status on its own line keeps every row the same shape. */
+  .app .crew-log .feed-item-row .crew-log-row-details { flex-direction: column; align-items: flex-start; }
+  .app .crew-log .crew-log-metrics dd,
+  .app .crew-log .crew-log-metrics .crew-log-distance dd { font-size: 1.875rem; }
+}
 .app .crew-log .load-more-btn { width: 100%; margin-top: 18px; }
 .app .crew-pulse-panel { margin-top: 26px; border: 0; border-block: 1px solid var(--border-color); border-radius: 0; background: none; }
 
@@ -997,7 +1102,8 @@ button, input, select, textarea { font-family: inherit; }
   .app .header.crew-header { padding-inline: 12px; }
   .app .world-journey { margin-inline: -12px; }
   .app .weekly-distance strong { font-size: 2.875rem; }
-  .app .crew-log-metrics .crew-log-distance dd, .app .crew-log-distance dd { font-size: 2.375rem; }
+  .app .crew-log .crew-log-metrics dd, .app .crew-log .crew-log-metrics .crew-log-distance dd { font-size: 1.625rem; }
+  .app .crew-log .crew-log-metrics { gap: 0 10px; }
   .app .crew-board-row { grid-template-columns: 28px 38px minmax(0, 1fr) auto; gap: 8px; }
 }
 

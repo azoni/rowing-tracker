@@ -37,6 +37,10 @@ const rowStatus = item => {
   return { label: 'Not verified', icon: 'ui_info', kind: 'review' };
 };
 const sessionNames = { free_row: 'Free row', timed: 'Timed row', distance: 'Distance row', interval: 'Intervals' };
+// The usual "add a reaction" mark: a face with a plus, so the button is not a bare "+".
+const ReactionIcon = () => <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" focusable="false">
+  <circle cx="9" cy="11" r="6.5" /><path d="M6.4 12.8c.6.9 1.5 1.4 2.6 1.4s2-.5 2.6-1.4" /><path d="M6.9 9.4h.01M11.1 9.4h.01" strokeWidth="2.2" /><path d="M16.5 1.5v4M14.5 3.5h4" />
+</svg>;
 const badgeDefinition = achievement => ACHIEVEMENTS.find(badge => badge.id === achievement?.id) || achievement;
 
 function ActivityFeed() {
@@ -231,16 +235,19 @@ function ActivityFeed() {
                       <div className="feed-action">
                         {item.type === 'row' && (
                           <>
+                            <p className="crew-log-row-details">
+                              {(item.sessionType || item.machineType) && <span className="crew-log-what">
+                                {item.sessionType && <strong>{sessionNames[item.sessionType] || item.sessionType.replace(/_/g, ' ')}</strong>}
+                                {item.sessionType && item.machineType && ' on '}
+                                {item.machineType && getMachineName(item.machineType, item.machineCustomName)}
+                              </span>}{' '}
+                              <span className={`crew-log-verification is-${status.kind}`}><Icon name={status.icon} size={14} color="currentColor" />{status.label}</span>
+                            </p>
                             <dl className="crew-log-metrics">
                               <div className="crew-log-distance"><dt>Distance</dt><dd>{validNumber(item.meters) ? Number(item.meters).toLocaleString() : '—'} <small>m</small></dd></div>
                               {validNumber(item.time) && <div><dt>Time</dt><dd>{formatTimeDisplay(Number(item.time))}</dd></div>}
                               {validNumber(item.time) && validNumber(item.meters) && <div><dt>Pace / 500 m</dt><dd>{calculatePace(Number(item.meters), Number(item.time))}</dd></div>}
                             </dl>
-                            <div className="crew-log-row-details">
-                              <span className={`crew-log-verification is-${status.kind}`}><Icon name={status.icon} size={14} color="currentColor" />{status.label}</span>
-                              {item.sessionType && <span>{sessionNames[item.sessionType] || item.sessionType.replace(/_/g, ' ')}</span>}
-                              {item.machineType && <span>{getMachineName(item.machineType, item.machineCustomName)}</span>}
-                            </div>
                           </>
                         )}
                         {item.type === 'achievement' && (
@@ -328,7 +335,7 @@ function ActivityFeed() {
                                 e.stopPropagation();
                                 setShowReactionPicker(showReactionPicker === item.id ? null : item.id);
                               }}
-                            >+</button>
+                            ><ReactionIcon /></button>
                             {showReactionPicker === item.id && (
                               <>
                                 <div className="reaction-picker-backdrop" aria-hidden="true" onClick={() => closeReactionPicker(item.id)} />

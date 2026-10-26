@@ -13,7 +13,7 @@ export default function AppNavigation() {
   const tab = (id, label, icon) => (
     <button key={id} type="button" className={`crew-nav-item ${activeTab === id ? 'is-active' : ''}`}
       aria-current={activeTab === id ? 'page' : undefined} onClick={() => navigate(id)}>
-      <Icon name={icon} size={21} /><span>{label}</span>
+      <Icon name={icon} size={21} color="currentColor" /><span>{label}</span>
     </button>
   );
   return (
@@ -21,7 +21,7 @@ export default function AppNavigation() {
       {signedIn && tab('home', 'Home', 'ui_rowing')}
       {tab('feed', 'Crew', 'ui_feed')}
       {signedIn && <button type="button" className="crew-nav-log" onClick={() => setShowLogModal(true)}>
-        <span><Icon name="ui_plus" size={23} /></span>Log row
+        <span><Icon name="ui_plus" size={23} color="currentColor" /></span>Log row
       </button>}
       {tab('leaderboard', 'Board', 'ui_trophy')}
       {tab('more', 'Progress', 'ui_chart')}

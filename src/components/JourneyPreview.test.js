@@ -109,8 +109,9 @@ test('Home keeps personal weekly rows separate from the whole crew lifetime jour
   useApp.mockReturnValue(context);
   render(<HomeTab />);
   const weekly = container.querySelector('[aria-labelledby="weekly-title"]');
-  expect(weekly.querySelector('.weekly-distance').textContent).toBe('5km');
-  expect(weekly.querySelector('.weekly-tally').textContent).toBe('2 rows2 active days');
+  expect(weekly.querySelector('.weekly-distance').textContent).toBe('5km rowed');
+  expect(weekly.querySelector('.weekly-facts').textContent).toBe('Rows2Active days2 / 7Recorded time—');
+  expect(weekly.querySelector('.weekly-time-coverage').textContent).toBe('Add a time to your row to track it here.');
   expect(weekly.querySelector('[aria-label="Wednesday: 3,000 meters"]')).not.toBeNull();
   expect(weekly.querySelector('[aria-label="Friday: 0 meters, upcoming"]')).not.toBeNull();
   expect(preview().getAttribute('aria-label')).toContain('675 km rowed together');

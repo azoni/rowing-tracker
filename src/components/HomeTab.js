@@ -2,11 +2,13 @@ import React from 'react';
 import Icon from './Icon';
 import JourneyPreview from './JourneyPreview';
 import MonthlyMissions from './MonthlyMissions';
+import { CrewArtwork } from './CrewIdentity';
 import { useApp } from '../context/AppContext';
 import { formatMeters, formatTimeDisplay } from '../utils';
 import { getUserRank, getNextRank, getMonthlyProgram, ACHIEVEMENTS } from '../constants';
 import { getWeeklyStats } from '../utils/weeklyStats';
 import { getDistanceStamps, getMonthlySummary } from '../utils/rowingGoals';
+import { getAnalyticsDate, getAnalyticsEntries, summarizeRows } from '../utils/rowingAnalytics';
 import './HomeTab.css';
 
 function HomeTab() {
@@ -16,51 +18,64 @@ function HomeTab() {
   if (!currentUser || !userProfile) return null;
 
   const now = new Date();
-  const week = getWeeklyStats(entries, currentUser.uid, now);
+  const personalRows = getAnalyticsEntries(entries, currentUser.uid, now);
+  const week = getWeeklyStats(personalRows, currentUser.uid, now);
   const monthly = getMonthlySummary({ entries, users, userId: currentUser.uid, date: now, now });
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const upcoming = getMonthlyProgram(nextMonth);
   const tourStamps = monthly.challenge.type === 'benchmark_tour'
     ? getDistanceStamps(monthly.userEntries.filter(entry => Number(entry.time) > 0), monthly.challenge.distances, monthly.challenge.tolerance)
     : null;
-  const rank = getUserRank(userProfile.totalMeters || 0);
-  const nextRank = getNextRank(userProfile.totalMeters || 0);
+  const lifetimeMeters = summarizeRows(personalRows).meters;
+  const weekSummary = summarizeRows(personalRows.filter(row => getAnalyticsDate(row.date) >= week.start));
+  const rank = getUserRank(lifetimeMeters);
+  const nextRank = getNextRank(lifetimeMeters);
   const earned = new Set(getUserAchievements(currentUser.uid).map(a => a.id));
   const nextBadges = ACHIEVEMENTS.filter(a => !earned.has(a.id)).map(a => {
     const progress = getAchievementProgress(currentUser.uid, a);
     return { ...a, progress, pct: progress.target > 0 ? progress.current / progress.target : 0 };
   }).sort((a, b) => b.pct - a.pct).slice(0, 2);
-  const recent = entries.filter(e => e.userId === currentUser.uid && new Date(e.date) <= now)
-    .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
+  const recent = entries.filter(e => e.userId === currentUser.uid && !e.isTest &&
+    ['number', 'string'].includes(typeof e.meters) && Number.isFinite(Number(e.meters)) && Number(e.meters) > 0 &&
+    typeof e.date !== 'boolean' &&
+    Number.isFinite(getAnalyticsDate(e.date).getTime()) && getAnalyticsDate(e.date) <= now)
+    .sort((a, b) => getAnalyticsDate(b.date) - getAnalyticsDate(a.date)).slice(0, 3);
   const monthName = now.toLocaleDateString('en-US', { month: 'long' });
   const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate() + 1;
-  const rankPct = nextRank ? Math.min(100, Math.max(0, ((userProfile.totalMeters || 0) - rank.minMeters) /
+  const rankPct = nextRank ? Math.min(100, Math.max(0, (lifetimeMeters - rank.minMeters) /
     (nextRank.minMeters - rank.minMeters) * 100)) : 100;
   const showLog = () => setShowLogModal(true);
 
   return (
     <section className="home-section dashboard">
       <div className="dashboard-heading">
-        <div><p className="dashboard-eyebrow">Your corner of the crew</p>
-          <h2>Hey, {userProfile.name?.split(' ')[0] || 'rower'}.</h2></div>
-        <span className="dashboard-date">{now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        <div><h2>Hey, {userProfile.name?.split(' ')[0] || 'rower'}.</h2><p className="dashboard-intro">A little further, together.</p></div>
+        <time className="dashboard-date" dateTime={now.toLocaleDateString('en-CA')}>{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</time>
       </div>
 
       <section className="weekly-card" aria-labelledby="weekly-title">
+        <CrewArtwork />
+        <div className="weekly-content">
         <div className="weekly-overview">
-          <div><h3 id="weekly-title">Your week</h3><div className="weekly-distance"><strong>{(week.meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })}</strong><span>km</span></div></div>
-          <div className="weekly-tally"><strong>{week.sessions} {week.sessions === 1 ? 'row' : 'rows'}</strong><span>{week.activeDays} {week.activeDays === 1 ? 'active day' : 'active days'}</span></div>
-          <button className="weekly-history" onClick={() => setShowSessionHistory(true)}><Icon name="ui_history" size={17} /><span>Logbook</span><span aria-hidden="true">↗</span></button>
+          <div><h3 id="weekly-title">Your week on the water</h3><p className="weekly-period">Monday–Sunday <span>{week.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–{week.days[6].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></p><div className="weekly-distance"><strong>{(week.meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong><span>km rowed</span></div></div>
         </div>
+        <dl className="weekly-facts">
+          <div><dt>Rows</dt><dd>{week.sessions}</dd></div>
+          <div><dt>Active days</dt><dd>{week.activeDays}<small> / 7</small></dd></div>
+          <div><dt>Recorded time</dt><dd>{weekSummary.timedSessions ? formatTimeDisplay(weekSummary.seconds) : '—'}</dd></div>
+        </dl>
+        <p className="weekly-time-coverage">{weekSummary.timedSessions ? `Time recorded for ${weekSummary.timedSessions} of ${week.sessions} ${week.sessions === 1 ? 'row' : 'rows'}.` : 'Add a time to your row to track it here.'}</p>
         <div className="week-rhythm" role="list" aria-label="Your activity this week, Monday to Sunday">
           {week.days.map(day => <div key={day.date.toISOString()} className={`week-day ${day.sessions ? 'has-row' : ''} ${day.today ? 'is-today' : ''} ${day.future ? 'is-future' : ''}`}
             role="listitem" aria-label={`${day.date.toLocaleDateString('en-US', { weekday: 'long' })}: ${day.meters.toLocaleString()} meters${day.today ? ', today' : day.future ? ', upcoming' : ''}`}>
-            <span aria-hidden="true">{day.date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1)}</span>
+            <span aria-hidden="true">{day.date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
             <span className="week-day-mark" aria-hidden="true">{day.sessions ? <Icon name="ui_check" size={11} /> : <span />}</span>
           </div>)}
         </div>
-        <JourneyPreview totalMeters={totalMeters} onOpen={() => setShowCrewMap(true)} />
-        <button className="dashboard-log" onClick={showLog}><Icon name="ui_plus" size={20} /> Log a row <span>Photo or manual</span></button>
+        <div className="weekly-actions"><button className="dashboard-log" onClick={showLog}><Icon name="ui_plus" size={20} color="currentColor" /> Log a row</button>
+          <button className="weekly-history" onClick={() => setShowSessionHistory(true)}><Icon name="ui_history" size={17} color="currentColor" /><span>Logbook</span></button></div>
+        </div>
+        <div className="weekly-journey"><JourneyPreview totalMeters={totalMeters} onOpen={() => setShowCrewMap(true)} /></div>
       </section>
 
       <MonthlyMissions missions={monthly.missions} onLog={showLog} />
@@ -103,7 +118,7 @@ function HomeTab() {
           <span className="dashboard-badge-percent">{Math.round(Math.min(badge.pct, 1) * 100)}%</span>
         </button>) : <p>Every badge earned. What a journey!</p>}
         <button className="dashboard-rank" onClick={() => setShowRankProgressModal(true)}>
-          <Icon name={rank.emoji} size={27} /><span><strong>{rank.title}</strong><small>{nextRank ? `${formatMeters(nextRank.minMeters - (userProfile.totalMeters || 0))}m to ${nextRank.title}` : 'Top rank reached'}
+          <Icon name={rank.emoji} size={27} /><span><strong>{rank.title}</strong><small>{nextRank ? `${formatMeters(nextRank.minMeters - lifetimeMeters)}m to ${nextRank.title}` : 'Top rank reached'}
           </small><progress aria-label="Progress to next rank" value={rankPct} max="100" /></span><span>→</span>
         </button>
       </section>
@@ -111,8 +126,8 @@ function HomeTab() {
       <section className="dashboard-recent">
         <div className="dashboard-section-heading"><h3>Fresh from your logbook</h3><button onClick={() => setShowSessionHistory(true)}>View all <span>→</span></button></div>
         {recent.length ? recent.map((row, index) => <div key={row.id || index} className="dashboard-row">
-          <span className="dashboard-row-date">{new Date(row.date).toLocaleDateString('en-US', { month: 'short' })}<strong>{new Date(row.date).getDate()}</strong></span>
-          <span><strong>{Number(row.meters).toLocaleString()} <small>m</small></strong><small>{row.time ? `${formatTimeDisplay(row.time)} · ` : ''}{row.verificationStatus === 'verified' ? 'Photo verified' : row.verificationStatus === 'pending_review' ? 'In review' : 'Unverified'}</small></span>
+          <span className="dashboard-row-date">{getAnalyticsDate(row.date).toLocaleDateString('en-US', { month: 'short' })}<strong>{getAnalyticsDate(row.date).getDate()}</strong></span>
+          <span><strong>{Number(row.meters).toLocaleString()} <small>m</small></strong><small>{Number(row.time) > 0 ? `${formatTimeDisplay(row.time)} · ` : ''}{row.verificationStatus === 'verified' ? 'Photo verified' : ['pending_review', 'pending'].includes(row.verificationStatus) ? 'In review · not counted yet' : row.verificationStatus === 'rejected' ? 'Not approved · not counted' : 'Manual entry'}</small></span>
           <Icon name={row.verificationStatus === 'verified' ? 'ui_check' : 'ui_rowing'} size={19} />
         </div>) : <div className="dashboard-empty"><Icon name="ui_rowing" size={30} /><p>Nothing in your logbook yet.<br />A photo of your monitor is all you need.</p><button onClick={showLog}>Log your first row →</button></div>}
       </section>

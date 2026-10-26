@@ -1,0 +1,43 @@
+/* Shared frame. Feature layouts live beside their components. */
+:root { --control-border: color-mix(in srgb, var(--text-secondary) 75%, var(--bg-card)); }
+.app { max-width: 1080px; }
+.app .main-content { padding: 12px 24px 40px; min-width: 0; }
+.app .header.crew-header { padding: 24px; text-align: left; }
+.app .header.crew-header::before { display: none; }
+.crew-wordmark { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.crew-mark { width: 42px; height: 48px; flex-shrink: 0; color: var(--accent-primary); }
+.app .header.crew-header .crew-wordmark h1 { font-size: 2.15rem; line-height: 1; letter-spacing: .08em; }
+.crew-wordmark-caption { color: var(--text-secondary); font-size: .8125rem; margin-top: 5px; line-height: 1.4; }
+.app .crew-nav { max-width: 620px; border: 1px solid var(--border-color); border-radius: 20px 20px 0 0; }
+.app .crew-nav button { font-size: .8125rem; }
+.app :is(h2, h3) { text-wrap: balance; }
+.app :is(input, select, textarea) { font-size: 1rem; }
+.app .main-content :is(input, select, textarea, .crew-board-search, .progress-search-field) { border-color: var(--control-border); }
+.app :is(.dashboard, .crew-feed, .crew-board, .progress-screen) { font-variant-numeric: tabular-nums; }
+.crew-skip-link { position: fixed; top: 8px; left: 8px; z-index: 10000; padding: 12px 16px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--accent-primary); border-radius: 8px; transform: translateY(-160%); }
+.crew-skip-link:focus { transform: translateY(0); }
+html { scroll-padding-bottom: 110px; }
+.app :is(button, a, input, select, textarea, summary) { scroll-margin-block: 16px 110px; }
+@media (min-width: 800px) {
+  .app { margin: 24px auto; min-height: calc(100vh - 48px); }
+  .app .header.crew-header { padding: 28px 32px 22px; }
+  .app .main-content { padding: 12px 32px 48px; }
+  .app .crew-nav { bottom: 14px; border-radius: 20px; padding-bottom: 8px; box-shadow: 0 8px 32px rgb(0 0 0 / .24); }
+}
+@media (max-width: 599px) {
+  .app { margin: 0; border: 0; border-radius: 0; }
+  .app .main-content { padding: 8px 16px 32px; }
+  .app .header.crew-header { padding: max(20px, env(safe-area-inset-top, 0px)) 16px 22px; }
+  .crew-wordmark { gap: 8px; }
+  .crew-mark { width: 30px; height: 40px; }
+  .app .header.crew-header .crew-wordmark h1 { font-size: 1.8rem; }
+  .crew-wordmark-caption { font-size: .75rem; }
+  .app .crew-nav { border-inline: 0; border-radius: 0; }
+}
+@media (max-width: 359px) {
+  .crew-wordmark-caption { max-width: 120px; }
+  .crew-wordmark { gap: 5px; }
+  .crew-mark { width: 24px; }
+  .app .header.crew-header .crew-wordmark h1 { font-size: 1.5rem; }
+  .app .crew-nav button { font-size: .75rem; }
+}

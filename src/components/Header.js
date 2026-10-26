@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatTimeAgo } from '../utils';
 import { getActiveHoliday } from '../constants';
 import Icon from './Icon';
 import AvatarOrPhoto from './Avatar';
+import { CrewMark } from './CrewIdentity';
 import './ProgressAndCrew.css';
+import './CrewExperience.css';
 
 function Header() {
   const {
@@ -17,11 +19,24 @@ function Header() {
     setShowSettingsModal, setShowWelcomeModal,
     handleSignIn,
   } = useApp();
+  const notificationButton = useRef(null);
+  useEffect(() => {
+    if (!showNotifications) return undefined;
+    const closeOnEscape = event => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setShowNotifications(false);
+      notificationButton.current?.focus();
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [showNotifications, setShowNotifications]);
 
   return (
     <header className="header crew-header">
+      <a className="crew-skip-link" href="#crew-main">Skip to content</a>
       <div className="header-top">
-        <h1>ROW CREW</h1>
+        <div className="crew-wordmark"><CrewMark /><div><h1>ROW CREW</h1><p className="crew-wordmark-caption">Every stroke, together.</p></div></div>
         <div className="user-menu">
           {currentUser && userProfile ? (
             <>
@@ -40,13 +55,14 @@ function Header() {
               <div className="notification-wrapper">
                 <button
                   className={`notification-btn ${showNotifications ? 'active' : ''}`}
+                  ref={notificationButton}
                   onClick={() => setShowNotifications(!showNotifications)}
                   title="Notifications"
                   aria-label={`Notifications${unreadNotificationCount ? `, ${unreadNotificationCount} unread` : ''}`}
                   aria-expanded={showNotifications}
                   aria-controls="crew-notifications"
                 >
-                  <Icon name="ui_bell" size={18} />
+                  <Icon name="ui_bell" size={18} color="currentColor" />
                   {unreadNotificationCount > 0 && (
                     <span className="notification-badge">{unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}</span>
                   )}
@@ -109,7 +125,6 @@ function Header() {
           )}
         </div>
       </div>
-      <p className="subtitle">Row Around The World Together</p>
       {(() => {
         const holiday = getActiveHoliday();
         if (!holiday) return null;

@@ -1,4 +1,4 @@
-import { getAnalyticsEntries, getComparableBenchmarks, getRowingAnalytics, summarizeRows } from './rowingAnalytics';
+import { getAnalyticsEntries, getBenchmarkTrend, getComparableBenchmarks, getRowingAnalytics, summarizeRows } from './rowingAnalytics';
 
 const date = (month, day, hour = 12, minute = 0) => new Date(2026, month - 1, day, hour, minute);
 const now = date(10, 16);
@@ -10,7 +10,7 @@ test('excludes other users, test/pending/rejected rows, future and invalid dates
   const manual = row(date(10, 2), { verificationStatus: 'unverified', meters: '2000' });
   const ineligible = [{ userId: 'other' }, { isTest: true }, { verificationStatus: 'pending_review' },
     { verificationStatus: 'pending' }, { verificationStatus: 'rejected' }, { date: date(10, 16, 13).toISOString() },
-    { date: null }, { date: 'bad' }, { meters: Infinity }, { meters: 'Infinity' }, { meters: -1 },
+    { date: null }, { date: 'bad' }, { date: false }, { date: true }, { meters: Infinity }, { meters: 'Infinity' }, { meters: -1 },
     { meters: '' }, { meters: true }, { meters: 0 }].map(extra => row(date(10, 2), extra));
   expect(getAnalyticsEntries([valid, manual, ...ineligible], 'me', now)).toEqual([valid, manual]);
 });
@@ -103,4 +103,47 @@ test('empty totals are finite with no fake percentage gain or benchmark', () => 
   expect(result.current).toEqual(summarizeRows([]));
   expect(result.comparison.activeDays).toEqual({ absolute: 0, percent: null, hasBaseline: false });
   expect(result.benchmarks).toEqual([]);
+});
+
+test('interval totals remain in recorded activity but cannot establish comparable pace', () => {
+  const result = getRowingAnalytics([row(date(10, 1), { sessionType: 'interval' }),
+    row(date(10, 9), { sessionType: 'interval', time: 1200 })], 'me', 4, now);
+  expect(result.current).toMatchObject({ meters: 10000, seconds: 2700, sessions: 2 });
+  expect(result.benchmarks).toEqual([]);
+});
+
+test.each([
+  [1500, 1500, true],
+  [null, 1500, false],
+  [1500, null, false],
+  [null, null, false],
+])('time comparison requires complete coverage in both windows (%s, %s)', (currentTime, previousTime, complete) => {
+  const result = getRowingAnalytics([row(date(10, 1)), row(date(10, 2), { time: currentTime }),
+    row(date(9, 1)), row(date(9, 2), { time: previousTime })], 'me', 4, now);
+  expect(result.timeComparisonComplete).toBe(complete);
+  expect(result.current.seconds).toBe(1500 + (currentTime || 0));
+  expect(result.previous.seconds).toBe(1500 + (previousTime || 0));
+});
+
+test('benchmark history preserves the actual time spacing and intermediate pace, not just the best row', () => {
+  const [benchmark] = getComparableBenchmarks([row(date(10, 11), { time: 1500 }),
+    row(date(10, 1), { time: 1400 }), row(date(10, 3), { time: 1200 })]);
+  const trend = getBenchmarkTrend(benchmark);
+  expect(trend.points.map(point => point.pace)).toEqual([140, 120, 150]);
+  expect(trend.points.map(point => point.x)).toEqual([0, 0.2, 1]);
+  expect(trend.points[1].y).toBeGreaterThan(trend.points[0].y);
+  expect(trend.points.every(point => point.y > 0 && point.y < 1)).toBe(true);
+  expect(trend.minimumPace).toBeLessThan(120);
+  expect(trend.maximumPace).toBeGreaterThan(150);
+  expect(benchmark.paceChange).toBe(10);
+});
+
+test('equal benchmark paces stay level and sub-second variation is not expanded to fill the chart', () => {
+  const [flat] = getComparableBenchmarks([row(date(10, 1)), row(date(10, 2))]);
+  const flatTrend = getBenchmarkTrend(flat);
+  expect(flatTrend.points.map(point => point.y)).toEqual([0.5, 0.5]);
+  expect(flatTrend.maximumPace - flatTrend.minimumPace).toBe(2);
+  const [near] = getComparableBenchmarks([row(date(10, 1)), row(date(10, 2), { time: 1500.1 })]);
+  const nearTrend = getBenchmarkTrend(near);
+  expect(Math.abs(nearTrend.points[1].y - nearTrend.points[0].y)).toBeLessThan(0.01);
 });

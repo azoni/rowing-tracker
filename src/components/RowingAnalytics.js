@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { getMachineName } from '../constants/machines';
-import { getRowingAnalytics } from '../utils/rowingAnalytics';
+import { getBenchmarkTrend, getRowingAnalytics } from '../utils/rowingAnalytics';
 import { formatTimeDisplay } from '../utils/formatters';
 import './RowingAnalytics.css';
 
-const WORKOUT_LABELS = { free_row: 'Free row', timed: 'Timed', distance: 'Distance', interval: 'Intervals' };
+const WORKOUT_LABELS = { free_row: 'Free row', timed: 'Timed', distance: 'Distance' };
 const shortDate = date => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-const distance = meters => `${(meters / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} km`;
+const distance = meters => meters > 0 && meters < 1000 ? `${meters.toLocaleString('en-US')} m` : `${(meters / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} km`;
 const duration = seconds => {
   if (seconds === 0) return '—';
   if (seconds < 60) return '<1 min';
@@ -34,9 +34,11 @@ function RowingAnalytics({ entries, userId, now = new Date() }) {
   const week = weekly[highlightedWeek];
   const maxMeters = Math.max(1, ...weekly.map(item => item.meters));
   const benchmark = benchmarks.find(item => item.key === benchmarkKey) || benchmarks[0];
+  const benchmarkTrend = benchmark ? getBenchmarkTrend(benchmark) : null;
   const metrics = [
     { label: 'Distance', value: distance(current.meters), comparison: comparison.meters },
-    { label: 'Recorded time', value: duration(current.seconds), comparison: comparison.seconds, note: current.timedSessions ? null : 'No time recorded' },
+    { label: 'Recorded time', value: duration(current.seconds), comparison: comparison.seconds,
+      note: !current.timedSessions ? 'No time recorded' : !analytics.timeComparisonComplete ? 'Missing times; not compared' : null },
     { label: 'Rows', value: current.sessions.toLocaleString(), comparison: comparison.sessions },
     { label: 'Days rowed', value: current.activeDays.toLocaleString(), comparison: comparison.activeDays },
   ];
@@ -58,11 +60,11 @@ function RowingAnalytics({ entries, userId, now = new Date() }) {
       </button>)}</div></div>
       <p className="analytics-week-detail" aria-live="polite"><strong>{shortDate(week.start)} – {shortDate(week.end)}{week.includesToday ? ' · through now' : ''}</strong><span>{distance(week.meters)} · {week.sessions} {week.sessions === 1 ? 'row' : 'rows'} · {week.activeDays} {week.activeDays === 1 ? 'day' : 'days'} rowed</span></p>
       {current.sessions === 0 && <p className="analytics-empty">No rows in this window yet. Your next saved row will start the chart.</p>}
-      <details className="analytics-table-details"><summary>View weekly numbers</summary><div className="analytics-table-scroll"><table><caption className="crew-sr-only">Weekly rowing totals for the selected period</caption><thead><tr><th scope="col">Week starting</th><th scope="col">Distance</th><th scope="col">Rows</th><th scope="col">Days</th></tr></thead><tbody>{weekly.map(item => <tr key={item.start.toISOString()}><th scope="row">{shortDate(item.start)}{item.includesToday ? '*' : ''}</th><td>{distance(item.meters)}</td><td>{item.sessions}</td><td>{item.activeDays}</td></tr>)}</tbody></table></div><p>Seven-day groups within this rolling window. * The final group includes today through now.</p></details>
+      <details className="analytics-table-details"><summary>View weekly numbers</summary><div className="analytics-table-scroll"><table><caption className="crew-sr-only">Weekly rowing totals for the selected period</caption><thead><tr><th scope="col">Week starting</th><th scope="col">Distance</th><th scope="col">Rows</th><th scope="col">Days</th></tr></thead><tbody>{weekly.map(item => <tr key={item.start.toISOString()}><th scope="row">{shortDate(item.start)}{item.includesToday ? '*' : ''}</th><td>{item.meters.toLocaleString('en-US')} m</td><td>{item.sessions}</td><td>{item.activeDays}</td></tr>)}</tbody></table></div><p>Seven-day groups within this rolling window. * The final group includes today through now.</p></details>
     </div>
 
     <details className="analytics-method-details"><summary>How these numbers are counted</summary>
-      <p className="analytics-method">Compared with {shortDate(analytics.previousStart)} – {shortDate(analytics.previousEnd)}: the previous {analytics.days} days, through the same time on the final day. Distance and time changes describe your recorded activity, not fitness.</p>
+      <p className="analytics-method">Compared with {shortDate(analytics.previousStart)} – {shortDate(analytics.previousEnd)}: the previous {analytics.days} days, through the same time on the final day. Time changes are shown only when every row in both periods has a saved time. These changes describe your recorded activity, not fitness.</p>
       <p className="analytics-counting-note">Saved manual and verified rows count. Pending reviews, test uploads, and future dates are excluded.</p>
     </details>
     <div className="analytics-benchmark"><div className="analytics-chart-heading"><h4>Your repeat benchmark</h4><span>Pace / 500m</span></div>
@@ -70,10 +72,18 @@ function RowingAnalytics({ entries, userId, now = new Date() }) {
       {benchmark ? <>
         <label className="analytics-benchmark-picker"><span className="crew-sr-only">Choose a comparable rowing benchmark</span><select value={benchmark.key} onChange={event => setBenchmarkKey(event.target.value)}>{benchmarks.map(item => <option key={item.key} value={item.key}>{item.meters.toLocaleString()}m · {getMachineName(item.machineType, item.machineCustomName)} · {WORKOUT_LABELS[item.sessionType]}</option>)}</select></label>
         <div className="analytics-pace-comparison"><div><span>First · {shortDate(benchmark.first.date)}</span><strong>{pace(benchmark.first.pace)}</strong></div><span className="analytics-pace-arrow" aria-hidden="true">→</span><div><span>Latest · {shortDate(benchmark.latest.date)}</span><strong>{pace(benchmark.latest.pace)}</strong></div></div>
+        <figure className="analytics-pace-history">
+          <figcaption>Recorded pace over time <span>Lower is faster</span></figcaption>
+          <div className="analytics-pace-plot" role="img" aria-label={`${benchmark.points.length} comparable rows from ${shortDate(benchmark.first.date)} to ${shortDate(benchmark.latest.date)}. First ${pace(benchmark.first.pace)}, latest ${pace(benchmark.latest.pace)} per 500 meters. Exact values are in View benchmark rows.`}>
+            <div className="analytics-pace-scale" aria-hidden="true"><span>{pace(benchmarkTrend.maximumPace)}</span><span>{pace(benchmarkTrend.minimumPace)}</span></div>
+            <div className="analytics-pace-lines" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points={benchmarkTrend.points.map(point => `${point.x * 100},${point.y * 100}`).join(' ')} /></svg>{benchmarkTrend.points.map((point, index) => <span key={`${point.date.toISOString()}-${index}`} className="analytics-pace-dot" style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }} />)}</div>
+          </div>
+          <div className="analytics-pace-dates" aria-hidden="true"><span>{shortDate(benchmark.first.date)}</span><span>{shortDate(benchmark.latest.date)}</span></div>
+        </figure>
         <p className="analytics-pace-change">{Math.abs(benchmark.paceChange) < 0.05 ? 'Same recorded pace' : `${Math.abs(benchmark.paceChange).toFixed(1)} sec / 500m ${benchmark.paceChange < 0 ? 'quicker' : 'slower'}`} <span>across {benchmark.points.length} comparable rows in this window.</span></p>
-        <p className="analytics-method">Same recorded distance, machine, and workout type. This compares sessions; effort and machine settings can vary.</p>
+        <p className="analytics-method">Same recorded distance, machine, and workout type. Interval totals are excluded because work and rest can differ. This compares sessions; effort and machine settings can vary.</p>
         <details className="analytics-table-details"><summary>View benchmark rows</summary><div className="analytics-table-scroll"><table><caption className="crew-sr-only">Comparable {benchmark.meters.toLocaleString()} meter sessions</caption><thead><tr><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Pace / 500m</th></tr></thead><tbody>{benchmark.points.map((point, index) => <tr key={`${point.date.toISOString()}-${index}`}><th scope="row">{shortDate(point.date)}</th><td>{formatTimeDisplay(point.seconds)}</td><td>{pace(point.pace)}</td></tr>)}</tbody></table></div></details>
-      </> : <div className="analytics-benchmark-empty"><p>Build a benchmark worth comparing.</p><span>Repeat the same distance on two different days. Save the time, machine, and workout type with each row to see your pace change here.</span></div>}
+      </> : <div className="analytics-benchmark-empty"><p>Build a benchmark worth comparing.</p><span>Repeat the same distance on two different days. Save the time, machine, and workout type with each row to see your pace change here. Interval totals are not compared.</span></div>}
     </div>
   </section>;
 }

@@ -6,18 +6,18 @@
 .dashboard-date { flex-shrink: 0; max-width: 92px; color: var(--text-secondary); font-size: .75rem; text-align: right; }
 .dashboard-eyebrow { color: var(--text-secondary); font-size: .8125rem; font-weight: 600; }
 .weekly-card { min-width: 0; padding: 0 0 20px; border-bottom: 1px solid var(--border-color); }
-.weekly-content { display: grid; gap: 12px; }
+.weekly-content { display: grid; gap: 10px; }
 .weekly-overview { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .weekly-overview h3 { margin: 0 0 5px; font-size: 1.05rem; font-weight: 600; }
 .weekly-period { display: flex; flex-wrap: wrap; gap: 2px 8px; color: var(--text-secondary); font-size: .8125rem; }
 .weekly-distance { display: flex; align-items: baseline; justify-content: flex-end; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
 .weekly-distance strong { font-family: 'Bebas Neue', sans-serif; font-size: 2.45rem; font-weight: 400; letter-spacing: -.015em; line-height: 1; font-variant-numeric: tabular-nums; }
-.weekly-distance > span { font-size: .72rem; color: var(--text-secondary); }
+.weekly-distance > span { font-size: .75rem; color: var(--text-secondary); }
 .weekly-facts { display: grid; grid-template-columns: .7fr 1fr 1.3fr; gap: 8px; }
 .weekly-facts > div + div { border-left: 1px solid var(--border-color); padding-left: 12px; }
 .weekly-facts dt { color: var(--text-secondary); font-size: .8125rem; margin-bottom: 2px; }
 .weekly-facts dd { font-size: 1rem; font-weight: 500; line-height: 1.3; }
-.weekly-facts dd small { font-size: .72rem; font-weight: 400; color: var(--text-secondary); }
+.weekly-facts dd small { font-size: .75rem; font-weight: 400; color: var(--text-secondary); }
 .weekly-time-coverage { color: var(--text-secondary); font-size: .8125rem; line-height: 1.4; margin-top: -4px; }
 .week-rhythm { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
 .week-day { display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--text-secondary); font-size: .75rem; }
@@ -105,7 +105,8 @@ details[open] > summary .details-chevron { transform: rotate(180deg); }
 }
 @media (max-width: 359px) {
   .dashboard { gap: 18px; }
-  .dashboard-date { max-width: 70px; font-size: .7rem; }
+  .dashboard-date { max-width: 70px; }
+  .weekly-content { gap: 8px; }
   .weekly-facts { gap: 8px; }
   .weekly-facts > div + div { padding-left: 10px; }
   .weekly-period { font-size: .75rem; }

@@ -40,6 +40,27 @@ test('weekly recorded time describes only timed eligible rows and reports its co
   expect(container.querySelector('.weekly-time-coverage').textContent).toBe('Time recorded for 1 of 2 rows.');
 });
 
+test('an empty eligible week invites a row, keeps missing time honest and preserves log actions', () => {
+  const context = render([row('last-week', { time: 510, date: new Date(2026, 9, 11, 9).toISOString() }),
+    row('pending', { time: 1200, verificationStatus: 'pending_review' })]);
+  const week = container.querySelector('.weekly-card');
+  expect(week.querySelector('.weekly-distance').textContent).toBe('0km rowed');
+  expect(week.querySelector('.weekly-facts').textContent).toBe('Rows0Active days0 / 7Recorded time—');
+  expect(week.querySelector('.weekly-time-coverage').textContent).toBe('Your next row moves the crew forward.');
+  expect(week.querySelectorAll('[role="listitem"]')).toHaveLength(7);
+  expect(week.querySelectorAll('.has-row')).toHaveLength(0);
+  act(() => week.querySelector('.dashboard-log').click());
+  expect(context.setShowLogModal).toHaveBeenCalledWith(true);
+  act(() => week.querySelector('.weekly-history').click());
+  expect(context.setShowSessionHistory).toHaveBeenCalledWith(true);
+});
+
+test('a week of untimed rows distinguishes missing recorded time from an empty week', () => {
+  render([row('untimed')]);
+  expect(container.querySelector('.weekly-facts').textContent).toBe('Rows1Active days1 / 7Recorded time—');
+  expect(container.querySelector('.weekly-time-coverage').textContent).toBe('Add a time to your row to track it here.');
+});
+
 test('Home rank uses eligible lifetime distance instead of a stale stored counter', () => {
   render([row('counted'), row('pending', { meters: 700000, verificationStatus: 'pending_review' })]);
   expect(container.querySelector('.dashboard-rank strong').textContent).toBe(getUserRank(2000).title);

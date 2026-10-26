@@ -66,7 +66,9 @@ function HomeTab() {
           <div><dt>Active days</dt><dd>{week.activeDays}<small> / 7</small></dd></div>
           <div><dt>Recorded time</dt><dd>{weekSummary.timedSessions ? formatTimeDisplay(weekSummary.seconds) : '—'}</dd></div>
         </dl>
-        <p className="weekly-time-coverage">{weekSummary.timedSessions ? `Time recorded for ${weekSummary.timedSessions} of ${week.sessions} ${week.sessions === 1 ? 'row' : 'rows'}.` : 'Add a time to your row to track it here.'}</p>
+        <p className="weekly-time-coverage">{week.sessions === 0 ? 'Your next row moves the crew forward.' : weekSummary.timedSessions ? `Time recorded for ${weekSummary.timedSessions} of ${week.sessions} ${week.sessions === 1 ? 'row' : 'rows'}.` : 'Add a time to your row to track it here.'}</p>
+        <div className="weekly-actions"><button className="dashboard-log" onClick={showLog}><Icon name="ui_plus" size={20} color="currentColor" /> Log a row</button>
+          <button className="weekly-history" onClick={() => setShowSessionHistory(true)}><Icon name="ui_history" size={17} color="currentColor" /><span>Logbook</span></button></div>
         <div className="week-rhythm" role="list" aria-label="Your activity this week, Monday to Sunday">
           {week.days.map(day => <div key={day.date.toISOString()} className={`week-day ${day.sessions ? 'has-row' : ''} ${day.today ? 'is-today' : ''} ${day.future ? 'is-future' : ''}`}
             role="listitem" aria-label={`${day.date.toLocaleDateString('en-US', { weekday: 'long' })}: ${day.meters.toLocaleString()} meters${day.today ? ', today' : day.future ? ', upcoming' : ''}`}>
@@ -74,8 +76,6 @@ function HomeTab() {
             <span className="week-day-mark" aria-hidden="true">{day.sessions ? <Icon name="ui_check" size={11} /> : <span />}</span>
           </div>)}
         </div>
-        <div className="weekly-actions"><button className="dashboard-log" onClick={showLog}><Icon name="ui_plus" size={20} color="currentColor" /> Log a row</button>
-          <button className="weekly-history" onClick={() => setShowSessionHistory(true)}><Icon name="ui_history" size={17} color="currentColor" /><span>Logbook</span></button></div>
         </div>
       </section>
 

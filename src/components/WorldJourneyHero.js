@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { WORLD_METERS } from '../constants/crewJourney';
-import { getNextMilestone } from '../constants/milestones';
 import { getCrewJourney } from '../utils/crewJourney';
 import './WorldJourneyHero.css';
 
@@ -10,7 +9,6 @@ const percentage = value => value > 0 && value < 0.01 ? '<0.01'
 
 export default function WorldJourneyHero({ totalMeters, onOpen }) {
   const journey = getCrewJourney(totalMeters);
-  const milestone = getNextMilestone(journey.distanceMeters);
   const [artAvailable, setArtAvailable] = useState(true);
   const percent = percentage(journey.progressPct);
   const distance = kilometers(journey.totalMeters);
@@ -20,7 +18,7 @@ export default function WorldJourneyHero({ totalMeters, onOpen }) {
   return <section className="world-journey" aria-labelledby="world-journey-heading">
     <div className="world-journey-main">
       <div className="world-journey-copy">
-        <h2 id="world-journey-heading">Around the world,<br />together.</h2>
+        <h2 id="world-journey-heading">Around the world</h2>
         <p className={'world-journey-distance' + (distance.length > 7 ? ' is-long' : '')}>
           <strong>{distance}</strong><span>km rowed by the crew</span>
         </p>
@@ -31,7 +29,7 @@ export default function WorldJourneyHero({ totalMeters, onOpen }) {
       </div>
     </div>
     <div className="world-journey-progress">
-      <div className="world-journey-progress-label"><strong>{percent}% around the world</strong><span>{kilometers(WORLD_METERS)} km goal</span></div>
+      <div className="world-journey-progress-label"><strong>{percent}% of the world</strong><span>{kilometers(WORLD_METERS)} km goal</span></div>
       <div className="world-journey-track" role="progressbar" aria-label="Crew journey around the world"
         aria-valuemin={0} aria-valuemax={100} aria-valuenow={journey.progressPct} aria-valuetext={summary}>
         <span style={{ width: journey.progressPct + '%' }} />
@@ -39,9 +37,8 @@ export default function WorldJourneyHero({ totalMeters, onOpen }) {
     </div>
     <div className="world-journey-next">
       <div className="world-journey-destination">
-        <span>{journey.next ? 'Next port of call' : 'World tour complete'}</span>
-        <strong>{journey.next ? journey.next.label : 'Home in Seattle'}</strong>
-        <span>{journey.next ? kilometers(journey.remainingOnLeg) + ' km to go' : 'One whole world, rowed together.'}</span>
+        <strong>{journey.next ? <><span>Next: </span>{journey.next.label}</> : 'Home in Seattle'}</strong>
+        <span>{journey.next ? kilometers(journey.remainingOnLeg) + ' km to go' : 'World tour complete'}</span>
       </div>
       <button type="button" onClick={onOpen} className="world-journey-explore">
         Explore map
@@ -50,7 +47,5 @@ export default function WorldJourneyHero({ totalMeters, onOpen }) {
         </svg>
       </button>
     </div>
-    {milestone && <p className="world-journey-milestone">Next crew milestone: <strong>{milestone.label}</strong>
-      <span>{kilometers(milestone.meters - journey.distanceMeters)} km away</span></p>}
   </section>;
 }

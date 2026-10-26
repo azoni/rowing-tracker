@@ -1,3 +1,9 @@
+.user-profile-modal .modal-close { width: 44px; height: 44px; }
+.user-profile-modal .modal-close:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; }
+.user-profile-modal .profile-modal-header { padding-right: 32px; }
+.user-profile-modal .profile-modal-info { min-width: 0; overflow-wrap: anywhere; }
+.profile-unavailable { padding: 36px 0 8px; }
+.profile-unavailable p { color: var(--text-secondary); font-size: .875rem; line-height: 1.6; }
 .user-profile-modal .profile-badges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .user-profile-modal .profile-badge { width: auto; height: auto; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; padding: 12px 6px; border: 1px solid var(--border-color); border-radius: 12px; background: transparent; text-align: center; cursor: default; }
 .user-profile-modal .profile-badge.unlocked { background: color-mix(in srgb, var(--accent-primary) 5%, var(--bg-card)); border-color: color-mix(in srgb, var(--accent-primary) 30%, var(--border-color)); }

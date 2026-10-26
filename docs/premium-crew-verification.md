@@ -1,6 +1,21 @@
-# Premium crew pass: local verification
+# Row Crew 4.8: verification
 
-## Current revision: expedition artwork and content priorities
+## Release review: compact Home and reliable metrics
+
+Verified 25 October 2026. The user authorized publishing this complete branch after the functionality review.
+
+- 22 suites / 228 tests pass, including saved-row deduplication, eligible awards and rank changes, exact setup records, profile/world consistency, malformed activity timestamps, and share totals without double counting.
+- CI production build succeeds. Scoped ESLint and whitespace checks pass. Existing browser-dataset/Node notices remain toolchain maintenance items.
+- The isolated browser suite passes 10 groups with no page errors or unexpected requests. It now mounts the real profile dialog and verifies keyboard/focus/scroll behavior, accurate derived totals despite deliberately stale cached counters, map contribution shares, and the new exact-setup pace history/table.
+- Home's world card is 272px high at 390×844 and 252px at 320×740. Weekly Log a row actions fit above navigation. The full first Crew session remains visible without scrolling at both sizes.
+- Reviewed 23 screenshots at 320/390/1440px, light/dark themes and empty/guest states. No horizontal overflow. Google Fonts can be unavailable in the local browser environment; the layout also works with fallback fonts.
+- World, map contributors and profiles now use the same eligible ledger as the board. Selecting a group does not change the global world total. Sessions/week counts sessions, not active days. No historical counter or saved-award migration was performed.
+- Pace comparisons exclude interval totals, preserve every comparable session, and distinguish slower/faster recorded pace from fitness. Recorded-time deltas are withheld when either window has missing times; the exact totals and coverage remain visible.
+- New award checks use the exact persisted row plus the latest snapshot, with no arbitrary delay. Existing unlock dates remain preserved. New rank events use an atomic array append; record feed items retain distance, time and previous-best fields.
+
+Production release uses the repository's existing Netlify Git integration on main. Verify the published deploy's commit reference against the merged commit, then perform a read-only production smoke check. GitHub currently has no required CI checks; the local test/build receipts and Netlify build result are the release evidence. Firebase rules, Cloud Functions and storage configuration are unchanged; authenticated real-data writes were not manufactured for testing.
+
+## Artwork revision verification (historical)
 
 Verified on 25 October 2026 after the user's visual feedback. Home now leads with the actual around-the-world distance; Crew leads with sessions. See [the revised design plan](premium-crew-design.md) and [artwork provenance and prompts](achievement-artwork.md).
 

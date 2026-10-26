@@ -1,4 +1,4 @@
-import { buildLeaderboardStats, formatRecordTime, getDerivedAchievements, getDerivedAchievementProgress } from './leaderboardStats';
+import { buildLeaderboardStats, formatRecordTime, getDerivedAchievements, getDerivedAchievementProgress, getMetricProfiles } from './leaderboardStats';
 import { ACHIEVEMENTS } from '../constants/achievements';
 
 const now = new Date(2026, 9, 25, 12);
@@ -12,6 +12,20 @@ const row = (id, userId = 'a', extra = {}) => ({
   machineType: 'concept2_pm5', sessionType: 'distance', ...extra,
 });
 const build = (entries, options = {}) => buildLeaderboardStats({ users, entries, now, achievements: [], ...options });
+
+test('global journey and profile totals agree with eligible rows even when the board selects a group', () => {
+  const stats = build([
+    row('a-1', 'a', { meters: 1000 }), row('a-2', 'a', { meters: 3000, date: date(24, 11) }),
+    row('b-1', 'b'), row('a-pending', 'a', { meters: 99999, verificationStatus: 'pending_review', date: date(1) }),
+  ], { memberIds: ['b'] });
+  expect(stats.summary.meters).toBe(2000);
+  expect(stats.globalSummary).toEqual({ rowers: 2, rows: 3, meters: 6000 });
+  const profiles = getMetricProfiles(stats);
+  expect(profiles.a).toMatchObject({ id: 'a', name: 'Amir', totalMeters: 4000, uploadCount: 2, totalTime: 960 });
+  expect(stats.byUser.a).toMatchObject({ activeDays: 1, weeklyAvg: 2, longestRow: 3000, firstRowDate: new Date(date(24)) });
+  expect(users.a.totalMeters).toBe(999999);
+  expect(getMetricProfiles(build([])).a.totalMeters).toBe(0);
+});
 
 test('uses numeric eligible ledger totals and leaves stored profiles and rows untouched', () => {
   const entries = [

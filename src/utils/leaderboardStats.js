@@ -57,7 +57,10 @@ export const buildLeaderboardStats = ({ users = {}, entries = [], memberIds = nu
       streak, longestStreak: getBestRowStreak(userRows),
       weeklyMeters: weeklyRows.reduce((sum, row) => sum + row.meters, 0),
       weeklySessions: weeklyRows.length,
-      weeklyAvg: Number((days.size / Math.max(1, (today - firstDay + 1) / 7)).toFixed(1)),
+      weeklyAvg: Number((userRows.length / Math.max(1, (today - firstDay + 1) / 7)).toFixed(1)),
+      activeDays: days.size,
+      firstRowDate: userRows.length ? new Date(Math.min(...userRows.map(row => new Date(row.date).getTime()))) : null,
+      longestRow: userRows.reduce((best, row) => Math.max(best, row.meters), 0),
       avgPerUpload: userRows.length ? Math.round(totalMeters / userRows.length) : 0,
       rank: getUserRank(totalMeters), latest, weeklyLatest,
     };
@@ -96,6 +99,7 @@ export const buildLeaderboardStats = ({ users = {}, entries = [], memberIds = nu
 
   return {
     byUser, week: { start: week.start, end: week.end }, records,
+    globalSummary: { rowers: Object.keys(byUser).length, rows: rows.length, meters: rows.reduce((sum, row) => sum + row.meters, 0) },
     allTime: [...people].sort((a, b) => b.totalMeters - a.totalMeters || a.latest - b.latest || byId(a, b)),
     weekly: people.filter(user => user.weeklyMeters > 0).sort((a, b) => b.weeklyMeters - a.weeklyMeters || a.weeklyLatest - b.weeklyLatest || byId(a, b)),
     streaks: people.filter(user => user.longestStreak > 0).sort((a, b) => b.streak - a.streak || b.longestStreak - a.longestStreak || byId(a, b)),
@@ -103,6 +107,13 @@ export const buildLeaderboardStats = ({ users = {}, entries = [], memberIds = nu
     summary: { rowers: people.length, rows: scopedRows.length, meters: scopedRows.reduce((sum, row) => sum + row.meters, 0) },
   };
 };
+
+// Profile identity stays intact, while every read-only distance/time view uses
+// the same ledger as the board. Never write these presentation profiles back.
+export const getMetricProfiles = stats => Object.fromEntries(Object.entries(stats.byUser).map(([id, user]) => [id, {
+  ...user.profile, id, totalMeters: user.totalMeters, uploadCount: user.uploadCount,
+  totalTime: user.totalTime, totalCalories: user.totalCalories,
+}]));
 
 // Read-only badge views share the same derived profile and eligible rows as the
 // board. Existing unlock dates win even when historical rows no longer qualify.

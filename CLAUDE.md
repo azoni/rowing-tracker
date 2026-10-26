@@ -15,6 +15,9 @@
 - Keep new feature styles beside their components. `CrewExperience.css` owns the shared frame; theme colors stay in `constants/themes.js` and CSS variables.
 - Dashboard and leaderboard weeks start Monday in the viewer's local timezone. Rolling analytics windows are labeled separately. Preserve explicit units, missing-time coverage, and the text/table alternatives to charts.
 - Read-only totals, ranks and newly computed achievements use eligible workout entries. Preserve stored badge unlocks. Do not silently rewrite historical profile counters or badge dates during a visual task.
+- The world journey uses `leaderboardStats.globalSummary`, independent of group selection. Member/profile/map display uses `metricUsers`; never write those presentation profiles back to Firestore.
+- After a row is saved, `getRowMilestones` combines the exact persisted row with the latest subscription snapshot and deduplicates its ID. Do not replace this with a delayed state closure or cached-counter badge/record checks. New unlock fields merge; rank history uses `arrayUnion`.
+- Time deltas require complete time coverage in both comparison windows. Pace history compares exact distances on the same recorded machine and continuous workout type; interval totals are not comparable benchmarks.
 - Keep photo-verified records separate by exact distance, known machine and workout type. Row Crew photo verification is not an official race certification.
 - Respect reduced motion; keep decorative motion finite. Preserve keyboard focus, small-screen layouts, and light/dark contrast. Research and image provenance are in `docs/design-research.md` and `docs/rowing-image.md`.
 - The crew's boat can drift a little. The meaning of a meter cannot. Check the units before calling it a personal best.

@@ -44,7 +44,6 @@ import {
   getMilestoneIndex,
   THEMES,
   DEFAULT_THEME,
-  getDistanceCategory,
   getActiveHoliday,
   getMonthlyProgram,
   MONTH_NAMES,
@@ -63,7 +62,9 @@ import { AppContext } from './context/AppContext';
 import Header from './components/Header';
 import AppNavigation from './components/AppNavigation';
 import { getMonthlySummary, getMonthEntries, getThrowdownProgress, getBestRowStreak } from './utils/rowingGoals';
-import { buildLeaderboardStats, getDerivedAchievements, getDerivedAchievementProgress } from './utils/leaderboardStats';
+import { buildLeaderboardStats, getDerivedAchievements, getDerivedAchievementProgress, getMetricProfiles } from './utils/leaderboardStats';
+import { getRowMilestones } from './utils/rowMilestones';
+import { buildActivityItem } from './utils/activityItems';
 import EntryForm from './components/EntryForm';
 import HomeTab from './components/HomeTab';
 import ActivityFeed from './components/ActivityFeed';
@@ -133,6 +134,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [lastSessionMeters, setLastSessionMeters] = useState(0);
+  const [lastSessionTotalMeters, setLastSessionTotalMeters] = useState(0);
   const [, setLastSessionTime] = useState(null); // For future share card enhancement
   const [, setLastSessionCalories] = useState(null); // For future share card enhancement
   const [shareImageUrl, setShareImageUrl] = useState(null);
@@ -660,10 +662,33 @@ function App() {
     autoGenerateUsername();
   }, [currentUser, userProfile]);
 
-  // Calculate total meters
+  // One read-only ledger powers the journey, profiles, board and achievements.
+  const [leaderboardNow, setLeaderboardNow] = useState(() => new Date());
+  useEffect(() => {
+    const refresh = () => setLeaderboardNow(new Date());
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, []);
+  const leaderboardMemberIds = useMemo(() => selectedGroupId
+    ? groups.find(group => group.id === selectedGroupId)?.memberIds || []
+    : null, [groups, selectedGroupId]);
+  const filteredUsers = useMemo(() => leaderboardMemberIds === null ? users
+    : Object.fromEntries(leaderboardMemberIds.filter(id => users[id]).map(id => [id, users[id]])),
+  [users, leaderboardMemberIds]);
+  const filteredEntries = useMemo(() => entries.filter(entry =>
+    Object.prototype.hasOwnProperty.call(filteredUsers, entry.userId)), [entries, filteredUsers]);
+  const leaderboardStats = useMemo(() => buildLeaderboardStats({
+    users, entries, memberIds: leaderboardMemberIds, now: new Date(Math.max(leaderboardNow.getTime(), Date.now())),
+  }), [users, entries, leaderboardMemberIds, leaderboardNow]);
+  const metricUsers = useMemo(() => getMetricProfiles(leaderboardStats), [leaderboardStats]);
+  const rowStateRef = useRef({ users, entries });
+  rowStateRef.current = { users, entries };
+
+  // Global journey totals do not change when a group is selected.
   const getTotalMeters = useCallback(() => {
-    return Object.values(users).reduce((sum, user) => sum + (user.totalMeters || 0), 0);
-  }, [users]);
+    return leaderboardStats.globalSummary.meters;
+  }, [leaderboardStats]);
 
   // Check for milestones
   useEffect(() => {
@@ -2175,7 +2200,7 @@ function App() {
         }
       }
 
-      await setDoc(entryRef, {
+      const savedEntryData = {
         userId: currentUser.uid,
         meters: meters,
         time: timeSeconds || null,
@@ -2195,7 +2220,8 @@ function App() {
         sessionType: sessionType || 'free_row',
         machineType: machineInfo?.type || null,
         machineCustomName: machineInfo?.customName || null,
-      });
+      };
+      await setDoc(entryRef, savedEntryData);
 
       const userRef = doc(db, 'users', currentUser.uid);
       const finalMeters = meters;
@@ -2227,11 +2253,19 @@ function App() {
       
       await setDoc(userRef, userUpdate, { merge: true });
 
-      // Check for Personal Record before adding to entries list
-      const isPR = checkForPR(currentUser.uid, finalMeters);
+      // Use the latest subscription plus this exact saved row. A delayed closure
+      // cannot see new state, and the subscription may already contain this ID.
+      const latestRows = rowStateRef.current;
+      const milestones = getRowMilestones({
+        users: { ...latestRows.users, [currentUser.uid]: latestRows.users[currentUser.uid] || userProfile },
+        entries: latestRows.entries, userId: currentUser.uid,
+        savedEntry: { ...savedEntryData, id: entryId }, now: new Date(),
+      });
+      const isPR = milestones.isDistancePR;
       
       // Store for share card
       setLastSessionMeters(finalMeters);
+      setLastSessionTotalMeters(milestones.afterUser?.totalMeters || 0);
       setLastSessionTime(timeSeconds);
       setLastSessionCalories(calories);
       
@@ -2291,35 +2325,12 @@ function App() {
         }).catch(() => {});
       }
 
-      // Check for new distance record (500m, 1K, 2K, 5K, 10K, 15K)
-      if (timeSeconds && timeSeconds > 0 && verification.status !== 'unverified') {
-        const distCat = getDistanceCategory(finalMeters);
-        if (distCat) {
-          // Check if this is the user's best time for this distance
-          const previousBest = entries
-            .filter(e => e.userId === currentUser.uid && e.time && e.time > 0
-              && getDistanceCategory(e.meters)?.meters === distCat.meters
-              && ['verified', 'pending_review'].includes(e.verificationStatus))
-            .reduce((best, e) => (!best || e.time < best) ? e.time : best, null);
-
-          if (!previousBest || timeSeconds < previousBest) {
-            logActivity('distance_record', {
-              meters: finalMeters,
-              time: timeSeconds,
-              distanceLabel: distCat.label,
-              distanceMeters: distCat.meters,
-              previousBest: previousBest || null,
-              isFirstRecord: !previousBest,
-            });
-          }
-        }
+      // Feed records use the same verified exact-distance setup as the board.
+      if (milestones.newDistanceRecord) {
+        logActivity('distance_record', { meters: finalMeters, ...milestones.newDistanceRecord });
       }
 
-      // Check for new achievements and rank promotion (after a delay to let state update)
-      setTimeout(async () => {
-        await checkAndSaveNewAchievements(currentUser.uid);
-        await checkAndSaveRankPromotion(currentUser.uid, newTotalMeters);
-      }, 1000);
+      await persistRowMilestones(currentUser.uid, milestones);
 
       return true;
     } catch (error) {
@@ -2495,6 +2506,7 @@ function App() {
       setValidationError('');
       setShowLogModal(false);
       setLastSessionMeters(meters);
+      setLastSessionTotalMeters(leaderboardStats.byUser[currentUser.uid]?.totalMeters || 0);
       setShowRowCelebration(true);
       setTestMode(false);
       return;
@@ -2536,6 +2548,7 @@ function App() {
       setValidationError('');
       setShowLogModal(false);
       setLastSessionMeters(meters);
+      setLastSessionTotalMeters(leaderboardStats.byUser[currentUser.uid]?.totalMeters || 0);
       setShowRowCelebration(true);
       setTestMode(false);
       return;
@@ -2718,6 +2731,7 @@ function App() {
     setShareImageUrl(null);
     setCapturedImage(null);
     setLastSessionMeters(0);
+    setLastSessionTotalMeters(0);
     setActiveTab('leaderboard');
   };
 
@@ -2806,7 +2820,7 @@ function App() {
 
   // Fallback text share
   const fallbackTextShare = async () => {
-    const shareText = `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m on Row Crew!\n🔥 ${calculateStreak(currentUser?.uid)} day streak\n📊 ${formatMeters((userProfile?.totalMeters || 0) + lastSessionMeters)} total\n\nJoin us! rowcrew.netlify.app`;
+    const shareText = `🚣 Just rowed ${lastSessionMeters.toLocaleString()}m on Row Crew!\n🔥 ${calculateStreak(currentUser?.uid)} day streak\n📊 ${formatMeters(lastSessionTotalMeters)} total meters\n\nJoin us! rowcrew.netlify.app`;
     
     if (navigator.share) {
       await navigator.share({ text: shareText });
@@ -2827,32 +2841,6 @@ function App() {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
-  // Refresh calendar-based standings while open and after returning to the app.
-  const [leaderboardNow, setLeaderboardNow] = useState(() => new Date());
-  useEffect(() => {
-    const refresh = () => setLeaderboardNow(new Date());
-    const timer = window.setInterval(refresh, 60000);
-    window.addEventListener('focus', refresh);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('focus', refresh);
-    };
-  }, []);
-
-  // An unresolved group must never widen the selection to the whole crew.
-  const leaderboardMemberIds = useMemo(() => selectedGroupId
-    ? groups.find(group => group.id === selectedGroupId)?.memberIds || []
-    : null, [groups, selectedGroupId]);
-  const filteredUsers = useMemo(() => leaderboardMemberIds === null ? users
-    : Object.fromEntries(leaderboardMemberIds.filter(id => users[id]).map(id => [id, users[id]])),
-  [users, leaderboardMemberIds]);
-  const filteredEntries = useMemo(() => entries.filter(entry =>
-    Object.prototype.hasOwnProperty.call(filteredUsers, entry.userId)), [entries, filteredUsers]);
-
-  const leaderboardStats = useMemo(() => buildLeaderboardStats({
-    // A new upload can arrive between clock ticks; include it immediately.
-    users, entries, memberIds: leaderboardMemberIds, now: new Date(Math.max(leaderboardNow.getTime(), Date.now())),
-  }), [users, entries, leaderboardMemberIds, leaderboardNow]);
   const calculateStreak = useCallback(userId => leaderboardStats.byUser[userId]?.streak || 0, [leaderboardStats]);
   const calculateLongestStreak = useCallback(userId => leaderboardStats.byUser[userId]?.longestStreak || 0, [leaderboardStats]);
   const calculateWeeklyAverage = useCallback(userId => leaderboardStats.byUser[userId]?.weeklyAvg || 0, [leaderboardStats]);
@@ -2884,96 +2872,36 @@ function App() {
   const getAchievementProgress = (userId, achievement) =>
     getDerivedAchievementProgress(leaderboardStats.byUser[userId], achievement);
 
-  // Check and save new achievements
-  const checkAndSaveNewAchievements = async (userId) => {
-    const user = users[userId];
-    if (!user) return [];
-    
-    const userEntries = entries.filter(e => e.userId === userId);
-    const streak = calculateStreak(userId);
-    const existingAchievements = user.unlockedAchievements || {};
-    
-    const newlyUnlocked = [];
-    const updatedAchievements = { ...existingAchievements };
-    
-    for (const achievement of ACHIEVEMENTS) {
-      if (!existingAchievements[achievement.id] && achievement.check(user, userEntries, streak)) {
-        updatedAchievements[achievement.id] = new Date().toISOString();
-        newlyUnlocked.push(achievement);
-      }
+  // Persist only newly earned fields. Merge preserves historical unlock dates;
+  // arrayUnion does not overwrite another save's rank history.
+  const persistRowMilestones = async (userId, milestones) => {
+    const update = {};
+    const date = new Date().toISOString();
+    if (milestones.newlyUnlocked.length) {
+      update.unlockedAchievements = Object.fromEntries(milestones.newlyUnlocked.map(achievement => [achievement.id, date]));
     }
-    
-    if (newlyUnlocked.length > 0) {
-      try {
-        const userRef = doc(db, 'users', userId);
-        await setDoc(userRef, { unlockedAchievements: updatedAchievements }, { merge: true });
-      } catch (error) {
-        console.error('Error saving achievements:', error);
-      }
+    if (milestones.promotion) {
+      const rank = milestones.promotion;
+      update.currentRank = rank.title;
+      update.rankHistory = arrayUnion({ rank: rank.title, emoji: rank.emoji, tier: rank.tier || 'bronze', date });
     }
-    
-    return newlyUnlocked;
-  };
-
-  // Check and save rank promotion
-  const checkAndSaveRankPromotion = async (userId, newTotalMeters) => {
-    const user = users[userId];
-    if (!user) return null;
-    
-    const oldRank = getUserRank(user.totalMeters || 0);
-    const newRank = getUserRank(newTotalMeters);
-    
-    if (newRank.title !== oldRank.title && newRank.minMeters > oldRank.minMeters) {
-      try {
-        const userRef = doc(db, 'users', userId);
-        const rankHistory = user.rankHistory || [];
-        rankHistory.push({
-          rank: newRank.title,
-          emoji: newRank.emoji,
-          tier: newRank.tier || 'bronze',
-          date: new Date().toISOString(),
-        });
-        await setDoc(userRef, { 
-          currentRank: newRank.title,
-          rankHistory 
-        }, { merge: true });
-        return newRank;
-      } catch (error) {
-        console.error('Error saving rank promotion:', error);
-      }
+    if (!Object.keys(update).length) return;
+    try {
+      await setDoc(doc(db, 'users', userId), update, { merge: true });
+    } catch (error) {
+      console.error('Error saving rowing milestones:', error);
+      showToast('Your row is saved. Some award details could not sync yet.', 'info');
     }
-    return null;
   };
 
   // Get user's personal record
-  const getPersonalRecord = (userId) => {
-    const userEntries = entries.filter(e => e.userId === userId);
-    if (userEntries.length === 0) return 0;
-    return Math.max(...userEntries.map(e => e.meters));
-  };
+  const getPersonalRecord = userId => leaderboardStats.byUser[userId]?.longestRow || 0;
 
   // Get total unique days rowed
-  const getTotalDaysRowed = (userId) => {
-    const userEntries = entries.filter(e => e.userId === userId);
-    const uniqueDays = new Set(userEntries.map(e => new Date(e.date).toDateString()));
-    return uniqueDays.size;
-  };
+  const getTotalDaysRowed = userId => leaderboardStats.byUser[userId]?.activeDays || 0;
 
   // Get first row date
-  const getFirstRowDate = (userId) => {
-    const userEntries = entries
-      .filter(e => e.userId === userId)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-    
-    if (userEntries.length === 0) return null;
-    return new Date(userEntries[0].date);
-  };
-
-  // Check if this session is a PR
-  const checkForPR = (userId, newMeters) => {
-    const currentPR = getPersonalRecord(userId);
-    return newMeters > currentPR && currentPR > 0;
-  };
+  const getFirstRowDate = userId => leaderboardStats.byUser[userId]?.firstRowDate || null;
 
   // Memoized feed base - builds and sorts all feed items once
   const activityFeedBase = useMemo(() => {
@@ -3052,20 +2980,8 @@ function App() {
       const activityUser = users[activity.userId];
       if (!activityUser) return;
       if (selectedGroupId && activity.groupId && activity.groupId !== selectedGroupId) return;
-      const activityDate = activity.createdAt?.toDate ? activity.createdAt.toDate() : new Date(activity.createdAt);
-      feedItems.push({
-        id: activity.id,
-        type: activity.type,
-        userId: activity.userId,
-        user: activityUser,
-        groupId: activity.groupId,
-        groupName: activity.groupName,
-        challengeId: activity.challengeId,
-        challengeName: activity.challengeName,
-        challengeType: activity.challengeType,
-        date: activityDate.toISOString(),
-        sortDate: activityDate,
-      });
+      const item = buildActivityItem(activity, activityUser);
+      if (item) feedItems.push(item);
     });
 
     // Detect monthly throwdown completions
@@ -3558,7 +3474,7 @@ function App() {
     generateUsernameFromName,
 
     // Core data
-    users, entries, isLoading,
+    users, metricUsers, entries, isLoading,
 
     // Processing
     isProcessing, setIsProcessing, processingStatus, setProcessingStatus,
@@ -3620,7 +3536,7 @@ function App() {
     showManageMembersModal, setShowManageMembersModal,
 
     // Share
-    shareCardRef, shareImageUrl, lastSessionMeters,
+    shareCardRef, shareImageUrl, lastSessionMeters, lastSessionTotalMeters,
     linkCopied, isCopying, handleCopyLink, handleCloseShare,
 
     // Notifications

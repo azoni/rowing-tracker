@@ -4,7 +4,7 @@ These source observations are outside this visual pass. They are not claims abou
 
 ## Data and badge persistence
 
-The read-only UI now derives rankings and achievement progress from eligible rows while preserving saved unlocks. Existing achievement persistence in `App.js` still has raw-entry inputs and a delayed callback that can use pre-save state. Historical counters and previously saved badge provenance have not been repaired. A separate task should reproduce this with isolated fixtures/emulators and update the write path deliberately, with a migration plan if historical data needs repair.
+The current UI derives the world journey, profile totals, rankings and achievement progress from eligible rows while preserving saved unlocks. The functionality pass replaced the stale delayed award callback: new saves combine the exact persisted row with the latest subscription, deduplicate its ID, and merge only new awards; records now use the same exact setup rules as the board. Historical stored counters and previously saved badge provenance have not been repaired. Any historical cleanup still needs a separate migration plan and isolated validation.
 
 ## Review existing authorization boundaries
 

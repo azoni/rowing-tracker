@@ -4,7 +4,7 @@ import '../../src/App.css';
 import { AppContext } from '../../src/context/AppContext';
 import { ACHIEVEMENTS, MILESTONES, THEMES, MIN_METERS, MAX_METERS } from '../../src/constants';
 import { parseTimeInput } from '../../src/utils';
-import { buildLeaderboardStats, getDerivedAchievementProgress, getDerivedAchievements } from '../../src/utils/leaderboardStats';
+import { buildLeaderboardStats, getDerivedAchievementProgress, getDerivedAchievements, getMetricProfiles } from '../../src/utils/leaderboardStats';
 import { getEligibleEntries } from '../../src/utils/rowingGoals';
 import CrewMap from '../../src/components/CrewMap';
 import HomeTab from '../../src/components/HomeTab';
@@ -16,6 +16,7 @@ import Leaderboard from '../../src/components/Leaderboard';
 import EntryForm from '../../src/components/EntryForm';
 import ConfirmEntryModal from '../../src/components/ConfirmEntryModal';
 import { AchievementModal } from '../../src/components/SmallModals';
+import UserProfileModal from '../../src/components/UserProfileModal';
 
 // This preview never imports App.js or Firebase. All writes and auth actions stay
 // in memory. Reloading resets everything. Freeze the browser clock before loading
@@ -24,6 +25,7 @@ const params = new URLSearchParams(window.location.search);
 const isEmpty = params.get('empty') === '1';
 const isGuest = params.get('guest') === '1';
 const isMixed = params.get('mixed') === '1';
+const hasStaleCounters = params.get('stale') === '1';
 const startsLoading = params.get('loading') === '1';
 const PAGE_SIZE = 8;
 const now = new Date();
@@ -82,6 +84,7 @@ function Fixture() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showAchievementModal, setShowAchievementModal] = useState(null);
+  const [showUserProfileModal, setShowUserProfileModal] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [manualMeters, setManualMeters] = useState('');
   const [manualTime, setManualTime] = useState('');
@@ -129,6 +132,7 @@ function Fixture() {
       totalTime: rows.reduce((sum, row) => sum + (Number(row.time) || 0), 0),
       totalCalories: rows.reduce((sum, row) => sum + (Number(row.calories) || 0), 0),
       uploadCount: rows.length,
+      ...(hasStaleCounters ? { totalMeters: 999999, totalTime: 999999, totalCalories: 999999, uploadCount: 999 } : {}),
     }];
   }));
   const userProfile = profiles[identity.uid];
@@ -137,8 +141,13 @@ function Fixture() {
   const users = isEmpty ? { [identity.uid]: userProfile } : profiles;
   const visibleEntries = isLoading ? [] : entries;
   const leaderboardStats = buildLeaderboardStats({ users, entries: visibleEntries, now: new Date() });
+  const metricUsers = getMetricProfiles(leaderboardStats);
   const calculateStreak = uid => leaderboardStats.byUser[uid]?.streak || 0;
   const calculateLongestStreak = uid => leaderboardStats.byUser[uid]?.longestStreak || 0;
+  const calculateWeeklyAverage = uid => leaderboardStats.byUser[uid]?.weeklyAvg || 0;
+  const getPersonalRecord = uid => leaderboardStats.byUser[uid]?.longestRow || 0;
+  const getTotalDaysRowed = uid => leaderboardStats.byUser[uid]?.activeDays || 0;
+  const getFirstRowDate = uid => leaderboardStats.byUser[uid]?.firstRowDate || null;
   const getAchievementProgress = (uid, achievement) => getDerivedAchievementProgress(leaderboardStats.byUser[uid], achievement);
   const getUserAchievements = uid => getDerivedAchievements(leaderboardStats.byUser[uid]);
   const openReview = () => {
@@ -213,11 +222,12 @@ function Fixture() {
     recordAction(`Comment posted locally on ${id} for ${ownerId}`);
   };
   const totalMeters = Number.isFinite(requestedMeters) && requestedMeters >= 0 ? requestedMeters
-    : eligible.reduce((sum, row) => sum + Number(row.meters), 0);
+    : leaderboardStats.globalSummary.meters;
   const value = {
-    currentUser: isGuest ? null : identity, userProfile: isGuest ? null : userProfile, users,
+    currentUser: isGuest ? null : identity, userProfile: isGuest ? null : userProfile, users, metricUsers,
     entries: visibleEntries, isLoading, isAdmin, activeTab, setActiveTab,
     getAchievementProgress, getUserAchievements, calculateStreak, calculateLongestStreak,
+    calculateWeeklyAverage, getPersonalRecord, getTotalDaysRowed, getFirstRowDate,
     leaderboardStats, leaderboardTab, setLeaderboardTab, getLeaderboard: leaderboardStats.allTime,
     getWeeklyLeaderboard: leaderboardStats.weekly, getStreakLeaderboard: leaderboardStats.streaks,
     getAchievementsLeaderboard: leaderboardStats.achievements, getDistanceRecords: leaderboardStats.records,
@@ -240,7 +250,7 @@ function Fixture() {
     getChallengeStatus: () => 'active', getChallengeProgress: () => null,
     setShowChallengeDetail: noOp, setShowCreateChallengeModal: noOp, setShowManageMembersModal: noOp, setShowInviteUserModal: noOp, handleLeaveGroup: noOp,
     feedSearchQuery, setFeedSearchQuery, feedTypeFilter, setFeedTypeFilter, feedPage, setFeedPage, FEED_PAGE_SIZE: PAGE_SIZE, getActivityFeed,
-    setShowUserProfileModal: user => recordAction(`Profile opened: ${user.name}`),
+    showUserProfileModal, setShowUserProfileModal,
     showReactionPicker, setShowReactionPicker, REACTION_EMOJIS: ['🔥', '💪', '👏', '🚣'],
     getReactionCounts: id => reactions.filter(item => item.targetId === id).reduce((counts, item) => ({ ...counts, [item.emoji]: (counts[item.emoji] || 0) + 1 }), {}),
     hasUserReacted: (id, emoji) => !isGuest && reactions.some(item => item.targetId === id && item.userId === identity.uid && item.emoji === emoji),
@@ -266,7 +276,7 @@ function Fixture() {
     now: now.toISOString(), setShowCrewMap, setIsAdmin, openReview, setIsProcessing, setIsLoading,
     setActiveTab, setLeaderboardTab, setShowLogModal, setValidationError, setEditableMeters, setEditableTime, setAiMachineType,
     holdWrites: () => { writes.current.held = true; }, releaseWrites: () => releaseWrites(false), failWrites: () => releaseWrites(true),
-    snapshot: () => ({ entries, comments, reactions, totalMeters, leaderboardStats, isLoading }),
+    snapshot: () => ({ entries, comments, reactions, totalMeters, leaderboardStats, metricUsers, users, showUserProfileModal, isLoading }),
   };
   return <AppContext.Provider value={value}>
     <aside aria-label="Preview information" style={{ padding: '8px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>Local preview · Sample data · Changes reset on refresh</aside>
@@ -275,8 +285,8 @@ function Fixture() {
       <main className="main-content" id="crew-main" tabIndex={-1}>
         {activeTab === 'home' ? <HomeTab /> : activeTab === 'more' ? <StatsTab /> : activeTab === 'feed' ? <ActivityFeed /> : <Leaderboard />}
       </main>
-      <AppNavigation /><EntryForm /><ConfirmEntryModal /><AchievementModal /><CrewMap />
-      <output id="qa-action" aria-live="polite" style={{ display: notice && !showLogModal && !showConfirmModal && !showCrewMap && !showAchievementModal ? 'block' : 'none', pointerEvents: 'none', position: 'fixed', bottom: 110, left: 16, maxWidth: 300, zIndex: 70, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13 }}> {notice ? `Preview action: ${notice}` : ''}</output>
+      <AppNavigation /><EntryForm /><ConfirmEntryModal /><AchievementModal /><UserProfileModal /><CrewMap />
+      <output id="qa-action" aria-live="polite" style={{ display: notice && !showLogModal && !showConfirmModal && !showCrewMap && !showAchievementModal && !showUserProfileModal ? 'block' : 'none', pointerEvents: 'none', position: 'fixed', bottom: 110, left: 16, maxWidth: 300, zIndex: 70, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13 }}> {notice ? `Preview action: ${notice}` : ''}</output>
     </div>
   </AppContext.Provider>;
 }

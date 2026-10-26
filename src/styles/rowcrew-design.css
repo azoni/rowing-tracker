@@ -1,0 +1,1015 @@
+/*
+ * Row Crew design layer: night water.
+ * Loaded after every component stylesheet (src/index.js, scripts/preview/fixture.jsx). It only uses theme variables,
+ * so alternate and holiday themes keep working. The crew brings the colour; the interface stays chalk on water.
+ * Rationale and tokens: docs/claude-redesign.md.
+ */
+
+:root {
+  --crew-ink: #0A1C22;
+  --rc-radius: 16px;
+  --rc-pill: 999px;
+  --rc-quiet: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --rc-hover: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  --rc-rail: 104px;
+  --rc-content: 760px;
+  --rc-wide: 1180px;
+  --rc-ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  letter-spacing: -.003em;
+  background: var(--bg-dark);
+  text-rendering: optimizeLegibility;
+}
+::selection { background: var(--text-primary); color: var(--bg-dark); }
+button, input, select, textarea { font-family: inherit; }
+:is(button, a, summary, input, select, textarea):focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
+
+/* ---------- Frame ---------- */
+.app,
+.app.app {
+  max-width: none;
+  margin: 0;
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background:
+    radial-gradient(90% 420px at 70% -120px, color-mix(in srgb, var(--text-primary) 6%, transparent), transparent 70%),
+    var(--bg-dark);
+}
+.app .header.crew-header,
+.app .main-content { width: 100%; max-width: var(--rc-content); margin-inline: auto; }
+.app .main-content { padding: 4px 16px 48px; }
+.app .header.crew-header {
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px 10px;
+  text-align: left;
+}
+.app .header.crew-header::before, .app .header.crew-header::after { display: none; }
+.app .header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.crew-wordmark { gap: 10px; align-items: center; }
+.app .crew-mark { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 0; color: var(--text-primary); }
+.app .header.crew-header .crew-wordmark h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-stretch: 74%;
+  font-weight: 800;
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: -.01em;
+  text-transform: none;
+  color: var(--text-primary);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+.app .crew-wordmark-caption { display: none; }
+.app .user-menu { display: flex; align-items: center; gap: 8px; }
+.app :is(.notification-btn, .admin-btn-header, .info-btn) {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: none;
+}
+.app .user-avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: 0 0 0 1px var(--border-color);
+}
+.app .notification-badge { background: var(--text-primary); color: var(--bg-dark); font-weight: 700; }
+
+/* ---------- Navigation: bottom bar on phones, a rail on wide screens ---------- */
+.app .crew-nav {
+  inset: auto 0 0;
+  max-width: none;
+  gap: 0;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--bg-dark) 86%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: none;
+}
+.app .crew-nav button {
+  position: relative;
+  min-height: 56px;
+  gap: 6px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 .75rem/1 var(--font-body);
+  letter-spacing: 0;
+}
+.app .crew-nav button.is-active { color: var(--text-primary); background: transparent; font-weight: 600; }
+.app .crew-nav button.is-active::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: 18px;
+  height: 3px;
+  margin-left: -9px;
+  border-radius: 3px;
+  background: var(--text-primary);
+}
+.app .crew-nav .crew-nav-log { color: var(--text-primary); gap: 5px; }
+.app .crew-nav-log > span {
+  width: 50px;
+  height: 32px;
+  border-radius: var(--rc-pill);
+  background: var(--text-primary);
+  color: var(--bg-dark);
+}
+@media (hover: hover) {
+  .app .crew-nav button:hover { background: var(--rc-hover); color: var(--text-primary); }
+}
+
+/* ---------- Type ---------- */
+.app h2, .app h3, .app h4 { color: var(--text-primary); text-wrap: balance; }
+.app :is(.crew-board-header h2, .progress-page-heading h2, .crew-log .feed-heading h2) {
+  margin: 0;
+  font-family: var(--font-display);
+  font-stretch: 76%;
+  font-weight: 800;
+  font-size: clamp(2.375rem, 11vw, 3.25rem);
+  line-height: .95;
+  letter-spacing: -.02em;
+}
+.app :is(.dashboard-section-heading h3, .weekly-overview h3, .analytics-heading h3, .progress-section-heading h3,
+  .crew-board-intro h3, .missions-heading h2, .progress-account h3, .crew-pulse-heading h3) {
+  margin: 0;
+  font: 650 1.1875rem/1.25 var(--font-body);
+  letter-spacing: -.012em;
+  font-stretch: 100%;
+}
+.app :is(.dashboard-eyebrow, .crew-eyebrow, .progress-collection-label, .entry-eyebrow) {
+  margin: 0 0 4px;
+  color: var(--text-secondary);
+  font-size: .8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.app .missions-eyebrow { display: none; }
+.app :is(.dashboard, .crew-feed, .crew-board, .progress-screen) { font-variant-numeric: tabular-nums; }
+
+/* ---------- Buttons ---------- */
+.app :is(.dashboard-log, .crew-log-add, .missions-footer button, .dashboard-empty button, .crew-log .crew-log-empty button, .primary-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1px solid var(--text-primary);
+  border-radius: var(--rc-pill);
+  background: var(--text-primary);
+  color: var(--bg-dark);
+  font: 650 .9375rem/1 var(--font-body);
+  letter-spacing: -.005em;
+  box-shadow: none;
+  cursor: pointer;
+}
+.app :is(.weekly-history, .crew-board-map, .progress-history-link, .load-more-btn, .account-btn, .progress-pagination button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 26%, transparent);
+  border-radius: var(--rc-pill);
+  background: transparent;
+  color: var(--text-primary);
+  font: 600 .875rem/1 var(--font-body);
+  box-shadow: none;
+  cursor: pointer;
+}
+.app :is(.dashboard-section-heading button, .crew-pulse-next-row) {
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: 500 .875rem/1 var(--font-body);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--text-secondary) 45%, transparent);
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.app .dashboard-section-heading button > span, .app .progress-badge-arrow, .app .dashboard-rank > span:last-child { display: none; }
+/* Signing in is the one action a guest has, so it gets the primary pill wherever it appears. */
+.app :is(.signin-header-btn, .signin-prompt-btn),
+.modal :is(.welcome-signin-btn, .welcome-close-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1px solid var(--text-primary);
+  border-radius: var(--rc-pill);
+  background: var(--text-primary);
+  color: var(--bg-dark);
+  font: 650 .9375rem/1 var(--font-body);
+  letter-spacing: -.005em;
+  box-shadow: none;
+  text-transform: none;
+  cursor: pointer;
+}
+.app .signin-header-btn { min-height: 42px; padding: 0 18px; font-size: .875rem; }
+@media (hover: hover) {
+  .app :is(.dashboard-log, .crew-log-add, .missions-footer button, .dashboard-empty button, .primary-btn):hover {
+    background: color-mix(in srgb, var(--text-primary) 88%, var(--bg-dark));
+  }
+  .app :is(.weekly-history, .crew-board-map, .progress-history-link, .load-more-btn, .account-btn, .progress-pagination button):hover {
+    border-color: var(--text-primary);
+    background: var(--rc-hover);
+  }
+  .app :is(.dashboard-section-heading button, .crew-pulse-next-row):hover { color: var(--text-primary); }
+}
+
+/* ---------- Fields and segmented controls ---------- */
+.app .main-content :is(.search-input, .crew-board-search input, .progress-search-field input, .progress-category select,
+  .analytics-benchmark-picker select) {
+  min-height: 48px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+.app .main-content :is(.search-input, .crew-board-search input, .progress-search-field input):focus {
+  border-color: var(--text-secondary);
+  outline: none;
+}
+.app :is(.crew-log .feed-filters, .crew-board-tabs, .analytics-period, .progress-status-filters, .mission-levels) {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--rc-pill);
+  background: var(--bg-card);
+}
+.app :is(.crew-log .feed-filters, .crew-board-tabs, .analytics-period, .progress-status-filters, .mission-levels) > button {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--rc-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 600 .8125rem/1 var(--font-body);
+  box-shadow: none;
+  white-space: nowrap;
+}
+.app :is(.crew-log .feed-filter-pill.active, .crew-board-tabs button[aria-pressed="true"], .analytics-period button.active,
+  .progress-status-filters button.active, .mission-levels button.is-selected) {
+  background: var(--text-primary);
+  color: var(--bg-dark);
+  border: 0;
+}
+.app .crew-board-tabs button { flex-direction: row; gap: 6px; }
+/* Five boards do not fit a 320px phone; the control scrolls instead of crushing the labels. */
+.app .crew-board-tabs { overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+.app .crew-board-tabs::-webkit-scrollbar { display: none; }
+.app .crew-board-tabs > button { flex: 1 0 auto; }
+.app .crew-board-tabs button .icon { display: none; }
+
+/* ---------- Home ---------- */
+.app .dashboard { display: flex; flex-direction: column; gap: 0; }
+.app .dashboard-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 10px 0 18px; }
+.app .dashboard-heading h2 { margin: 0; font: 600 1.25rem/1.25 var(--font-body); letter-spacing: -.012em; }
+.app .dashboard-date { color: var(--text-secondary); font-size: .875rem; white-space: nowrap; }
+
+.app .weekly-card { margin: 34px 0 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.app .weekly-overview { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.app .weekly-period { margin: 4px 0 0; color: var(--text-secondary); font-size: .875rem; }
+.app .weekly-period span { color: var(--text-primary); }
+.app .weekly-distance { display: flex; align-items: baseline; gap: 6px; text-align: right; }
+.app .weekly-distance strong {
+  font-family: var(--font-display);
+  font-stretch: 66%;
+  font-weight: 800;
+  font-size: 3.5rem;
+  line-height: .85;
+  letter-spacing: -.015em;
+  color: var(--text-primary);
+}
+.app .weekly-distance span { color: var(--text-secondary); font-size: .875rem; }
+.app .weekly-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 20px 0 0;
+  border-block: 1px solid var(--border-color);
+}
+.app .weekly-facts > div { padding: 14px 0 14px 14px; border-left: 1px solid var(--border-color); }
+.app .weekly-facts > div:first-child { padding-left: 0; border-left: 0; }
+.app .weekly-facts dt { color: var(--text-secondary); font-size: .8125rem; font-weight: 400; }
+.app .weekly-facts dd { margin: 4px 0 0; color: var(--text-primary); font-size: 1.25rem; font-weight: 650; letter-spacing: -.01em; }
+.app .weekly-facts dd small { color: var(--text-secondary); font-size: .875rem; font-weight: 400; }
+.app .weekly-time-coverage { margin: 12px 0 0; color: var(--text-secondary); font-size: .8125rem; }
+.app .weekly-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 18px; }
+.app .week-rhythm { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 20px; }
+.app .week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: .75rem;
+  font-weight: 500;
+}
+.app .week-day.is-today { color: var(--text-primary); font-weight: 650; }
+.app .week-day-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bg-dark);
+}
+.app .week-day.has-row .week-day-mark { border-color: var(--text-primary); background: var(--text-primary); }
+.app .week-day.is-today:not(.has-row) .week-day-mark { border: 2px solid var(--text-primary); }
+.app .week-day.is-future .week-day-mark { border-style: dashed; opacity: .7; }
+.app .week-day-mark > span:empty { display: none; }
+
+.app .dashboard-month {
+  margin: 34px 0 0;
+  border: 0;
+  border-block: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+}
+.app .dashboard-month summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 12px 0;
+  list-style: none;
+  cursor: pointer;
+}
+.app .dashboard-month summary::-webkit-details-marker { display: none; }
+.app .dashboard-month-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  color: var(--text-primary);
+  background: none;
+}
+.app .dashboard-month summary strong { display: block; font-size: 1rem; font-weight: 650; }
+.app .dashboard-month summary small { display: flex; flex-wrap: wrap; gap: 0 12px; margin-top: 2px; color: var(--text-secondary); font-size: .8125rem; }
+.app .details-chevron { color: var(--text-secondary); font-size: 1.1rem; transition: transform 200ms var(--rc-ease); }
+.app .dashboard-month[open] .details-chevron { transform: rotate(180deg); }
+.app .dashboard-month-content { padding: 4px 0 22px; }
+.app .dashboard-month-content h3 { margin: 0 0 4px; font: 650 1.0625rem/1.3 var(--font-body); }
+.app .dashboard-month-content p { color: var(--text-secondary); font-size: .875rem; line-height: 1.5; }
+.app :is(.dashboard-competition, .dashboard-upcoming) { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-color); }
+.app .dashboard-podium { display: grid; gap: 0; margin: 12px 0 0; padding: 0; list-style: none; }
+.app .dashboard-podium li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 40px; border-bottom: 1px solid var(--border-color); }
+.app .podium-position { color: var(--text-secondary); font-weight: 650; }
+
+.app :is(.dashboard-badges, .dashboard-recent) { margin-top: 34px; }
+.app .dashboard-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.app .dashboard-badge,
+.app .dashboard-rank {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 76px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.app .dashboard-badge-art { width: 52px; height: 52px; }
+.app .dashboard-badge-copy { display: grid; gap: 3px; min-width: 0; }
+.app .dashboard-badge-copy strong { font-size: 1rem; font-weight: 650; }
+.app .dashboard-badge-copy small { color: var(--text-secondary); font-size: .8125rem; line-height: 1.4; }
+.app .dashboard-badge-percent { color: var(--text-primary); font-family: var(--font-display); font-stretch: 70%; font-weight: 750; font-size: 1.5rem; }
+.app .dashboard-rank .icon { width: 52px !important; height: 52px !important; padding: 12px; border: 1px solid var(--border-color); border-radius: 50%; }
+.app .dashboard-rank strong { display: block; font-weight: 650; }
+.app .dashboard-rank small { display: block; color: var(--text-secondary); font-size: .8125rem; }
+.app :is(.dashboard-badge, .dashboard-rank, .dashboard-month-content) progress {
+  display: block;
+  width: 100%;
+  height: 3px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--rc-quiet);
+}
+.app :is(.dashboard-badge, .dashboard-rank, .dashboard-month-content) progress::-webkit-progress-bar { background: var(--rc-quiet); }
+.app :is(.dashboard-badge, .dashboard-rank, .dashboard-month-content) progress::-webkit-progress-value { background: var(--text-primary); border-radius: 3px; }
+.app :is(.dashboard-badge, .dashboard-rank, .dashboard-month-content) progress::-moz-progress-bar { background: var(--text-primary); border-radius: 3px; }
+.app .badge-difficulty {
+  display: inline-block;
+  width: fit-content;
+  padding: 2px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--rc-pill);
+  color: var(--text-secondary);
+  font-size: .6875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: capitalize;
+  background: none;
+}
+
+.app .dashboard-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+}
+.app .dashboard-row-date {
+  display: grid;
+  justify-items: center;
+  width: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font-size: .75rem;
+  line-height: 1.1;
+}
+.app .dashboard-row-date strong {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-stretch: 70%;
+  font-weight: 800;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+.app .dashboard-row > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.app .dashboard-row > span:nth-child(2) > strong {
+  font-family: var(--font-display);
+  font-stretch: 70%;
+  font-weight: 800;
+  font-size: 1.625rem;
+  line-height: 1;
+  letter-spacing: -.01em;
+}
+.app .dashboard-row > span:nth-child(2) > strong small { font-family: var(--font-body); font-stretch: 100%; font-size: .875rem; font-weight: 500; color: var(--text-secondary); }
+.app .dashboard-row > span:nth-child(2) > small { display: flex; flex-wrap: wrap; gap: 0 12px; color: var(--text-secondary); font-size: .8125rem; }
+.app .dashboard-row > .icon { color: var(--success); }
+
+/* Missions: three lanes, not three boxes. */
+.app .monthly-missions { margin-top: 38px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.app .missions-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.app .missions-count {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--rc-pill);
+  color: var(--text-primary);
+  font-size: .8125rem;
+  font-weight: 600;
+  background: none;
+}
+.app .missions-intro { margin: 6px 0 4px; color: var(--text-secondary); font-size: .875rem; }
+.app .missions-list { display: grid; gap: 0; }
+.app .mission-card {
+  padding: 22px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.app .mission-card-heading { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
+.app .mission-card-heading h3 { margin: 0; font: 650 1.0625rem/1.25 var(--font-body); }
+.app .mission-earned-label { color: var(--text-secondary); font-size: .8125rem; }
+.app .mission-levels { margin-top: 14px; }
+.app .mission-levels > button.is-earned { color: var(--text-primary); }
+.app .mission-requirement { color: var(--text-secondary); font-size: .875rem; line-height: 1.5; }
+.app .mission-stamps span {
+  border: 1px solid var(--border-color);
+  border-radius: var(--rc-pill);
+  background: none;
+  color: var(--text-secondary);
+}
+.app .mission-stamps span.collected { border-color: var(--text-primary); color: var(--text-primary); }
+.app .missions-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
+.app .missions-footer p { color: var(--text-secondary); font-size: .8125rem; }
+
+/* ---------- Crew log ---------- */
+.app .crew-log .feed-heading { align-items: flex-end; margin: 8px 0 20px; }
+.app .crew-log-tools { margin-bottom: 14px; }
+.app .crew-log .search-bar { margin-bottom: 12px; }
+.app .crew-log .feed-filters { border-bottom: 1px solid var(--border-color); }
+.app .crew-log-results p { color: var(--text-secondary); }
+.app .crew-log-day {
+  padding: 26px 0 6px;
+  color: var(--text-secondary);
+  font: 600 .8125rem/1.4 var(--font-body);
+  letter-spacing: 0;
+}
+.app .crew-log .feed-item { gap: 6px 14px; padding: 16px 0 12px; }
+.app .crew-log .feed-profile-link { font-size: 1rem; font-weight: 650; color: var(--text-primary); }
+.app .crew-log .feed-time { color: var(--text-secondary); }
+.app .crew-log-metrics { gap: 10px 22px; margin: 4px 0 10px; }
+.app .crew-log-metrics .crew-log-distance dd,
+.app .crew-log-distance dd {
+  font-family: var(--font-display);
+  font-stretch: 66%;
+  font-weight: 800;
+  font-size: 2.75rem;
+  line-height: .9;
+  letter-spacing: -.015em;
+}
+.app .crew-log-metrics dd { font-weight: 650; letter-spacing: -.01em; }
+.app .crew-log-row-details { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--text-secondary); font-size: .8125rem; }
+.app .crew-log-verification.is-verified { color: var(--success); }
+.app :is(.add-reaction-btn, .comment-link, .reaction-pill) {
+  min-height: 36px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--rc-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 .8125rem/1 var(--font-body);
+}
+.app .reaction-pill { color: var(--text-primary); }
+.app .crew-log .load-more-btn { width: 100%; margin-top: 18px; }
+.app .crew-pulse-panel { margin-top: 26px; border: 0; border-block: 1px solid var(--border-color); border-radius: 0; background: none; }
+
+/* ---------- Board ---------- */
+.app .crew-board-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 8px 0 22px; }
+.app .crew-board-header p { margin: 8px 0 0; color: var(--text-secondary); font-size: .9375rem; }
+.app .crew-board-tabs { margin-bottom: 26px; }
+.app .crew-board-intro p { margin: 4px 0 0; color: var(--text-secondary); font-size: .875rem; }
+.app .crew-board-tools { margin: 16px 0 8px; }
+.app .crew-board-count { color: var(--text-secondary); font-size: .8125rem; }
+.app .crew-board-list { border-top: 1px solid var(--border-color); }
+.app .crew-board-row {
+  display: grid;
+  grid-template-columns: 34px 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 12px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text-primary);
+}
+.app .crew-board-row.is-you { background: var(--rc-hover); border-left: 0; box-shadow: inset 3px 0 0 var(--text-primary); }
+.app .crew-board-place {
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-stretch: 70%;
+  font-weight: 800;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.app li:first-child > .crew-board-row .crew-board-place { color: var(--text-primary); }
+.app .crew-board-name { font-size: 1rem; font-weight: 650; }
+.app .crew-board-you { margin-left: 8px; color: var(--text-secondary); font-size: .75rem; font-weight: 500; }
+.app .crew-board-detail { color: var(--text-secondary); font-size: .8125rem; }
+.app .crew-board-metric { display: grid; justify-items: end; gap: 2px; }
+.app .crew-board-metric strong {
+  font-family: var(--font-display);
+  font-stretch: 66%;
+  font-weight: 800;
+  font-size: 2.125rem;
+  line-height: .9;
+  letter-spacing: -.01em;
+  color: var(--text-primary);
+}
+.app .crew-board-metric > span { color: var(--text-secondary); font-size: .75rem; }
+.app .crew-board-note { margin-top: 16px; color: var(--text-secondary); font-size: .8125rem; line-height: 1.5; }
+
+/* ---------- Progress ---------- */
+.app .progress-page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 8px 0 22px; }
+.app :is(.progress-overview, .progress-records, .rowing-analytics, .progress-achievements, .progress-account) {
+  border-radius: 0;
+  box-shadow: none;
+}
+.app .progress-total strong,
+.app .analytics-distance strong {
+  font-family: var(--font-display);
+  font-stretch: 66%;
+  font-weight: 800;
+  letter-spacing: -.015em;
+}
+.app .analytics-bar { background: var(--text-primary); border-radius: 4px 4px 0 0; }
+.app .analytics-bar.empty { background: var(--rc-quiet); }
+.app .analytics-week.selected .analytics-bar { background: var(--text-primary); box-shadow: 0 0 0 2px var(--bg-dark), 0 0 0 3px var(--text-primary); }
+.app .analytics-week:not(.selected) .analytics-bar:not(.empty) { background: color-mix(in srgb, var(--text-primary) 55%, transparent); }
+.app .progress-badge-card {
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.app .progress-signout { color: var(--text-secondary); }
+
+/* ---------- Sheets and dialogs ---------- */
+.modal-overlay { background: color-mix(in srgb, #000 62%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.modal, .entry-flow.log-modal, .entry-flow.confirm-modal {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+  box-shadow: 0 30px 80px -30px rgb(0 0 0 / .7);
+}
+.modal h2, .entry-flow .entry-flow-heading h2 {
+  font-family: var(--font-display);
+  font-stretch: 76%;
+  font-weight: 800;
+  letter-spacing: -.015em;
+  text-transform: none;
+}
+.entry-flow .entry-close, .modal-close { border-color: var(--border-color); background: transparent; color: var(--text-primary); }
+.entry-methods { border-radius: var(--rc-pill); }
+.entry-methods button { border-radius: var(--rc-pill); }
+.entry-methods button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-dark); border-color: var(--text-primary); }
+.entry-methods button[aria-pressed="true"] span:not(.icon) { color: var(--bg-dark); }
+.entry-methods button span:not(.icon) { text-transform: none; letter-spacing: 0; }
+.entry-upload-actions button { border-radius: 18px; background: transparent; }
+
+/* ---------- Search fields: one field, not a box inside a box ---------- */
+.app .crew-log .search-bar,
+.app .crew-board-search,
+.app .progress-showcase .progress-search-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+.app .main-content :is(.crew-log .search-bar .search-input, .crew-board-search input, .progress-showcase .progress-search-field input) {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+  outline: none;
+}
+.app :is(.crew-log .search-bar, .crew-board-search, .progress-showcase .progress-search-field):focus-within {
+  border-color: var(--text-secondary);
+  box-shadow: 0 0 0 1px var(--text-secondary);
+}
+.app .crew-log .search-icon { position: static; transform: none; display: grid; place-items: center; }
+.app :is(.search-input, .crew-board-search input, .progress-search-field input)::placeholder { color: var(--text-secondary); opacity: 1; }
+
+/* ---------- Interface icons follow the text colour; rank and badge art keep theirs ---------- */
+.app :is(.notification-btn, .info-btn, .weekly-history, .progress-history-link, .comment-link, .crew-log .search-icon, .crew-board-search,
+  .crew-board-map, .account-btn-icon, .dashboard-month-icon, .crew-log-add, .dashboard-log, .progress-search-field,
+  .crew-pulse-panel-summary, .load-more-btn) .icon :is(path, circle, rect) { fill: currentColor; }
+.app .comment-link { color: var(--text-secondary); }
+.app .dashboard-month-icon { color: var(--accent-gold); }
+.app .dashboard-month-icon .icon :is(path, circle, rect) { fill: currentColor; }
+
+/* ---------- Medals: silver until earned ---------- */
+.app .dashboard-badge-art,
+.app .progress-showcase .progress-badge-card:not(.is-earned) .badge-artwork {
+  filter: grayscale(1) contrast(1.08) brightness(1.12);
+}
+
+/* ---------- Progress: sections, not panels ---------- */
+.app .progress-showcase :is(.analytics-volume, .analytics-benchmark) {
+  margin-top: 28px;
+  padding: 26px 0 0;
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+}
+.app .analytics-bar-track { border-bottom-color: var(--border-color); }
+.app .analytics-pace-dot { background: var(--text-primary); }
+.app .progress-showcase .progress-latest-earned {
+  padding: 18px 0;
+  border: 0;
+  border-block: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+}
+.app .progress-showcase .progress-badge-card {
+  padding: 20px 0 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.app .progress-showcase .progress-badge-meter > span { background: var(--text-primary); }
+.app .progress-showcase .progress-badge-card.is-earned { border-color: var(--border-color); }
+.app .progress-account .account-buttons { display: grid; gap: 0; border-top: 1px solid var(--border-color); }
+.app .progress-account .account-btn {
+  justify-content: flex-start;
+  min-height: 60px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+  font-size: 1rem;
+}
+.app .progress-overview strong,
+.app .analytics-metric strong { font-family: var(--font-display); font-stretch: 70%; font-weight: 800; letter-spacing: -.01em; }
+
+/* ---------- Details ---------- */
+/* Decorative arrows tacked onto actions are dropped; the button text says where it goes. */
+.app :is(.missions-footer button, .account-btn, .progress-latest-detail, .progress-first-row button, .crew-pulse-next-row) > span[aria-hidden="true"] { display: none; }
+.app .dashboard-recent > .dashboard-row { display: grid; width: 100%; margin-right: 0; vertical-align: baseline; }
+.app .missions-count { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.app .missions-count :is(small, span) { display: inline; }
+.app .account-section,
+.app .progress-showcase .progress-account { padding-inline: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.app .progress-showcase .progress-account { padding-top: 26px; border-top: 1px solid var(--border-color); }
+.app .account-btn-icon { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 50%; background: none; color: var(--text-primary); }
+.app .progress-signout { min-height: 44px; margin-top: 10px; padding: 0 4px; border: 0; background: none; text-decoration: underline; text-underline-offset: 4px; }
+
+/* Badge category and level: sentence case, with the level as the same small pill used on Home. */
+.app .progress-badge-classification,
+.achievement-showcase .achievement-classification { gap: 8px; font-size: .8125rem; letter-spacing: 0; text-transform: none; }
+.app .progress-badge-classification > span:first-child,
+.achievement-showcase .achievement-classification > span:first-child { text-transform: capitalize; }
+.app .progress-badge-classification > span[aria-hidden="true"],
+.achievement-showcase .achievement-classification > span[aria-hidden="true"] { display: none; }
+.achievement-showcase .achievement-classification > span:last-child:not(:first-child) {
+  padding: 2px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--rc-pill);
+  font-size: .6875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Benchmark: first and latest pace joined by a quiet line rather than an arrow glyph. */
+.app .analytics-pace-comparison { gap: 20px; }
+.app .analytics-pace-comparison .analytics-pace-arrow {
+  flex: 1;
+  align-self: flex-end;
+  min-width: 24px;
+  height: 1px;
+  margin-bottom: calc(clamp(1.8rem, 6vw, 2.6rem) * .55);
+  overflow: hidden;
+  font-size: 0;
+  background: linear-gradient(90deg, var(--border-color), var(--text-secondary));
+}
+.app .analytics-pace-comparison strong { font-family: var(--font-display); font-stretch: 70%; font-weight: 800; letter-spacing: -.01em; line-height: 1; }
+
+/* ---------- Badge dialog ---------- */
+.modal.achievement-showcase { border-color: var(--border-color); }
+.achievement-showcase:not(.is-earned) .achievement-medal-display { filter: grayscale(1) contrast(1.08) brightness(1.12); }
+.achievement-showcase .achievement-modal-close-btn {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 26%, transparent);
+  border-radius: var(--rc-pill);
+  background: transparent;
+  color: var(--text-primary);
+  font: 600 .9375rem/1 var(--font-body);
+}
+
+/* ---------- Rower profile ---------- */
+.user-profile-modal .profile-modal-header { align-items: center; gap: 18px; margin-bottom: 24px; }
+.user-profile-modal .profile-modal-avatar { border: 0; box-shadow: none; }
+.user-profile-modal .profile-modal-info { gap: 5px; }
+.user-profile-modal .profile-modal-info h2 { font-size: 2rem; line-height: .95; }
+.user-profile-modal :is(.profile-modal-rank, .profile-modal-streak, .profile-modal-machine) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: .875rem;
+  line-height: 1.3;
+}
+.user-profile-modal .profile-modal-streak { color: var(--text-primary); font-weight: 500; }
+.user-profile-modal .profile-modal-machine { margin-top: 3px; padding: 4px 10px; border: 1px solid var(--border-color); border-radius: var(--rc-pill); background: none; font-size: .8125rem; }
+.user-profile-modal :is(.profile-modal-machine, .profile-stat-label) .icon :is(path, circle, rect) { fill: currentColor; }
+.user-profile-modal .profile-modal-streak .icon :is(path, circle, rect) { fill: var(--accent-gold); }
+.user-profile-modal :is(.profile-stats-grid, .profile-extra-stats) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.user-profile-modal .profile-stats-grid { border-top: 1px solid var(--border-color); }
+.user-profile-modal :is(.profile-stat-box, .profile-stat-box.highlight, .profile-extra-stat) {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+  text-align: left;
+}
+.user-profile-modal :is(.profile-stat-box:nth-child(even), .profile-extra-stat + .profile-extra-stat) { padding-left: 18px; border-left: 1px solid var(--border-color); }
+.user-profile-modal :is(.profile-stat-value, .profile-extra-value) {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-stretch: 70%;
+  font-weight: 800;
+  font-size: 2.125rem;
+  line-height: .95;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+.user-profile-modal :is(.profile-stat-label, .profile-extra-label) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: .8125rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.user-profile-modal .profile-extra-icon { display: none; }
+.user-profile-modal .profile-secondary-stats { margin: 0; padding: 0; border-radius: 0; background: none; }
+.user-profile-modal .profile-stat-row { align-items: center; min-height: 48px; padding: 0; font-size: .9375rem; }
+.user-profile-modal .profile-stat-row:last-child { border-bottom: 1px solid var(--border-color); }
+.user-profile-modal .profile-stat-row > span:first-child { color: var(--text-secondary); }
+.user-profile-modal .profile-stat-row > span:last-child { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+.user-profile-modal :is(.profile-rewards, .profile-achievements) { margin: 26px 0 0; padding: 0; border-radius: 0; background: none; }
+.user-profile-modal :is(.profile-rewards-header, .profile-achievements-header) { align-items: baseline; margin-bottom: 12px; font-size: 1.0625rem; font-weight: 650; }
+.user-profile-modal :is(.profile-rewards-header, .profile-achievements-header) > span:last-child { color: var(--text-secondary); font-size: .875rem; font-weight: 500; }
+.user-profile-modal .profile-badge.unlocked { background: none; border-color: var(--border-color); }
+.user-profile-modal .profile-badge.locked .badge-artwork { filter: grayscale(1) contrast(1.08) brightness(1.12); }
+
+/* ---------- Log sheet ---------- */
+.entry-flow :is(.entry-methods, .entry-upload-actions) .icon :is(path, circle, rect) { fill: currentColor; }
+
+/* ---------- Crew map ---------- */
+.exp-dialog .exp-eyebrow { color: var(--text-secondary); font-size: .8125rem; font-weight: 500; letter-spacing: 0; }
+.exp-dialog :is(.exp-header h2, .exp-destination h3, .exp-section-intro h3) {
+  font-family: var(--font-display);
+  font-stretch: 76%;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+.exp-dialog .exp-header h2 { font-size: 2.5rem; line-height: .95; }
+.exp-dialog .exp-destination h3 { font-size: 2.25rem; line-height: 1; }
+.exp-dialog :is(.exp-summary strong, .exp-own-share strong) {
+  font-family: var(--font-display);
+  font-stretch: 70%;
+  font-weight: 800;
+  font-size: 1.875rem;
+  line-height: 1;
+  letter-spacing: -.01em;
+}
+.exp-dialog .exp-summary > div > span { font-size: .8125rem; }
+@media (max-width: 600px) { .exp-dialog .exp-summary > div > span { font-size: .75rem; } }
+.exp-dialog .exp-stamp .icon :is(path, circle, rect) { fill: currentColor; }
+.exp-dialog .exp-close { background: transparent; }
+.exp-dialog .exp-tabs button { font-size: .875rem; }
+.exp-dialog .exp-tabs button.active { border-bottom-color: var(--text-primary); color: var(--text-primary); }
+.exp-dialog :is(.exp-tabs, .exp-footer, .exp-next-win, .exp-own-share) .icon :is(path, circle, rect) { fill: currentColor; }
+.exp-dialog .exp-map-modes { padding: 3px; border-radius: var(--rc-pill); }
+.exp-dialog .exp-map-modes button { padding: 0 14px; border-radius: var(--rc-pill); font-size: .8125rem; }
+.exp-dialog .exp-map-modes button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-dark); }
+.exp-dialog .exp-map-top { font-size: .75rem; letter-spacing: 0; }
+.exp-dialog .exp-map-bottom { font-size: .6875rem; }
+.exp-dialog .exp-map-bottom > span:last-child { font-size: .625rem; }
+.exp-dialog .exp-destination { border-radius: var(--rc-radius); }
+.exp-dialog .exp-stop-navigation button { color: var(--text-primary); font-size: .8125rem; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--text-primary) 35%, transparent); text-underline-offset: 4px; }
+.exp-dialog .exp-stop-navigation button:disabled { text-decoration: none; }
+.exp-dialog .exp-footer strong { font-size: .875rem; }
+.exp-dialog .exp-footer > div > span { font-size: .8125rem; }
+.exp-dialog .exp-footer button { min-height: 48px; padding: 0 22px; border-radius: var(--rc-pill); font: 650 .9375rem/1 var(--font-body); }
+
+/* ---------- Wide screens: rail navigation, wider content ---------- */
+@media (min-width: 600px) {
+  .app .main-content { padding-inline: 24px; }
+  .app .header.crew-header { padding-inline: 24px; }
+}
+@media (min-width: 1024px) {
+  .app { padding-left: var(--rc-rail); padding-bottom: 0; }
+  .app .header.crew-header, .app .main-content { max-width: var(--rc-wide); padding-inline: 48px; }
+  .app .header.crew-header { padding-top: 28px; padding-bottom: 8px; }
+  .app .crew-nav {
+    /* Sized by its insets, not 100vh, so zoom and short windows keep every item reachable. */
+    inset: 0 auto 0 0;
+    width: var(--rc-rail);
+    height: auto;
+    flex-direction: column;
+    justify-content: center;
+    justify-content: safe center;
+    overflow-y: auto;
+    scrollbar-width: none;
+    gap: 8px;
+    margin: 0;
+    padding: 24px 12px;
+    border: 0;
+    border-right: 1px solid var(--border-color);
+    background: var(--bg-dark);
+  }
+  .app .crew-nav button { flex: 0 0 auto; width: 100%; min-height: 66px; }
+  .app .crew-nav button.is-active::before { top: 50%; left: -12px; width: 3px; height: 26px; margin: -13px 0 0; }
+  .app .crew-nav .crew-nav-log { order: -1; margin-bottom: 22px; }
+  .app :is(.crew-board-header h2, .progress-page-heading h2, .crew-log .feed-heading h2) { font-size: 4rem; }
+  .app .dashboard-heading { margin-top: 18px; margin-bottom: 26px; }
+  .app .dashboard-heading h2 { font-size: 1.5rem; }
+  .app .dashboard {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-areas:
+      'heading heading'
+      'journey journey'
+      'week badges'
+      'month badges'
+      'recent badges'
+      'missions missions';
+    column-gap: 64px;
+    align-items: start;
+  }
+  .app .dashboard-heading { grid-area: heading; }
+  .app .dashboard .world-journey { grid-area: journey; }
+  .app .weekly-card { grid-area: week; }
+  .app .dashboard-month { grid-area: month; }
+  /* The shorter column rides along while the logbook scrolls past. */
+  .app .dashboard-badges { grid-area: badges; position: sticky; top: 24px; }
+  .app .dashboard-recent { grid-area: recent; }
+  .app .monthly-missions { grid-area: missions; }
+  .app .missions-list { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 40px; }
+  .app .mission-card { border-bottom: 0; border-top: 1px solid var(--border-color); }
+  .app .crew-log {
+    grid-template-columns: minmax(0, 680px) minmax(280px, 320px);
+    justify-content: space-between;
+    column-gap: 56px;
+  }
+  .app .crew-board { max-width: 820px; }
+}
+@media (max-width: 359px) {
+  .app .main-content { padding-inline: 12px; }
+  .app .header.crew-header { padding-inline: 12px; }
+  .app .world-journey { margin-inline: -12px; }
+  .app .weekly-distance strong { font-size: 2.875rem; }
+  .app .crew-log-metrics .crew-log-distance dd, .app .crew-log-distance dd { font-size: 2.375rem; }
+  .app .crew-board-row { grid-template-columns: 28px 38px minmax(0, 1fr) auto; gap: 8px; }
+}
+
+/* ---------- Motion ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .app :is(.dashboard-log, .crew-log-add, .weekly-history, .crew-board-map, .progress-history-link, .load-more-btn,
+    .account-btn, .crew-nav button, .crew-log .feed-filters > button, .crew-board-tabs > button, .analytics-period > button,
+    .progress-status-filters > button, .mission-levels > button, .dashboard-badge, .dashboard-rank, .crew-board-row) {
+    transition: background-color 160ms var(--rc-ease), color 160ms var(--rc-ease), border-color 160ms var(--rc-ease), box-shadow 160ms var(--rc-ease);
+  }
+}
+@media (forced-colors: active) {
+  .app .crew-nav button.is-active::before { background: Highlight; }
+  .app .week-day.has-row .week-day-mark { background: Highlight; border-color: Highlight; }
+}

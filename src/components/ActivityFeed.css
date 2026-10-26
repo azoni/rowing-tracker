@@ -8,7 +8,7 @@
 }
 .crew-log .feed-heading h2 {
   margin: 0;
-  font: 700 clamp(1.875rem, 5vw, 2.25rem)/1.2 'DM Sans', sans-serif;
+  font: 700 clamp(1.875rem, 5vw, 2.25rem)/1.2 var(--font-body);
   letter-spacing: -.035em;
 }
 .crew-log .feed-heading p {
@@ -30,7 +30,7 @@
   border-radius: 12px;
   background: var(--bg-card);
   color: var(--text-primary);
-  font: 600 .875rem/1.4 'DM Sans', sans-serif;
+  font: 600 .875rem/1.4 var(--font-body);
   cursor: pointer;
 }
 .crew-log-add { flex-shrink: 0; padding: 8px 11px; border-radius: 8px; background: transparent; }
@@ -67,7 +67,7 @@
   min-height: 44px;
   padding: 8px 5px;
   border-radius: 0;
-  font: 600 .875rem/1.4 'DM Sans', sans-serif;
+  font: 600 .875rem/1.4 var(--font-body);
   color: var(--text-secondary);
   background: transparent;
   border: 0;
@@ -90,7 +90,7 @@
   gap: 12px;
   margin: 0;
   padding: 16px 0 4px;
-  font: 600 .875rem/1.5 'DM Sans', sans-serif;
+  font: 600 .875rem/1.5 var(--font-body);
   color: var(--text-primary);
 }
 .crew-log-day::after { content: ''; height: 1px; flex: 1; background: var(--border-color); }
@@ -169,7 +169,7 @@
 .crew-log .comment-delete-inline { min-width: 36px; min-height: 44px; font-size: .875rem; color: var(--text-secondary); opacity: 1; }
 .crew-log .comment-add-row { gap: 8px; align-items: center; }
 .crew-log .comment-add-row input { min-width: 0; border-radius: 8px; font-size: 1rem; }
-.crew-log .comment-add-row button { width: auto; flex-shrink: 0; min-height: 44px; padding: 8px 12px; border-radius: 8px; font: 600 .875rem/1.4 'DM Sans', sans-serif; }
+.crew-log .comment-add-row button { width: auto; flex-shrink: 0; min-height: 44px; padding: 8px 12px; border-radius: 8px; font: 600 .875rem/1.4 var(--font-body); }
 .crew-log .replying-to-indicator { gap: 8px; padding: 0 8px; font-size: .8125rem; color: var(--text-primary); }
 .crew-log .replying-to-indicator button { min-width: 44px; min-height: 44px; }
 .crew-log-error { grid-column: 1 / -1; padding: 10px 12px; margin: 0; border-left: 3px solid var(--accent-primary); background: var(--bg-dark); font-size: .875rem; line-height: 1.6; }
@@ -186,7 +186,7 @@
 .crew-log-empty p { max-width: 38ch; margin: 0 auto 20px; font-size: .9375rem; line-height: 1.6; text-wrap: pretty; }
 .crew-log .crew-log-empty button { margin: 4px; }
 .crew-log .crew-log-empty .crew-log-empty-primary { background: var(--accent-primary); color: var(--bg-dark); border-color: transparent; }
-.crew-log .load-more-btn { min-height: 48px; font: 600 .9375rem/1.5 'DM Sans', sans-serif; }
+.crew-log .load-more-btn { min-height: 48px; font: 600 .9375rem/1.5 var(--font-body); }
 .crew-log .crew-wrapped-archive button { font-size: .8125rem; }
 .crew-log button:disabled { cursor: default; }
 .crew-log .reaction-pill:disabled,

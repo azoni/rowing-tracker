@@ -11,7 +11,7 @@
 .weekly-overview h3 { margin: 0 0 5px; font-size: 1.05rem; font-weight: 600; }
 .weekly-period { display: flex; flex-wrap: wrap; gap: 2px 8px; color: var(--text-secondary); font-size: .8125rem; }
 .weekly-distance { display: flex; align-items: baseline; justify-content: flex-end; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
-.weekly-distance strong { font-family: 'Bebas Neue', sans-serif; font-size: 2.45rem; font-weight: 400; letter-spacing: -.015em; line-height: 1; font-variant-numeric: tabular-nums; }
+.weekly-distance strong { font-family: var(--font-display); font-size: 2.45rem; font-weight: 400; letter-spacing: -.015em; line-height: 1; font-variant-numeric: tabular-nums; }
 .weekly-distance > span { font-size: .75rem; color: var(--text-secondary); }
 .weekly-facts { display: grid; grid-template-columns: .7fr 1fr 1.3fr; gap: 8px; }
 .weekly-facts > div + div { border-left: 1px solid var(--border-color); padding-left: 12px; }

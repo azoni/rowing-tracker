@@ -17,6 +17,8 @@ import EntryForm from '../../src/components/EntryForm';
 import ConfirmEntryModal from '../../src/components/ConfirmEntryModal';
 import { AchievementModal } from '../../src/components/SmallModals';
 import UserProfileModal from '../../src/components/UserProfileModal';
+// The design layer loads after every component stylesheet, as in src/index.js.
+import '../../src/styles/rowcrew-design.css';
 
 // This preview never imports App.js or Firebase. All writes and auth actions stay
 // in memory. Reloading resets everything. Freeze the browser clock before loading
